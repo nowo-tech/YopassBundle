@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-04
+
+### Fixed
+
+- **CI** — Symfony 8 matrix jobs use `doctrine/doctrine-bundle ^3.0` (2.x does not support Symfony 8).
+- **CI** — ignore optional `ext-mongodb` platform requirement for dev dependencies in GitHub Actions.
+
+### Changed
+
+- **`composer.json`** — declare `symfony/form` and `symfony/validator` for Symfony 8 (`^7.4 || ^8.0`).
+- **GitHub Actions** — bump `actions/checkout`, `actions/cache`, and `codecov-action` (Dependabot).
+
 ## [1.0.0] - 2026-07-04
 
 First stable release of **Yopass Bundle**.
@@ -38,5 +50,6 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.0.0
