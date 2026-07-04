@@ -1,0 +1,42 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [1.0.0] - 2026-07-04
+
+First stable release of **Yopass Bundle**.
+
+### Added
+
+- **E2E encrypted sharing** — browser-side libsodium secretbox; server stores ciphertext only.
+- **Manage UI** — authenticated list, create (Symfony form POST + redirect), preview, extend, revoke, delete, and delete-all.
+- **Public routes** — anonymous reveal page and consume endpoint (JSON ciphertext).
+- **Link formats**
+  - Short link: `/share/{id}` (recipient pastes decryption key in the UI).
+  - One-click link: `/share/{id}?decrypt_key=…` (auto-reveal on load).
+  - Legacy support when reading: `#fragment`, `?key=`, and `?password=`.
+- **Share options** — configurable expiration ids, max-read limits, and list pagination (`shares.list_page_size`).
+- **Retention** — automatic purge of shares older than `shares.retention.max_age` (UI + `nowo:yopass:purge-old-shares` command).
+- **Access log** — optional audit trail of public link opens (Doctrine ORM).
+- **File shares** — optional `ShareFileHandlerInterface` (text-only when not configured).
+- **Encryption modes** — auto-generated key or custom password (`sharing` config).
+- **Configuration** — `user_class`, `table_prefix`, routes, templates, firewall hints, and pluggable `YopassAccessCheckerInterface`.
+- **Persistence** — Doctrine ORM (PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle), MongoDB ODM, or custom repository.
+- **TypeScript / Stimulus** — Vite + pnpm bundle (`yopass.js`, asset package `nowo_yopass`).
+- **Translations** — `NowoYopassBundle` domain (EN/ES).
+- **Demo** — Symfony 8.1 + FrankenPHP + MySQL (`demo/symfony8/`).
+- **Tooling** — PHPUnit (100% PHP line coverage target), Vitest (crypto), PHP-CS-Fixer, Rector, PHPStan, GitHub Actions CI, Symfony Flex recipe.
+
+### Requirements
+
+- PHP >= 8.2, < 8.6 with `ext-sodium`
+- Symfony ^7.4 || ^8.0
+- Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
+
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.0.0

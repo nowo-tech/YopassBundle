@@ -1,0 +1,23 @@
+# Demo local file-storage services. Override via .env (see .env.example).
+parameters:
+    # Gitignored directory outside public/; created by make up with mode 0700.
+    env(YOPASS_LOCAL_STORAGE_DIR): '%kernel.project_dir%/var/yopass-storage'
+    # Optional base64 32-byte key for libsodium secretbox at rest (empty = E2E ciphertext only).
+    env(YOPASS_LOCAL_STORAGE_KEY): ''
+    # Max raw file size before client-side encryption (512 KiB).
+    env(YOPASS_LOCAL_MAX_FILE_BYTES): '524288'
+
+services:
+    App\YopassDemo\Local\LocalCiphertextStore:
+        arguments:
+            $storageDir: '%env(resolve:YOPASS_LOCAL_STORAGE_DIR)%'
+            $encryptionKeyBase64: '%env(default::YOPASS_LOCAL_STORAGE_KEY)%'
+
+    App\YopassDemo\Local\LocalShareFileHandler:
+        arguments:
+            $maxFileBytes: '%env(int:YOPASS_LOCAL_MAX_FILE_BYTES)%'
+
+    App\YopassDemo\Local\LocalOffloadingShareRepository:
+        arguments:
+            $inner: '@Nowo\YopassBundle\Repository\DoctrineOrmShareRepository'
+            $store: '@App\YopassDemo\Local\LocalCiphertextStore'

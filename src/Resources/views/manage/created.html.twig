@@ -1,0 +1,68 @@
+{% extends '@NowoYopassBundle/layout.html.twig' %}
+
+{% block title %}{{ 'yopass.result.title'|trans({}, 'NowoYopassBundle') }}{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script type="module" src="{{ asset('js/yopass.js', 'nowo_yopass') }}"></script>
+{% endblock %}
+
+{% block body %}
+    <div class="page-header d-print-none mb-4">
+        <div class="row align-items-center">
+            <div class="col">
+                <h1 class="page-title">{{ 'yopass.result.title'|trans({}, 'NowoYopassBundle') }}</h1>
+            </div>
+            <div class="col-auto">
+                <a href="{{ path(routes.manage.name) }}" class="btn btn-outline-secondary">{{ 'yopass.back'|trans({}, 'NowoYopassBundle') }}</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card"
+                 data-controller="nowo-yopass-created"
+                 data-nowo-yopass-created-share-id-value="{{ share.id }}"
+                 data-nowo-yopass-created-public-path-value="{{ public_path }}"
+                 data-nowo-yopass-created-show-remember-notice-value="{{ sharing_options.show_remember_notice ? 'true' : 'false' }}"
+                 data-nowo-yopass-created-key-unavailable-message-value="{{ 'yopass.result.key_unavailable'|trans({}, 'NowoYopassBundle')|e('html_attr') }}">
+                <div class="card-body">
+                    <div class="alert alert-danger d-none" data-nowo-yopass-created-target="error"></div>
+
+                    <div data-nowo-yopass-created-target="content">
+                        <div class="alert alert-warning{% if not sharing_options.show_remember_notice %} d-none{% endif %} mb-4" data-nowo-yopass-created-target="rememberNotice">
+                            <strong>{{ 'yopass.result.remember'|trans({}, 'NowoYopassBundle') }}:</strong>
+                            {{ 'yopass.result.remember_text'|trans({}, 'NowoYopassBundle') }}
+                        </div>
+
+                        <label class="form-label" for="yopass-created-one-click">{{ 'yopass.result.one_click'|trans({}, 'NowoYopassBundle') }}</label>
+                        <p class="text-secondary small mb-1">{{ 'yopass.result.one_click_help'|trans({}, 'NowoYopassBundle') }}</p>
+                        <div class="input-group mb-4">
+                            <input type="text" id="yopass-created-one-click" class="form-control" readonly data-nowo-yopass-created-target="resultOneClickLink">
+                            <button type="button" class="btn btn-outline-secondary" data-action="nowo-yopass-created#copyOneClickLink">{{ 'yopass.link.copy'|trans({}, 'NowoYopassBundle') }}</button>
+                        </div>
+
+                        <label class="form-label" for="yopass-created-short">{{ 'yopass.result.short'|trans({}, 'NowoYopassBundle') }}</label>
+                        <p class="text-secondary small mb-1">{{ 'yopass.result.short_help'|trans({}, 'NowoYopassBundle') }}</p>
+                        <div class="input-group mb-4">
+                            <input type="text" id="yopass-created-short" class="form-control" readonly data-nowo-yopass-created-target="resultShortLink">
+                            <button type="button" class="btn btn-outline-secondary" data-action="nowo-yopass-created#copyShortLink">{{ 'yopass.link.copy'|trans({}, 'NowoYopassBundle') }}</button>
+                        </div>
+
+                        <label class="form-label" for="yopass-created-key">{{ 'yopass.result.decryption_key'|trans({}, 'NowoYopassBundle') }}</label>
+                        <p class="text-secondary small mb-1">{{ 'yopass.result.decryption_key_help'|trans({}, 'NowoYopassBundle') }}</p>
+                        <div class="input-group mb-4">
+                            <input type="text" id="yopass-created-key" class="form-control" readonly data-nowo-yopass-created-target="resultKey">
+                            <button type="button" class="btn btn-outline-secondary" data-action="nowo-yopass-created#copyKey">{{ 'yopass.link.copy'|trans({}, 'NowoYopassBundle') }}</button>
+                        </div>
+
+                        <a href="{{ path(routes.manage.name) }}" class="btn btn-outline-primary w-100">
+                            {{ 'yopass.result.create_another'|trans({}, 'NowoYopassBundle') }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

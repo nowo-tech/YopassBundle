@@ -1,0 +1,147 @@
+yopass:
+    title: Yopass
+    intro: Create one-time encrypted links to share secrets securely. You only manage your own shares.
+    e2e_notice: Encryption and decryption happen in your browser; the server never sees plaintext.
+    back: Back
+    access:
+        denied: You do not have access to this tool.
+    feature:
+        denied: You do not have permission for this action.
+    tab:
+        text: Text
+        file: File
+    type:
+        text: Text
+        file: File
+    secret:
+        field: Secret
+        placeholder: Enter the secret to share…
+        help: Multiline text allowed. Max %limit% characters.
+        counter: '__COUNT__ / __LIMIT__ characters'
+        limit_reached: Character limit reached. Remove text to continue.
+    file:
+        field: File
+        help: Max 512 KB. Encrypted in the browser before upload.
+    key:
+        generate: Generate decryption key automatically
+        mode_auto: Auto-generated key
+        mode_password: Custom password
+        mode_help: Choose a random key or a password you will share separately.
+        mode_field: Encryption mode
+        custom: Decryption password
+        custom_help: Share the link and this password through different channels.
+        embed_in_url: Include key/password in the URL (?decrypt_key=)
+        embed_help: The key is passed as a ?decrypt_key= query parameter in the one-click link.
+        separate_label: Key / password (share separately)
+        separate_help: Send the link via one channel and the key via another (Signal, SMS…).
+    result:
+        title: Secret stored securely
+        remember: Remember
+        remember_text: The secret can only be downloaded the configured number of times. Do not open the one-click link yourself. The cautious should send the decryption key in a separate channel.
+        one_click: One-click link
+        one_click_help: Share this link for direct access to the secret.
+        short: Short link
+        short_help: Requires the decryption key to be shared separately.
+        decryption_key: Decryption key
+        decryption_key_help: Required to decrypt the message with the short link.
+        key_unavailable: The decryption key is no longer available. Copy the links right after creating the share.
+        create_another: Create another secret
+    error:
+        secret: Enter a secret or select a file.
+        secret_too_large: Secret exceeds the character limit.
+        file: Select a file.
+        file_too_large: File exceeds the 512 KB limit.
+        password: Enter a decryption password.
+        invalid_ciphertext: The submitted ciphertext is invalid.
+        file_not_enabled: File shares are not enabled.
+        create: Could not create the share.
+    revoked: Share revoked.
+    revoke: Revoke
+    revoke_confirm: Revoke this share? The public link will stop working.
+    deleted: Share deleted.
+    delete: Delete
+    delete_confirm: Permanently delete this share from your list? This cannot be undone.
+    delete_all: Delete all
+    delete_all_confirm: Permanently delete all your shares? This cannot be undone.
+    deleted_all: Deleted %count% share(s).
+    view: View
+    preview:
+        title: Share preview
+        intro: Decryption happens in your browser. Preview does not consume a read.
+        decrypt: Show content
+        key_field: Decryption key
+        key_help: Enter the key shown when you created this share (stored in this browser session when possible).
+        key_required: Enter the decryption key for this share.
+        public_link: Public link
+        close: Close
+        failed: Could not load this share.
+        access_log:
+            title: Open history
+            intro: Log of each time someone opened the public link (reveal secret).
+            empty: This link has not been opened yet.
+            when: Date
+            read: Read #
+            ip: IP
+            user_agent: Browser
+    extend:
+        action: Extend
+        title: Extend share
+        intro: Add time or reads without consuming a view. Leave a field unchanged to keep the current value.
+        current: Current limits
+        expiration_field: Add expiration time
+        reads_field: Increase max reads to
+        keep_expiration: Do not change expiration
+        keep_reads: Do not change max reads
+        submit: Apply extension
+        success: Share updated.
+        failed: Could not update the share.
+        revoked: Revoked shares cannot be extended.
+        invalid_expiration: Invalid expiration option.
+        invalid_max_reads: Invalid max-reads value.
+        max_reads_not_increased: Choose a max-reads value higher than the current limit.
+        expiration_not_extended: Choose a longer expiration extension.
+        nothing_to_extend: Select at least one extension option.
+    expires:
+        field: Expiration
+        1h: 1 hour
+        24h: 24 hours
+        7d: 7 days
+    reads:
+        field: Max reads
+    create:
+        title: New share
+        submit: Create link
+    list:
+        title: My shares
+        type: Type
+        created: Created
+        expires: Expires
+        reads: Reads
+        status: Status
+        empty: You have not created any shares yet.
+        retention_notice: Shares older than %max_age% are automatically deleted.
+        summary: '%from%–%to% of %total%'
+        page: Page %page% / %pages%
+        previous: Previous
+        next: Next
+    status:
+        active: Active
+        revoked: Revoked
+        unavailable: Unavailable
+    link:
+        label: Generated link (copy it now, it will not be shown again)
+        copy: Copy
+    public:
+        title: Shared secret
+        intro: Click to reveal the content. Each read consumes one view.
+        e2e_notice: Decryption happens in your browser; only the encrypted payload is fetched from the server.
+        reveal: Reveal secret
+        unavailable: This link is no longer available (expired, revoked, or consumed).
+        password_field: Decryption password
+        key_required: Enter the decryption key.
+        password_required: Enter the decryption password.
+        password_from_link: Password loaded from the link.
+        key_field: Decryption key
+        key_help: Paste the key you received separately (short link without ?decrypt_key=).
+        key_from_link: Key loaded from the link.
+        invalid_key: Incorrect key or password.

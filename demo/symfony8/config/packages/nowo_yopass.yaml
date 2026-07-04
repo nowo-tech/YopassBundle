@@ -1,0 +1,26 @@
+# Demo Yopass configuration. File shares are enabled via nowo_yopass_files.yaml (local disk storage).
+imports:
+    - { resource: nowo_yopass_files.yaml }
+    # Optional AWS S3 override (after make scaffold-s3-examples):
+    # - { resource: ../local/nowo_yopass_s3.yaml, ignore_errors: true }
+
+nowo_yopass:
+    user_class: App\Entity\User
+    table_prefix: yopass_
+
+    routes:
+        manage:
+            path: /tools/yopass
+            name: nowo_yopass_index
+        create:
+            path: /tools/yopass/create
+            name: nowo_yopass_create
+        revoke:
+            path: /tools/yopass/{id}/revoke
+            name: nowo_yopass_revoke
+        public_show:
+            path: /share/{id}
+            name: nowo_yopass_public_share
+        public_consume:
+            path: /share/{id}/consume
+            name: nowo_yopass_public_consume

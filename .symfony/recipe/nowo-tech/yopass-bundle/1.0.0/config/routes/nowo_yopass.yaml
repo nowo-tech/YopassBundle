@@ -1,0 +1,5 @@
+# Import Yopass routes via the bundle's custom route loader (type: nowo_yopass).
+# Paths and names come from config/packages/nowo_yopass.yaml (routes.*).
+nowo_yopass:
+    resource: .
+    type: nowo_yopass
