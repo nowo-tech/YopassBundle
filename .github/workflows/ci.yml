@@ -58,7 +58,27 @@ jobs:
 
       - name: Install dependencies with Symfony ${{ matrix.symfony }}
         run: |
-          composer require symfony/config:^${{ matrix.symfony }} symfony/dependency-injection:^${{ matrix.symfony }} symfony/framework-bundle:^${{ matrix.symfony }} symfony/http-kernel:^${{ matrix.symfony }} symfony/routing:^${{ matrix.symfony }} symfony/security-bundle:^${{ matrix.symfony }} symfony/translation:^${{ matrix.symfony }} symfony/twig-bundle:^${{ matrix.symfony }} symfony/yaml:^${{ matrix.symfony }} doctrine/doctrine-bundle:^2.10 --no-interaction --no-update
+          SYMFONY="${{ matrix.symfony }}"
+          SYMFONY_MAJOR="${SYMFONY%%.*}"
+          if [ "$SYMFONY_MAJOR" -ge 8 ]; then
+            DOCTRINE_BUNDLE="^3.0"
+          else
+            DOCTRINE_BUNDLE="^2.10"
+          fi
+          composer require \
+            symfony/config:^${SYMFONY} \
+            symfony/dependency-injection:^${SYMFONY} \
+            symfony/form:^${SYMFONY} \
+            symfony/framework-bundle:^${SYMFONY} \
+            symfony/http-kernel:^${SYMFONY} \
+            symfony/routing:^${SYMFONY} \
+            symfony/security-bundle:^${SYMFONY} \
+            symfony/translation:^${SYMFONY} \
+            symfony/twig-bundle:^${SYMFONY} \
+            symfony/validator:^${SYMFONY} \
+            symfony/yaml:^${SYMFONY} \
+            doctrine/doctrine-bundle:${DOCTRINE_BUNDLE} \
+            --no-interaction --no-update
           composer update symfony/* doctrine/* --with-all-dependencies --no-interaction --prefer-dist --no-progress
 
       - name: Run tests
