@@ -1,0 +1,18 @@
+# Demo application services. Yopass file storage wiring is imported from services_files.yaml.
+imports:
+    - { resource: services_files.yaml }
+    # Optional AWS S3 services (after make scaffold-s3-examples):
+    # - { resource: local/services_s3.yaml, ignore_errors: true }
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+            - '../src/YopassExamples/'
+            - '../src/YopassDemo/'

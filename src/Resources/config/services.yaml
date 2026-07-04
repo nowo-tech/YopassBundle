@@ -1,0 +1,67 @@
+# Bundle service definitions. Parameters are set by YopassExtension from config/packages/nowo_yopass.yaml.
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # Auto-register bundle classes (controllers, services, listeners) except excluded paths.
+    Nowo\YopassBundle\:
+        resource: '../../'
+        exclude:
+            - '../../DependencyInjection/'
+            - '../../YopassBundle.php'
+            - '../../Repository/'   # Registered explicitly by driver (ORM, MongoDB, custom)
+            - '../../Document/'
+            - '../../Doctrine/'     # Metadata listeners wired in YopassExtension
+
+    # Manage and public controllers must be public for Symfony routing.
+    Nowo\YopassBundle\Controller\:
+        resource: '../../Controller/'
+        public: true
+
+    # Loads routes from nowo_yopass.routes and nowo_yopass.route_prefix parameters.
+    Nowo\YopassBundle\Routing\YopassRouteLoader:
+        arguments:
+            $routes: '%nowo_yopass.routes%'
+            $routePrefix: '%nowo_yopass.route_prefix%'
+        tags:
+            - { name: routing.loader }
+
+    Nowo\YopassBundle\Service\ShareCreator:
+        arguments:
+            # Allowed expiration ids/intervals from nowo_yopass.shares.expiration_options.
+            $expirationOptions: '%nowo_yopass.expiration_options%'
+
+    Nowo\YopassBundle\Service\ShareExtender:
+        arguments:
+            $shareOptions: '%nowo_yopass.shares%'
+
+    Nowo\YopassBundle\Service\ShareAccessLogger:
+        arguments:
+            $enabled: '%nowo_yopass.access_log_enabled%'
+
+    Nowo\YopassBundle\Service\ShareRetentionPurger:
+        arguments:
+            $shareOptions: '%nowo_yopass.shares%'
+
+    # Authenticated manage UI and create API. File handler alias is wired by ShareFileHandlerPass.
+    Nowo\YopassBundle\Controller\ShareManageController:
+        public: true
+        arguments:
+            $routes: '%nowo_yopass.routes%'
+            $templates: '%nowo_yopass.templates%'
+            $maxCiphertextBytes: '%nowo_yopass.max_ciphertext_bytes%'
+            $maxSecretChars: '%nowo_yopass.max_secret_chars%'
+            $dashboardRoute: '%nowo_yopass.dashboard_route%'
+            $shareOptions: '%nowo_yopass.shares%'
+            $sharingOptions: '%nowo_yopass.sharing%'
+            $fileSharesEnabled: '%nowo_yopass.file_shares_enabled%'
+            $fileHandler: null  # Set at compile time when nowo_yopass.file_handler is configured
+
+    # Anonymous public reveal and consume endpoints (ciphertext only; decryption in browser).
+    Nowo\YopassBundle\Controller\PublicShareController:
+        public: true
+        arguments:
+            $templates: '%nowo_yopass.templates%'
+            $routes: '%nowo_yopass.routes%'

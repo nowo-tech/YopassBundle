@@ -1,0 +1,49 @@
+# YopassBundle application configuration (Flex recipe defaults).
+# Full reference: vendor/nowo-tech/yopass-bundle/docs/CONFIGURATION.md
+
+nowo_yopass:
+    # Required: FQCN of your User entity (UserInterface + getId()).
+    user_class: App\Entity\User
+
+    # Table/collection prefix; final name is {prefix}secure_shares.
+    table_prefix: yopass_
+
+    database:
+        driver: doctrine_orm       # doctrine_orm | doctrine_mongodb | custom
+        platform: postgresql       # postgresql | mysql | mariadb | sqlite | sqlserver | oracle | mongodb | other
+        connection: default        # Doctrine DBAL connection name
+        entity_manager: default    # Doctrine ORM entity manager name
+
+    # Optional: enable file shares (requires a ShareFileHandlerInterface service id).
+    # file_handler: App\Yopass\LocalShareFileHandler
+
+    # Optional: expiration and max-read options for the manage UI and create API.
+    # shares:
+    #     default_expiration: 1h
+    #     default_max_reads: 1
+    #     max_reads_options: [1, 3, 10]
+    #     expiration_options:
+    #         - { id: 1h, interval: '1 hour' }
+    #         - { id: 24h, interval: '24 hours' }
+    #         - { id: 7d, interval: '7 days' }
+
+    # Optional limits (defaults shown).
+    # max_ciphertext_bytes: 700000
+    # max_secret_chars: 524288
+
+    routes:
+        manage:
+            path: /tools/yopass
+            name: nowo_yopass_index
+        create:
+            path: /tools/yopass/create
+            name: nowo_yopass_create
+        revoke:
+            path: /tools/yopass/{id}/revoke
+            name: nowo_yopass_revoke
+        public_show:
+            path: /share/{id}
+            name: nowo_yopass_public_share
+        public_consume:
+            path: /share/{id}/consume
+            name: nowo_yopass_public_consume

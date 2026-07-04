@@ -1,0 +1,147 @@
+yopass:
+    title: Yopass
+    intro: Crea enlaces cifrados de un solo uso para compartir secretos de forma segura. Solo gestionas tus propios shares.
+    e2e_notice: El cifrado y descifrado ocurren en tu navegador; el servidor nunca ve el texto en claro.
+    back: Volver
+    access:
+        denied: No tienes acceso a esta herramienta.
+    feature:
+        denied: No tienes permiso para esta acción.
+    tab:
+        text: Texto
+        file: Archivo
+    type:
+        text: Texto
+        file: Archivo
+    secret:
+        field: Secreto
+        placeholder: Introduce el secreto a compartir…
+        help: Se permiten saltos de línea. Máx. %limit% caracteres.
+        counter: '__COUNT__ / __LIMIT__ caracteres'
+        limit_reached: Has alcanzado el límite de caracteres. Elimina texto para continuar.
+    file:
+        field: Archivo
+        help: Máx. 512 KB. Cifrado en el navegador antes de subir.
+    key:
+        generate: Generar clave de descifrado automáticamente
+        mode_auto: Clave generada automáticamente
+        mode_password: Contraseña personalizada
+        mode_help: Elige una clave aleatoria o una contraseña que compartirás aparte.
+        mode_field: Modo de cifrado
+        custom: Contraseña de descifrado
+        custom_help: Comparte el enlace y esta contraseña por canales distintos.
+        embed_in_url: Incluir clave/contraseña en la URL (?decrypt_key=)
+        embed_help: La clave viaja como parámetro ?decrypt_key= en el enlace one-click.
+        separate_label: Clave / contraseña (compartir por separado)
+        separate_help: Envía el enlace por un canal y la clave por otro (Signal, SMS…).
+    result:
+        title: Secreto almacenado de forma segura
+        remember: Recuerda
+        remember_text: El secreto solo puede descargarse el número de veces configurado. No abras tú el enlace one-click. Lo más prudente es enviar la clave de descifrado por un canal distinto.
+        one_click: Enlace directo (one-click)
+        one_click_help: Comparte este enlace para acceder directamente al secreto.
+        short: Enlace corto
+        short_help: Requiere compartir la clave de descifrado por separado.
+        decryption_key: Clave de descifrado
+        decryption_key_help: Necesaria para descifrar el mensaje con el enlace corto.
+        key_unavailable: La clave de descifrado ya no está disponible. Copia los enlaces justo después de crear el share.
+        create_another: Crear otro secreto
+    error:
+        secret: Introduce un secreto o selecciona un archivo.
+        secret_too_large: El secreto supera el límite de caracteres.
+        file: Selecciona un archivo.
+        file_too_large: El archivo supera el límite de 512 KB.
+        password: Introduce una contraseña de descifrado.
+        invalid_ciphertext: El ciphertext enviado no es válido.
+        file_not_enabled: Los shares de archivo no están habilitados.
+        create: No se pudo crear el share.
+    revoked: Share revocado.
+    revoke: Revocar
+    revoke_confirm: ¿Revocar este share? El enlace público dejará de funcionar.
+    deleted: Share eliminado.
+    delete: Eliminar
+    delete_confirm: ¿Eliminar permanentemente este share de tu lista? Esta acción no se puede deshacer.
+    delete_all: Vaciar todo
+    delete_all_confirm: ¿Eliminar permanentemente todos tus shares? Esta acción no se puede deshacer.
+    deleted_all: Se eliminaron %count% share(s).
+    view: Ver
+    preview:
+        title: Vista previa del share
+        intro: El descifrado ocurre en tu navegador. La vista previa no consume una lectura.
+        decrypt: Mostrar contenido
+        key_field: Clave de descifrado
+        key_help: Introduce la clave que se mostró al crear el share (se guarda en esta sesión del navegador cuando es posible).
+        key_required: Introduce la clave de descifrado de este share.
+        public_link: Enlace público
+        close: Cerrar
+        failed: No se pudo cargar este share.
+        access_log:
+            title: Historial de aperturas
+            intro: Registro de cada vez que alguien abrió el enlace público (revelar secreto).
+            empty: Aún no se ha abierto este enlace.
+            when: Fecha
+            read: Lectura n.º
+            ip: IP
+            user_agent: Navegador
+    extend:
+        action: Extender
+        title: Extender share
+        intro: Añade tiempo o lecturas sin consumir una vista. Deja un campo sin cambiar para mantener el valor actual.
+        current: Límites actuales
+        expiration_field: Añadir tiempo de expiración
+        reads_field: Subir lecturas máximas a
+        keep_expiration: No cambiar expiración
+        keep_reads: No cambiar lecturas máximas
+        submit: Aplicar extensión
+        success: Share actualizado.
+        failed: No se pudo actualizar el share.
+        revoked: Los shares revocados no se pueden extender.
+        invalid_expiration: Opción de expiración no válida.
+        invalid_max_reads: Valor de lecturas no válido.
+        max_reads_not_increased: Elige un máximo de lecturas mayor que el actual.
+        expiration_not_extended: Elige una extensión de expiración más larga.
+        nothing_to_extend: Selecciona al menos una opción de extensión.
+    expires:
+        field: Caducidad
+        1h: 1 hora
+        24h: 24 horas
+        7d: 7 días
+    reads:
+        field: Lecturas máx.
+    create:
+        title: Nuevo share
+        submit: Crear enlace
+    list:
+        title: Mis shares
+        type: Tipo
+        created: Creado
+        expires: Caduca
+        reads: Lecturas
+        status: Estado
+        empty: Aún no has creado ningún share.
+        retention_notice: Los shares de más de %max_age% se eliminan automáticamente.
+        summary: '%from%–%to% de %total%'
+        page: Página %page% / %pages%
+        previous: Anterior
+        next: Siguiente
+    status:
+        active: Activo
+        revoked: Revocado
+        unavailable: No disponible
+    link:
+        label: Enlace generado (cópialo ahora, no se volverá a mostrar)
+        copy: Copiar
+    public:
+        title: Secreto compartido
+        intro: Pulsa para revelar el contenido. Cada lectura consume una vista.
+        e2e_notice: El descifrado ocurre en tu navegador; del servidor solo se descarga el contenido cifrado.
+        reveal: Revelar secreto
+        unavailable: Este enlace ya no está disponible (caducado, revocado o consumido).
+        password_field: Contraseña de descifrado
+        key_required: Introduce la clave de descifrado.
+        password_required: Introduce la contraseña de descifrado.
+        password_from_link: Contraseña cargada desde el enlace.
+        key_field: Clave de descifrado
+        key_help: Pega la clave que recibiste por separado (enlace corto sin ?decrypt_key=).
+        key_from_link: Clave cargada desde el enlace.
+        invalid_key: Clave o contraseña incorrecta.

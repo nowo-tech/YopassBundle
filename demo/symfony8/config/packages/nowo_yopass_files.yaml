@@ -1,0 +1,12 @@
+# Local file shares for the demo: ciphertext blobs on disk, pointers in MySQL.
+# Storage directory is gitignored (var/yopass-storage). See docs/examples/LocalStorage.md.
+nowo_yopass:
+    # Enables the file tab; must implement ShareFileHandlerInterface.
+    file_handler: App\YopassDemo\Local\LocalShareFileHandler
+
+    database:
+        driver: custom   # Decorator repository offloads file ciphertext to disk
+        platform: mysql
+        connection: default
+        entity_manager: default
+        repository: App\YopassDemo\Local\LocalOffloadingShareRepository

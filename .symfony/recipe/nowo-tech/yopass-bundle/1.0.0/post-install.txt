@@ -1,0 +1,6 @@
+Yopass routes are registered automatically. Configure `security.yaml`:
+
+- Manage routes (`/tools/yopass`) require authentication on your main firewall.
+- Public routes (`/share/*`) must allow anonymous access.
+
+Run Doctrine migrations after updating the schema for `{table_prefix}secure_shares`.

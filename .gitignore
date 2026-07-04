@@ -1,0 +1,36 @@
+# Dependencies
+/vendor
+/node_modules
+/.pnpm-store
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+/demo/symfony8/.env.s3.local
+/demo/symfony8/var/yopass-storage/
+/demo/symfony8/config/local/nowo_yopass_s3.yaml
+/demo/symfony8/config/local/services_s3.yaml
+/demo/symfony8/src/YopassExamples/
+/demo/symfony8/config/packages/nowo_yopass_s3.local.yaml
+/demo/symfony8/config/services_s3.local.yaml
+
+# Test coverage
+/coverage
+/coverage.xml
+/coverage-ts
+/coverage-php.txt
+/coverage-ts.txt
+
+# PHP tool caches
+/.php-cs-fixer.cache
+/.phpunit.cache
+/.phpunit.result.cache
+
+# Archives / compressed
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z

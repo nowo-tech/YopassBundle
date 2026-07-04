@@ -1,0 +1,4 @@
+# Yopass public and manage routes (loaded from nowo_yopass.routes in config/packages/nowo_yopass.yaml).
+nowo_yopass:
+    resource: .
+    type: nowo_yopass

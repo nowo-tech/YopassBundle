@@ -1,0 +1,12 @@
+{
+    "bundles": {
+        "Nowo\\YopassBundle\\YopassBundle": ["all"]
+    },
+    "copy-from-recipe": {
+        "config/": "%CONFIG_DIR%/",
+        "routes/": "%CONFIG_DIR%/routes/"
+    },
+    "env": {
+        "APP_SECRET": "ChangeMeInProduction"
+    }
+}
