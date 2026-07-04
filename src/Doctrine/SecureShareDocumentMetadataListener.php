@@ -29,8 +29,8 @@ final class SecureShareDocumentMetadataListener
         $metadata->setCollection($this->collectionName);
 
         if (isset($metadata->associationMappings['creator'])) {
-            $mapping = $metadata->associationMappings['creator'];
-            $mapping['targetDocument'] = $this->userClass;
+            $mapping                                  = $metadata->associationMappings['creator'];
+            $mapping['targetDocument']                = $this->userClass;
             $metadata->associationMappings['creator'] = $mapping; // @phpstan-ignore assign.propertyType
         }
     }

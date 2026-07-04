@@ -82,8 +82,8 @@ final class YopassExtensionTest extends TestCase
         $this->container->setDefinition('app.yopass.file_handler', new \Symfony\Component\DependencyInjection\Definition(stdClass::class));
 
         $this->extension->load([[
-            'user_class'    => 'App\\Entity\\User',
-            'file_handler'  => 'app.yopass.file_handler',
+            'user_class'   => 'App\\Entity\\User',
+            'file_handler' => 'app.yopass.file_handler',
         ]], $this->container);
 
         self::assertTrue($this->container->getParameter('nowo_yopass.file_shares_enabled'));

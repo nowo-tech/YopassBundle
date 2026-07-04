@@ -32,10 +32,7 @@ final class ShareFileHandlerPass implements CompilerPassInterface
         }
 
         if (!$container->hasDefinition($fileHandlerId) && !$container->hasAlias($fileHandlerId)) {
-            throw new InvalidConfigurationException(sprintf(
-                'The option "nowo_yopass.file_handler" must reference an existing service id ("%s" not found).',
-                $fileHandlerId,
-            ));
+            throw new InvalidConfigurationException(sprintf('The option "nowo_yopass.file_handler" must reference an existing service id ("%s" not found).', $fileHandlerId));
         }
 
         $container->setAlias(ShareFileHandlerInterface::class, $fileHandlerId);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\YopassDemo\Local;
 
+use DateTimeImmutable;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 
@@ -49,7 +50,7 @@ final class LocalOffloadingShareRepository implements ShareRepositoryInterface
         return $this->inner->findByCreatorPaginated($creator, $limit, $offset);
     }
 
-    public function removeByCreatorOlderThan(object $creator, \DateTimeImmutable $before): int
+    public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int
     {
         return $this->inner->removeByCreatorOlderThan($creator, $before);
     }
@@ -59,7 +60,7 @@ final class LocalOffloadingShareRepository implements ShareRepositoryInterface
         return $this->inner->removeAllByCreator($creator);
     }
 
-    public function removeOlderThan(\DateTimeImmutable $before): int
+    public function removeOlderThan(DateTimeImmutable $before): int
     {
         return $this->inner->removeOlderThan($before);
     }

@@ -13,7 +13,6 @@ use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Repository\NullShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
-use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -26,10 +25,10 @@ use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
+use function in_array;
 use function is_string;
 use function rtrim;
 use function sprintf;
-use function in_array;
 
 /**
  * Loads bundle configuration and registers services.

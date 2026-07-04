@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Repository;
 
+use DateTimeImmutable;
 use Nowo\YopassBundle\Entity\SecureShare;
 
 /**
@@ -25,11 +26,11 @@ interface ShareRepositoryInterface
      */
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array;
 
-    public function removeByCreatorOlderThan(object $creator, \DateTimeImmutable $before): int;
+    public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int;
 
     public function removeAllByCreator(object $creator): int;
 
-    public function removeOlderThan(\DateTimeImmutable $before): int;
+    public function removeOlderThan(DateTimeImmutable $before): int;
 
     public function persist(SecureShare $share): void;
 

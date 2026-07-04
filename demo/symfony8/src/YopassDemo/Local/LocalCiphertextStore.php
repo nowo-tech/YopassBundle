@@ -17,8 +17,13 @@ use function preg_match;
 use function random_bytes;
 use function sodium_crypto_secretbox;
 use function sodium_crypto_secretbox_open;
+use function sprintf;
 use function strlen;
 use function substr;
+
+use const LOCK_EX;
+use const SODIUM_CRYPTO_SECRETBOX_KEYBYTES;
+use const SODIUM_CRYPTO_SECRETBOX_NONCEBYTES;
 
 /**
  * Stores E2E ciphertext on the local filesystem (outside the web root).

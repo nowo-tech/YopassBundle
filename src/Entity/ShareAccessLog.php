@@ -44,12 +44,12 @@ class ShareAccessLog
         ?string $ipAddress = null,
         ?string $userAgent = null,
     ) {
-        $this->id          = $id;
-        $this->share       = $share;
-        $this->readNumber  = $readNumber;
-        $this->ipAddress   = $ipAddress;
-        $this->userAgent   = $userAgent;
-        $this->accessedAt  = new DateTimeImmutable();
+        $this->id         = $id;
+        $this->share      = $share;
+        $this->readNumber = $readNumber;
+        $this->ipAddress  = $ipAddress;
+        $this->userAgent  = $userAgent;
+        $this->accessedAt = new DateTimeImmutable();
     }
 
     public function getId(): string

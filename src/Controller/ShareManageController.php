@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Controller;
 
+use DateTimeInterface;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Form\ShareCreateType;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
-use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
-use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
+use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Nowo\YopassBundle\YopassBundle;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -95,22 +96,22 @@ final class ShareManageController extends AbstractController
         }
 
         return $this->render($this->templates['manage'], [
-            'shares'          => $shares,
-            'shares_total'    => $total,
-            'shares_page'     => $page,
-            'shares_pages'    => $totalPages,
-            'list_page_size'  => $pageSize,
-            'can_create'      => $this->accessChecker->canCreate($user),
-            'can_revoke'      => $this->accessChecker->canRevoke($user),
-            'can_extend'      => $this->accessChecker->canRevoke($user),
-            'can_share_file'  => $this->fileSharesEnabled,
-            'max_file_bytes'  => $this->fileHandler?->getMaxFileBytes() ?? 0,
+            'shares'           => $shares,
+            'shares_total'     => $total,
+            'shares_page'      => $page,
+            'shares_pages'     => $totalPages,
+            'list_page_size'   => $pageSize,
+            'can_create'       => $this->accessChecker->canCreate($user),
+            'can_revoke'       => $this->accessChecker->canRevoke($user),
+            'can_extend'       => $this->accessChecker->canRevoke($user),
+            'can_share_file'   => $this->fileSharesEnabled,
+            'max_file_bytes'   => $this->fileHandler?->getMaxFileBytes() ?? 0,
             'max_secret_chars' => $this->maxSecretChars,
-            'dashboard_route' => $this->dashboardRoute,
-            'routes'          => $this->routes,
-            'share_options'   => $this->shareOptions,
-            'sharing_options' => $this->sharingOptions,
-            'create_form'     => $createForm,
+            'dashboard_route'  => $this->dashboardRoute,
+            'routes'           => $this->routes,
+            'share_options'    => $this->shareOptions,
+            'sharing_options'  => $this->sharingOptions,
+            'create_form'      => $createForm,
         ]);
     }
 
@@ -239,7 +240,7 @@ final class ShareManageController extends AbstractController
             'availability' => $this->shareRetriever->availability($share),
             'maxReads'     => $share->getMaxReads(),
             'readsLeft'    => $share->getReadsLeft(),
-            'expiresAt'    => $share->getExpiresAt()->format(\DateTimeInterface::ATOM),
+            'expiresAt'    => $share->getExpiresAt()->format(DateTimeInterface::ATOM),
         ]);
     }
 
@@ -344,9 +345,9 @@ final class ShareManageController extends AbstractController
 
     private function buildShareCreateForm(): FormInterface
     {
-        $data             = new ShareCreateData();
-        $data->expiresIn  = $this->shareOptions['default_expiration'];
-        $data->maxReads   = $this->shareOptions['default_max_reads'];
+        $data            = new ShareCreateData();
+        $data->expiresIn = $this->shareOptions['default_expiration'];
+        $data->maxReads  = $this->shareOptions['default_max_reads'];
 
         return $this->createForm(ShareCreateType::class, $data, [
             'share_options'        => $this->shareOptions,

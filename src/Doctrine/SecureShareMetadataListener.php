@@ -58,7 +58,7 @@ final class SecureShareMetadataListener
         $targetEntity = ltrim($this->userClass, '\\');
 
         if ($mapping instanceof AssociationMapping) {
-            $newMapping              = array_replace_recursive(
+            $newMapping = array_replace_recursive(
                 $mapping->toArray(),
                 ['targetEntity' => $targetEntity],
             );
@@ -69,10 +69,7 @@ final class SecureShareMetadataListener
             match ($mapping->type()) {
                 ClassMetadata::MANY_TO_ONE => $metadata->mapManyToOne($newMapping),
                 ClassMetadata::ONE_TO_ONE  => $metadata->mapOneToOne($newMapping),
-                default                    => throw new LogicException(sprintf(
-                    'Unsupported association type for creator: %d',
-                    $mapping->type(),
-                )),
+                default                    => throw new LogicException(sprintf('Unsupported association type for creator: %d', $mapping->type())),
             };
 
             return;

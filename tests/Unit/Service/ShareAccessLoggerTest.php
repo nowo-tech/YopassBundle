@@ -36,7 +36,7 @@ final class ShareAccessLoggerTest extends TestCase
             }));
         $repository->expects(self::once())->method('flush');
 
-        $logger = new ShareAccessLogger($repository, true);
+        $logger  = new ShareAccessLogger($repository, true);
         $request = Request::create('/', 'POST', server: [
             'REMOTE_ADDR'     => '203.0.113.10',
             'HTTP_USER_AGENT' => 'TestAgent/1.0',
@@ -62,7 +62,7 @@ final class ShareAccessLoggerTest extends TestCase
     public function testListForShareReturnsEntriesWhenEnabled(): void
     {
         $share = new SecureShare('00000000-0000-4000-8000-000000000003', new TestUser());
-        $log     = new ShareAccessLog('00000000-0000-4000-8000-000000000099', $share, 1, '127.0.0.1', 'Agent');
+        $log   = new ShareAccessLog('00000000-0000-4000-8000-000000000099', $share, 1, '127.0.0.1', 'Agent');
 
         $repository = $this->createMock(ShareAccessLogRepositoryInterface::class);
         $repository->method('findByShare')->willReturn([$log]);

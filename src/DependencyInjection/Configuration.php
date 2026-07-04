@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\DependencyInjection;
 
+use DateTimeImmutable;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
+
+use function in_array;
 
 /**
  * Configuration tree for YopassBundle.
@@ -170,7 +173,7 @@ final class Configuration implements ConfigurationInterface
                                 return false;
                             }
 
-                            return (new \DateTimeImmutable())->modify('-' . $v['retention']['max_age']) === false;
+                            return (new DateTimeImmutable())->modify('-' . $v['retention']['max_age']) === false;
                         })
                         ->thenInvalid('The "shares.retention.max_age" value must be a valid PHP relative datetime modifier.')
                     ->end()

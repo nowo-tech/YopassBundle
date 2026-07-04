@@ -18,8 +18,9 @@ use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-use function array_combine;
 use function array_column;
+use function array_combine;
+use function is_array;
 
 /**
  * Server-side metadata for a client-encrypted share (ciphertext is filled by the browser).
@@ -39,11 +40,11 @@ final class ShareCreateType extends AbstractType
          *     max_reads_options: list<int>,
          *     expiration_options: list<array{id: string, interval: string}>
          * } $shareOptions */
-        $shareOptions         = $options['share_options'];
-        $maxCiphertextBytes   = (int) $options['max_ciphertext_bytes'];
-        $expirationIds        = array_column($shareOptions['expiration_options'], 'id');
-        $expirationChoices    = array_combine($expirationIds, $expirationIds) ?: [];
-        $maxReadsChoices      = array_combine(
+        $shareOptions       = $options['share_options'];
+        $maxCiphertextBytes = (int) $options['max_ciphertext_bytes'];
+        $expirationIds      = array_column($shareOptions['expiration_options'], 'id');
+        $expirationChoices  = array_combine($expirationIds, $expirationIds) ?: [];
+        $maxReadsChoices    = array_combine(
             $shareOptions['max_reads_options'],
             $shareOptions['max_reads_options'],
         ) ?: [];
