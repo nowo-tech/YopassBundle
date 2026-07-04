@@ -6,7 +6,7 @@ Authenticated users open the manage UI (default `/tools/yopass`):
 
 - Create text or file shares (encrypted in the browser, submitted via standard Symfony form)
 - Set expiration and max reads
-- List own shares (paginated when `shares.list_page_size` > 0)
+- List own shares by default (paginated when `shares.list_page_size` > 0); customize via share list events
 - Preview content without consuming a read
 - Extend expiration or max reads
 - Revoke, delete individual shares, or delete all
@@ -42,12 +42,44 @@ Retention also runs when the manage list is loaded (per creator).
 
 ## Custom access control
 
-Implement `Nowo\YopassBundle\Security\YopassAccessCheckerInterface` for team-based ACL:
+Three layers — use only what you need:
+
+| Layer | Interface / event | Question |
+|-------|-------------------|----------|
+| Route features | `YopassAccessCheckerInterface` | Can the user open manage, create, list, or revoke at all? |
+| List query | `ShareListQueryEvent` | Which shares should the repository load? |
+| List filter | `ShareListResultEvent` | Which loaded shares should appear? |
+| Per share | `ShareAccessCheckEvent` | Can the user view/preview/extend/revoke/delete this share? |
+
+### Route-level checker
 
 ```yaml
 nowo_yopass:
     security:
         access_checker: App\Security\TeamYopassAccessChecker
+```
+
+### Share events (teams, grants, roles)
+
+The bundle stores the share **creator** but does not manage teams or permissions. Register Symfony event listeners — see [examples/AccessControl.md](examples/AccessControl.md) and copy from `examples/access-control/`:
+
+- `TeamShareListListener` — list team members' shares
+- `TeamShareAccessListener` — same-team access
+- `IndividualShareGrantListener` — per-share collaborator grants
+- `RoleBasedShareAccessListener` — e.g. auditor = preview only
+
+```php
+use Nowo\YopassBundle\Event\YopassEvents;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+#[AsEventListener(event: YopassEvents::SHARE_ACCESS_CHECK)]
+final class MyShareAccessListener
+{
+    public function __invoke(\Nowo\YopassBundle\Event\ShareAccessCheckEvent $event): void
+    {
+        // grant() or deny() based on your rules
+    }
+}
 ```
 
 ## Twig overrides

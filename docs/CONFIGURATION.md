@@ -246,6 +246,20 @@ Default role configuration:
 | `security.list_roles` | `[ROLE_USER]` | List own shares |
 | `security.revoke_roles` | `[ROLE_USER]` | Revoke own shares |
 
+### Share list and per-share access events
+
+The bundle stores the share **creator** but does not implement teams, groups, or per-share ACLs. Listen to Symfony events to customize:
+
+| Event | Constant | Purpose |
+|-------|----------|---------|
+| `ShareListQueryEvent` | `YopassEvents::SHARE_LIST_QUERY` | Change list query or replace results |
+| `ShareListResultEvent` | `YopassEvents::SHARE_LIST_RESULT` | Filter/reorder listed shares |
+| `ShareAccessCheckEvent` | `YopassEvents::SHARE_ACCESS_CHECK` | Grant/deny preview, extend, revoke, delete on a share |
+
+Default per-share grant: viewer is the creator. Copy example listeners from [`examples/access-control/`](../examples/access-control/) — see [Access control events](examples/AccessControl.md).
+
+Services involved: `ShareLister` (manage list), `ShareAccessGuard` (created/preview/extend/revoke/delete).
+
 ### Custom access checker interface
 
 ```php
