@@ -32,16 +32,14 @@ final class DemoAutoLoginAuthenticator extends AbstractAuthenticator implements 
     {
         $path = $request->getPathInfo();
 
-        if (
+        return !(
             str_starts_with($path, '/share')
             || str_starts_with($path, '/_profiler')
             || str_starts_with($path, '/_wdt')
             || str_starts_with($path, '/bundles')
-        ) {
-            return false;
-        }
+        )
 
-        return true;
+        ;
     }
 
     public function authenticate(Request $request): Passport
@@ -51,9 +49,7 @@ final class DemoAutoLoginAuthenticator extends AbstractAuthenticator implements 
                 $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $userIdentifier]);
 
                 if (!$user instanceof User) {
-                    throw new AuthenticationException(
-                        'Demo user not found. Run: php bin/console doctrine:fixtures:load',
-                    );
+                    throw new AuthenticationException('Demo user not found. Run: php bin/console doctrine:fixtures:load');
                 }
 
                 return $user;

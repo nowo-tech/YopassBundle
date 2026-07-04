@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Repository;
 
+use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
@@ -59,7 +60,7 @@ final class DoctrineMongoShareRepository implements ShareRepositoryInterface
         return array_map(fn (SecureShareDocument $document): SecureShare => $this->toEntity($document), $documents);
     }
 
-    public function removeByCreatorOlderThan(object $creator, \DateTimeImmutable $before): int
+    public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int
     {
         /** @var iterable<SecureShareDocument> $documents */
         $documents = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
@@ -82,7 +83,7 @@ final class DoctrineMongoShareRepository implements ShareRepositoryInterface
         return $this->removeDocuments($documents);
     }
 
-    public function removeOlderThan(\DateTimeImmutable $before): int
+    public function removeOlderThan(DateTimeImmutable $before): int
     {
         /** @var iterable<SecureShareDocument> $documents */
         $documents = $this->documentManager->createQueryBuilder(SecureShareDocument::class)

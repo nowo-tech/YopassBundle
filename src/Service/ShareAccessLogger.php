@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Service;
 
+use DateTimeInterface;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
@@ -62,7 +63,7 @@ final class ShareAccessLogger
 
         foreach ($this->accessLogRepository->findByShare($share, $limit) as $log) {
             $entries[] = [
-                'accessedAt' => $log->getAccessedAt()->format(\DateTimeInterface::ATOM),
+                'accessedAt' => $log->getAccessedAt()->format(DateTimeInterface::ATOM),
                 'readNumber' => $log->getReadNumber(),
                 'ipAddress'  => $log->getIpAddress(),
                 'userAgent'  => $log->getUserAgent(),

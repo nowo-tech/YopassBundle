@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Repository;
 
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Nowo\YopassBundle\Entity\SecureShare;
 
@@ -53,7 +54,7 @@ final class DoctrineOrmShareRepository implements ShareRepositoryInterface
         return $shares;
     }
 
-    public function removeByCreatorOlderThan(object $creator, \DateTimeImmutable $before): int
+    public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int
     {
         return (int) $this->entityManager->createQueryBuilder()
             ->delete(SecureShare::class, 's')
@@ -75,7 +76,7 @@ final class DoctrineOrmShareRepository implements ShareRepositoryInterface
             ->execute();
     }
 
-    public function removeOlderThan(\DateTimeImmutable $before): int
+    public function removeOlderThan(DateTimeImmutable $before): int
     {
         return (int) $this->entityManager->createQueryBuilder()
             ->delete(SecureShare::class, 's')

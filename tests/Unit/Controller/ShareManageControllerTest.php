@@ -12,8 +12,8 @@ use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
-use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
+use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\ControllerContainerBuilder;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
@@ -83,7 +83,7 @@ final class ShareManageControllerTest extends TestCase
         $shareRepository = $this->createMock(ShareRepositoryInterface::class);
         $shareRepository->expects(self::once())
             ->method('removeByCreatorOlderThan')
-            ->with($user, self::isInstanceOf(\DateTimeImmutable::class))
+            ->with($user, self::isInstanceOf(DateTimeImmutable::class))
             ->willReturn(2);
         $shareRepository->expects(self::once())->method('flush');
         $shareRepository->method('countByCreator')->willReturn(0);
