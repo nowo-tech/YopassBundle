@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-04
+
+### Added
+
+- **Share events** — `ShareListQueryEvent`, `ShareListResultEvent`, and `ShareAccessCheckEvent` to customize manage list queries and per-share access without built-in teams/ACL.
+- **`ShareLister`** and **`ShareAccessGuard`** services wired into `ShareManageController` (creator remains the default list subject and access grant).
+- **`ShareAccessAction`** enum (`View`, `Preview`, `Extend`, `Revoke`, `Delete`) for per-route access checks.
+- **Examples** — `examples/access-control/` (teams, individual grants, role-based access) and [docs/examples/AccessControl.md](examples/AccessControl.md).
+
+### Fixed
+
+- **`composer.lock`** — sync content-hash with `composer.json` (`composer validate --strict` in CI).
+- **Local dev** — `COMPOSER_IGNORE_PLATFORM_REQ=ext-mongodb` in `docker-compose.yml` (MongoDB is require-dev only).
+
 ## [1.0.1] - 2026-07-04
 
 ### Fixed
@@ -50,6 +64,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.0.0

@@ -7,17 +7,19 @@ namespace Nowo\YopassBundle\Controller;
 use DateTimeInterface;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareAccessAction;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Form\ShareCreateType;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
+use Nowo\YopassBundle\Service\ShareLister;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Service\ShareRetriever;
-use Nowo\YopassBundle\Support\UserIdResolver;
 use Nowo\YopassBundle\YopassBundle;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -52,6 +54,8 @@ final class ShareManageController extends AbstractController
     public function __construct(
         private readonly YopassAccessCheckerInterface $accessChecker,
         private readonly ShareRepositoryInterface $shareRepository,
+        private readonly ShareLister $shareLister,
+        private readonly ShareAccessGuard $shareAccessGuard,
         private readonly ShareCreator $shareCreator,
         private readonly ShareRetriever $shareRetriever,
         private readonly ShareExtender $shareExtender,
@@ -79,16 +83,12 @@ final class ShareManageController extends AbstractController
         $this->retentionPurger->purgeForCreator($user);
 
         $pageSize   = (int) ($this->shareOptions['list_page_size'] ?? 0);
-        $total      = $this->shareRepository->countByCreator($user);
         $page       = max(1, $request->query->getInt('page', 1));
+        $list       = $this->shareLister->list($user, $pageSize, $page);
+        $shares     = $list['shares'];
+        $total      = $list['total'];
         $totalPages = $pageSize > 0 ? (int) max(1, ceil($total / $pageSize)) : 1;
         $page       = min($page, $totalPages);
-
-        if ($pageSize > 0) {
-            $shares = $this->shareRepository->findByCreatorPaginated($user, $pageSize, ($page - 1) * $pageSize);
-        } else {
-            $shares = $this->shareRepository->findByCreator($user);
-        }
 
         $createForm = null;
         if ($this->accessChecker->canCreate($user)) {
@@ -155,7 +155,7 @@ final class ShareManageController extends AbstractController
         $user  = $this->requireUser();
         $share = $this->shareRepository->find($id);
 
-        if (!$share instanceof SecureShare || !UserIdResolver::isSameUser($share->getCreator(), $user)) {
+        if (!$share instanceof SecureShare || !$this->shareAccessGuard->canManage($user, $share, ShareAccessAction::View)) {
             throw $this->createNotFoundException();
         }
 
@@ -178,7 +178,7 @@ final class ShareManageController extends AbstractController
         $user  = $this->requireUser();
         $share = $this->shareRepository->find($id);
 
-        if (!$share instanceof SecureShare || !UserIdResolver::isSameUser($share->getCreator(), $user)) {
+        if (!$share instanceof SecureShare || !$this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Preview)) {
             throw $this->createNotFoundException();
         }
 
@@ -211,7 +211,7 @@ final class ShareManageController extends AbstractController
         $user  = $this->requireUser();
         $share = $this->shareRepository->find($id);
 
-        if (!$share instanceof SecureShare || !UserIdResolver::isSameUser($share->getCreator(), $user)) {
+        if (!$share instanceof SecureShare || !$this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Extend)) {
             throw $this->createNotFoundException();
         }
 
@@ -255,7 +255,7 @@ final class ShareManageController extends AbstractController
         $user  = $this->requireUser();
         $share = $this->shareRepository->find($id);
 
-        if (!$share instanceof SecureShare || !UserIdResolver::isSameUser($share->getCreator(), $user)) {
+        if (!$share instanceof SecureShare || !$this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Revoke)) {
             throw $this->createNotFoundException();
         }
 
@@ -279,7 +279,7 @@ final class ShareManageController extends AbstractController
         $user  = $this->requireUser();
         $share = $this->shareRepository->find($id);
 
-        if (!$share instanceof SecureShare || !UserIdResolver::isSameUser($share->getCreator(), $user)) {
+        if (!$share instanceof SecureShare || !$this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Delete)) {
             throw $this->createNotFoundException();
         }
 

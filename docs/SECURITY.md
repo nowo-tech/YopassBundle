@@ -15,7 +15,7 @@
 |-------|-------------|
 | **Ciphertext POST** | JSON body on create endpoint (`ciphertext`, metadata). |
 | **Public consume** | Share ID on `/share/{id}/consume` (returns ciphertext only). |
-| **Manage routes** | Authenticated CRUD for own shares. |
+| **Manage routes** | Authenticated CRUD; default owner-only per share (`YopassAccessCheckerInterface` + `ShareAccessCheckEvent`). |
 | **Configuration** | `nowo_yopass` YAML (routes, table prefix, access checker). |
 | **Client script** | `yopass.js` — encrypt/decrypt in browser with libsodium. |
 
@@ -26,7 +26,7 @@
 | **Plaintext on server** | Secret stored or logged in clear. | Encryption in browser; server persists ciphertext only. |
 | **Key in URL sent to server** | Fragment `#key` leaked via Referer. | Key stays in URL fragment (not sent in HTTP request); document separate-channel sharing. |
 | **Unauthorized share creation** | Anonymous users create shares. | Firewall + `YopassAccessCheckerInterface` on manage routes. |
-| **IDOR on revoke** | User revokes another user's share. | Ownership check via `UserIdResolver` + creator relation. |
+| **IDOR on manage actions** | User previews/revokes another user's share. | Creator check via `ShareAccessGuard` (default); extend with `ShareAccessCheckEvent` listeners. |
 | **Oversized ciphertext** | DoS via huge payloads. | `max_ciphertext_bytes` limit (default 700 KB). |
 | **XSS on reveal page** | Decrypted secret injected unsafely. | Output in `<pre>` via `textContent` in Stimulus controller. |
 
@@ -54,4 +54,4 @@ See [.github/SECURITY.md](../.github/SECURITY.md) for coordinated disclosure.
 - [ ] No secrets in repo or demo `.env` committed
 - [ ] `composer audit` clean
 - [ ] Public routes documented in INSTALLATION
-- [ ] Access checker documented for integrators
+- [ ] Access checker and share events documented for integrators

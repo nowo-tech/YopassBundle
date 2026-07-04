@@ -57,7 +57,7 @@ security:
         - { path: ^/tools/yopass, roles: ROLE_USER }
 ```
 
-See [Configuration](CONFIGURATION.md) for custom `YopassAccessCheckerInterface`.
+See [Configuration](CONFIGURATION.md) for `YopassAccessCheckerInterface` and [Access control events](examples/AccessControl.md) for team/grant/role integration via Symfony events.
 
 ## Assets
 

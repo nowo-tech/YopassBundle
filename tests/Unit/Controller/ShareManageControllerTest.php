@@ -9,9 +9,11 @@ use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
+use Nowo\YopassBundle\Service\ShareLister;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
@@ -20,6 +22,7 @@ use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Symfony\Component\DependencyInjection\Container;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
@@ -536,6 +539,9 @@ final class ShareManageControllerTest extends TestCase
         $translator->method('trans')->willReturnArgument(0);
 
         $shareRepository ??= $this->createMock(ShareRepositoryInterface::class);
+        $eventDispatcher  = new EventDispatcher();
+        $shareLister      = new ShareLister($shareRepository, $eventDispatcher);
+        $shareAccessGuard = new ShareAccessGuard($eventDispatcher);
         $shareCreator ??= new ShareCreator($shareRepository, DefaultShareOptions::get()['expiration_options']);
         $shareRetriever ??= new ShareRetriever($shareRepository);
         $shareExtender ??= new ShareExtender($shareRepository, DefaultShareOptions::get());
@@ -548,6 +554,8 @@ final class ShareManageControllerTest extends TestCase
         return new ShareManageController(
             $accessChecker ?? $this->accessChecker(),
             $shareRepository,
+            $shareLister,
+            $shareAccessGuard,
             $shareCreator,
             $shareRetriever,
             $shareExtender,

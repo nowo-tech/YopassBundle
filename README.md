@@ -17,6 +17,7 @@ Symfony bundle for **Yopass-style E2E encrypted secret sharing**: client-side li
 - One-click links via `?decrypt_key=` query parameter; short links with manual key entry
 - Authenticated manage UI + anonymous public reveal/consume routes
 - Configurable routes, table prefix, templates, and pluggable access control
+- **Share events** — customize list queries and per-share access (teams, grants, roles) without built-in ACL
 
 ## Installation
 
@@ -45,7 +46,7 @@ Full reference: [Configuration](docs/CONFIGURATION.md).
 - Public reveal: `/share/{id}` or `/share/{id}?decrypt_key=…` (configurable)
 - Override Twig: `templates/bundles/NowoYopassBundle/`
 
-See [Usage](docs/USAGE.md).
+See [Usage](docs/USAGE.md) and [Access control events](docs/examples/AccessControl.md).
 
 ## Demo
 
@@ -69,6 +70,7 @@ make -C demo up-symfony8
 
 ### Additional documentation
 
+- [Share list and access events](docs/examples/AccessControl.md)
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)
 - [Local file storage (demo default)](docs/examples/LocalStorage.md)
 - [AWS S3 file shares example (local, gitignored)](docs/examples/S3.md)
