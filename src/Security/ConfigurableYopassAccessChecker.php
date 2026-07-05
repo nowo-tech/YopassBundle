@@ -10,7 +10,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 /**
  * Role-based default implementation of {@see YopassAccessCheckerInterface}.
  */
-final class ConfigurableYopassAccessChecker implements YopassAccessCheckerInterface
+final readonly class ConfigurableYopassAccessChecker implements YopassAccessCheckerInterface
 {
     /**
      * @param list<string> $adminRoles
@@ -20,12 +20,12 @@ final class ConfigurableYopassAccessChecker implements YopassAccessCheckerInterf
      * @param list<string> $revokeRoles
      */
     public function __construct(
-        private readonly Security $security,
-        private readonly array $adminRoles,
-        private readonly array $accessRoles,
-        private readonly array $createRoles,
-        private readonly array $listRoles,
-        private readonly array $revokeRoles,
+        private Security $security,
+        private array $adminRoles,
+        private array $accessRoles,
+        private array $createRoles,
+        private array $listRoles,
+        private array $revokeRoles,
     ) {
     }
 

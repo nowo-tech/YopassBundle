@@ -57,7 +57,11 @@ security:
         - { path: ^/tools/yopass, roles: ROLE_USER }
 ```
 
-See [Configuration](CONFIGURATION.md) for `YopassAccessCheckerInterface` and [Access control events](examples/AccessControl.md) for team/grant/role integration via Symfony events.
+See [Configuration](CONFIGURATION.md) for `YopassAccessCheckerInterface`, [Access control events](examples/AccessControl.md), and public rate limiting (`public_rate_limit`, requires `cache.app`).
+
+## Translations
+
+The bundle ships **EN**, **ES**, **DE**, **FR**, **IT**, **NL**, and **PT** under the `NowoYopassBundle` domain. Override in `translations/bundles/NowoYopassBundle/` or your app's `translations/` folder.
 
 ## Assets
 

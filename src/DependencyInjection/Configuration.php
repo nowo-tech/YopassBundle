@@ -346,6 +346,15 @@ final class Configuration implements ConfigurationInterface
                     ->defaultValue(['^/share'])
                     ->info('Path patterns that must be publicly accessible (documented for security.yaml access_control).')
                 ->end()
+                ->arrayNode('public_rate_limit')
+                    ->addDefaultsIfNotSet()
+                    ->info('Rate limit for public share endpoints (consume/show) per client IP.')
+                    ->children()
+                        ->booleanNode('enabled')->defaultTrue()->end()
+                        ->integerNode('limit')->defaultValue(60)->min(1)->end()
+                        ->integerNode('interval_seconds')->defaultValue(60)->min(1)->end()
+                    ->end()
+                ->end()
             ->end();
 
         return $treeBuilder;

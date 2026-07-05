@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\ValueObject;
 
 use InvalidArgumentException;
+use Stringable;
 
 use function chr;
 use function ord;
@@ -13,11 +14,11 @@ use function sprintf;
 /**
  * Immutable UUID value object (RFC 4122).
  */
-final readonly class Uuid
+final readonly class Uuid implements Stringable
 {
     private function __construct(private string $value)
     {
-        if (!self::isValid($value)) {
+        if (!$this->isValid($value)) {
             throw new InvalidArgumentException(sprintf('Invalid UUID: %s', $value));
         }
     }
@@ -46,7 +47,7 @@ final readonly class Uuid
         return $this->value;
     }
 
-    private static function isValid(string $value): bool
+    private function isValid(string $value): bool
     {
         return (bool) preg_match(
             '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',

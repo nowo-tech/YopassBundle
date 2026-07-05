@@ -18,12 +18,12 @@ use function sprintf;
 /**
  * Applies configurable table name and user entity mapping to SecureShare.
  */
-final class SecureShareMetadataListener
+final readonly class SecureShareMetadataListener
 {
     public function __construct(
-        private readonly string $tableName,
-        private readonly string $userClass,
-        private readonly ?string $accessLogTableName = null,
+        private string $tableName,
+        private string $userClass,
+        private ?string $accessLogTableName = null,
     ) {
     }
 

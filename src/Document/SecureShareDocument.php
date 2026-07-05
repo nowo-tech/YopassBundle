@@ -13,13 +13,6 @@ use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
 #[ODM\Document]
 class SecureShareDocument
 {
-    #[ODM\Id(type: 'string', strategy: 'NONE')]
-    private string $id;
-
-    /** @var object Application user entity (nowo_yopass.user_class) */
-    #[ODM\ReferenceOne(targetDocument: 'Symfony\Component\Security\Core\User\UserInterface', storeAs: 'id')]
-    private object $creator;
-
     #[ODM\Field(type: 'string')]
     private string $ciphertext = '';
 
@@ -41,10 +34,11 @@ class SecureShareDocument
     #[ODM\Field(type: 'string')]
     private string $payloadKind = 'text';
 
-    public function __construct(string $id, object $creator)
+    public function __construct(#[ODM\Id(type: 'string', strategy: 'NONE')]
+        private string $id, /** @var object Application user entity (nowo_yopass.user_class) */
+        #[ODM\ReferenceOne(storeAs: 'id', targetDocument: \Symfony\Component\Security\Core\User\UserInterface::class)]
+        private object $creator)
     {
-        $this->id        = $id;
-        $this->creator   = $creator;
         $this->createdAt = new DateTimeImmutable();
     }
 

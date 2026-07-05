@@ -2,6 +2,47 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.0 (2026-07-05)
+
+Minor release. **No breaking changes** for standard ORM/MongoDB installs. Custom repository implementations must add one new method (see below).
+
+### Public rate limiting
+
+Anonymous `/share/*` routes are rate limited per client IP when enabled (default **on**):
+
+```yaml
+nowo_yopass:
+    public_rate_limit:
+        enabled: true
+        limit: 60
+        interval_seconds: 60
+```
+
+Requires Symfony **`cache.app`**. If your app has no cache pool, set `enabled: false` to restore previous behaviour (no limiting).
+
+### Custom `ShareRepositoryInterface`
+
+If you implement a **custom** repository (`database.driver: custom`), add:
+
+```php
+public function consumeReadIfAvailable(string $id): ?SecureShare;
+```
+
+Return the updated share after atomically decrementing `reads_left`, or `null` when the share is missing or not consumable. Built-in ORM and MongoDB repositories already implement this.
+
+### Translations
+
+New locales ship with the bundle: **de**, **fr**, **it**, **nl**, **pt** (domain `NowoYopassBundle`). No config change required — Symfony picks them up from the request locale.
+
+### Upgrade steps
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console cache:clear
+```
+
+No schema migration required.
+
 ## 1.1.0 (2026-07-04)
 
 Minor release. **No breaking changes** — existing apps keep creator-only list and access behaviour unless you register event listeners.

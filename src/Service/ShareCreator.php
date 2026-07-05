@@ -12,14 +12,14 @@ use Nowo\YopassBundle\ValueObject\Uuid;
 /**
  * Persists client-encrypted shares (E2E — server stores ciphertext only).
  */
-final class ShareCreator
+final readonly class ShareCreator
 {
     /**
      * @param list<array{id: string, interval: string}> $expirationOptions
      */
     public function __construct(
-        private readonly ShareRepositoryInterface $shareRepository,
-        private readonly array $expirationOptions,
+        private ShareRepositoryInterface $shareRepository,
+        private array $expirationOptions,
     ) {
     }
 

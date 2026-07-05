@@ -11,10 +11,10 @@ use Nowo\YopassBundle\Entity\SecureShare;
 /**
  * Doctrine ORM implementation for PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle, etc.
  */
-final class DoctrineOrmShareRepository implements ShareRepositoryInterface
+final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -23,6 +23,30 @@ final class DoctrineOrmShareRepository implements ShareRepositoryInterface
         $share = $this->entityManager->getRepository(SecureShare::class)->find($id);
 
         return $share instanceof SecureShare ? $share : null;
+    }
+
+    public function consumeReadIfAvailable(string $id): ?SecureShare
+    {
+        $now     = new DateTimeImmutable();
+        $updated = (int) $this->entityManager->createQueryBuilder()
+            ->update(SecureShare::class, 's')
+            ->set('s.readsLeft', 's.readsLeft - 1')
+            ->where('s.id = :id')
+            ->andWhere('s.revokedAt IS NULL')
+            ->andWhere('s.expiresAt > :now')
+            ->andWhere('s.readsLeft > 0')
+            ->setParameter('id', $id)
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->execute();
+
+        if ($updated === 0) {
+            return null;
+        }
+
+        $this->entityManager->clear();
+
+        return $this->find($id);
     }
 
     public function findByCreator(object $creator): array
@@ -38,7 +62,7 @@ final class DoctrineOrmShareRepository implements ShareRepositoryInterface
 
     public function countByCreator(object $creator): int
     {
-        return (int) $this->entityManager->getRepository(SecureShare::class)->count(['creator' => $creator]);
+        return $this->entityManager->getRepository(SecureShare::class)->count(['creator' => $creator]);
     }
 
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array

@@ -14,10 +14,14 @@ make test-ts
 
 ## Quality checks
 
-```bash
-make qa              # cs-check, phpstan, tests
-make release-check   # full pre-release pipeline
-```
+| Command | Scope |
+|---------|--------|
+| `make qa` | PHP-CS-Fixer + PHPUnit |
+| `make phpstan` | Static analysis (level 8) |
+| `make test-ts` | Vitest (crypto / TypeScript) |
+| `make release-check` | Full pre-release pipeline (composer sync, cs, rector-dry, phpstan, coverage, demos, Vitest) |
+
+Run `make release-check` before tagging a release.
 
 ## Pull requests
 
@@ -34,8 +38,8 @@ make release-check   # full pre-release pipeline
 
 ## Code style
 
-- PHP: PSR-12 via PHP-CS-Fixer, PHPStan level from `phpstan.neon.dist`.
-- TypeScript: ESLint + Prettier config in the repo root.
+- PHP: PSR-12 via PHP-CS-Fixer; PHPStan level from `phpstan.neon.dist`.
+- TypeScript: follow existing patterns in `src/Resources/assets/src/`; run `make test-ts` after changes.
 
 ## License
 

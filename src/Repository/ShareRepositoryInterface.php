@@ -15,6 +15,13 @@ interface ShareRepositoryInterface
     public function find(string $id): ?SecureShare;
 
     /**
+     * Atomically consumes one read when the share is available.
+     *
+     * Returns the updated share on success, or null when not found or not consumable.
+     */
+    public function consumeReadIfAvailable(string $id): ?SecureShare;
+
+    /**
      * @return list<SecureShare>
      */
     public function findByCreator(object $creator): array;

@@ -466,7 +466,7 @@ final class ShareManageControllerTest extends TestCase
     public function testRequireUserDeniesAnonymousAccess(): void
     {
         $controller = $this->controller();
-        ControllerContainerBuilder::bind($controller, null);
+        ControllerContainerBuilder::bind($controller);
 
         $this->expectException(AccessDeniedException::class);
         $controller->index(Request::create('/tools/yopass'));
@@ -517,7 +517,6 @@ final class ShareManageControllerTest extends TestCase
         ControllerContainerBuilder::bind($controller, new TestUser());
 
         $method = new ReflectionMethod(ShareManageController::class, 'denyUnlessFeature');
-        $method->setAccessible(true);
 
         $this->expectException(AccessDeniedException::class);
         $method->invoke($controller, 'unknown');

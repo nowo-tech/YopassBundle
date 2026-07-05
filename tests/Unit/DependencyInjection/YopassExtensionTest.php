@@ -65,6 +65,7 @@ final class YopassExtensionTest extends TestCase
             (string) $this->container->getAlias(ShareRepositoryInterface::class),
         );
         self::assertTrue($this->container->hasDefinition(\Nowo\YopassBundle\Controller\ShareManageController::class));
+        self::assertTrue($this->container->hasDefinition(\Nowo\YopassBundle\Security\PublicEndpointRateLimiter::class));
     }
 
     public function testLoadUsesCustomTablePrefix(): void

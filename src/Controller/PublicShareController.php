@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Controller;
 use JsonException;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -29,13 +30,15 @@ final class PublicShareController extends AbstractController
         private readonly ShareRepositoryInterface $shareRepository,
         private readonly ShareRetriever $shareRetriever,
         private readonly ShareAccessLogger $accessLogger,
+        private readonly PublicEndpointRateLimiter $rateLimiter,
         private readonly array $templates,
         private readonly array $routes,
     ) {
     }
 
-    public function show(string $id): Response
+    public function show(string $id, Request $request): Response
     {
+        $this->rateLimiter->consume($request, 'show');
         $share = $this->shareRepository->find($id);
 
         if (!$share instanceof SecureShare) {
@@ -60,6 +63,8 @@ final class PublicShareController extends AbstractController
 
     public function consume(string $id, Request $request): JsonResponse
     {
+        $this->rateLimiter->consume($request, 'consume');
+
         $result = $this->shareRetriever->consume($id);
 
         if ($result['status'] === 'ok') {

@@ -15,7 +15,7 @@ use function ltrim;
 /**
  * Extends expiration and max-read limits for existing shares (creator-only).
  */
-final class ShareExtender
+final readonly class ShareExtender
 {
     /**
      * @param array{
@@ -24,14 +24,14 @@ final class ShareExtender
      * } $shareOptions
      */
     public function __construct(
-        private readonly ShareRepositoryInterface $shareRepository,
-        private readonly array $shareOptions,
+        private ShareRepositoryInterface $shareRepository,
+        private array $shareOptions,
     ) {
     }
 
     public function extend(SecureShare $share, ?string $expiresIn, ?int $maxReads): void
     {
-        if ($share->getRevokedAt() !== null) {
+        if ($share->getRevokedAt() instanceof DateTimeImmutable) {
             throw new ShareExtendException('revoked');
         }
 

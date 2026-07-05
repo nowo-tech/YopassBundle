@@ -20,7 +20,7 @@ final class SecureShareMetadataListenerTest extends TestCase
         $metadata->table                          = ['name' => 'yopass_secure_shares'];
         $metadata->associationMappings['creator'] = [
             'fieldName'    => 'creator',
-            'targetEntity' => 'Symfony\\Component\\Security\\Core\\User\\UserInterface',
+            'targetEntity' => \Symfony\Component\Security\Core\User\UserInterface::class,
         ];
 
         $args = $this->createMock(LoadClassMetadataEventArgs::class);

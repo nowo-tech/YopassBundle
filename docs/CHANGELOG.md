@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-05
+
+### Added
+
+- **Public rate limiting** — `PublicEndpointRateLimiter` on anonymous `/share/*` show and consume (config: `public_rate_limit`; requires `cache.app`).
+- **Atomic consume** — `ShareRepositoryInterface::consumeReadIfAvailable()` prevents concurrent read over-consumption (ORM DQL update + MongoDB find-and-update).
+- **Translations** — German, French, Italian, Dutch, and Portuguese (`NowoYopassBundle` domain).
+- **Tests** — `PublicEndpointRateLimiterTest`, `ShareRetrieverTest`, `ShareConsumeFlowIntegrationTest`; fixed `PublicShareControllerTest` for rate limiter.
+- **CI** — PHPStan, Vitest, and `composer audit` jobs.
+- **Flex recipe `1.1.0`** — full route set and security post-install notes.
+
+### Fixed
+
+- **`ShareExtendException`** — expose `errorCode` property used by the extend JSON endpoint.
+- **SECURITY.md** — document `?decrypt_key=` query-string risks vs short links and URL fragments; public rate limiting and atomic consume.
+- **CONTRIBUTING.md** — align quality-check commands with Makefile/composer scripts.
+- **Reveal template** — `crossorigin` and `referrerpolicy` on Tabler CDN stylesheet.
+
+### Changed
+
+- **Code style** — Rector constructor promotion across bundle sources; PHPStan baseline for remaining level-8 findings.
+
 ## [1.1.0] - 2026-07-04
 
 ### Added
@@ -64,7 +86,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.0.0

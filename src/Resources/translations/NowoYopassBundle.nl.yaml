@@ -1,0 +1,147 @@
+yopass:
+    title: Yopass
+    intro: Maak eenmalige versleutelde links om geheimen veilig te delen. U beheert alleen uw eigen shares.
+    e2e_notice: Versleuteling en ontsleuteling gebeuren in uw browser; de server ziet nooit platte tekst.
+    back: Terug
+    access:
+        denied: U heeft geen toegang tot deze tool.
+    feature:
+        denied: U heeft geen toestemming voor deze actie.
+    tab:
+        text: Tekst
+        file: Bestand
+    type:
+        text: Tekst
+        file: Bestand
+    secret:
+        field: Geheim
+        placeholder: Voer het te delen geheim in…
+        help: Meerdere regels toegestaan. Max. %limit% tekens.
+        counter: '__COUNT__ / __LIMIT__ tekens'
+        limit_reached: Tekenlimiet bereikt. Verwijder tekst om door te gaan.
+    file:
+        field: Bestand
+        help: Max. 512 KB. Versleuteld in de browser vóór upload.
+    key:
+        generate: Ontsleutelingssleutel automatisch genereren
+        mode_auto: Automatisch gegenereerde sleutel
+        mode_password: Aangepast wachtwoord
+        mode_help: Kies een willekeurige sleutel of een wachtwoord dat u apart deelt.
+        mode_field: Versleutelingsmodus
+        custom: Ontsleutelingswachtwoord
+        custom_help: Deel de link en dit wachtwoord via verschillende kanalen.
+        embed_in_url: Sleutel/wachtwoord in URL opnemen (?decrypt_key=)
+        embed_help: De sleutel wordt doorgegeven als ?decrypt_key=-queryparameter in de one-click-link.
+        separate_label: Sleutel / wachtwoord (apart delen)
+        separate_help: Stuur de link via het ene kanaal en de sleutel via het andere (Signal, SMS…).
+    result:
+        title: Geheim veilig opgeslagen
+        remember: Onthoud
+        remember_text: Het geheim kan alleen het geconfigureerde aantal keren worden gedownload. Open de one-click-link niet zelf. Het is verstandig de ontsleutelingssleutel via een apart kanaal te sturen.
+        one_click: One-click-link
+        one_click_help: Deel deze link voor directe toegang tot het geheim.
+        short: Korte link
+        short_help: Vereist dat de ontsleutelingssleutel apart wordt gedeeld.
+        decryption_key: Ontsleutelingssleutel
+        decryption_key_help: Vereist om het bericht met de korte link te ontsleutelen.
+        key_unavailable: De ontsleutelingssleutel is niet meer beschikbaar. Kopieer de links direct na het aanmaken van de share.
+        create_another: Nog een geheim aanmaken
+    error:
+        secret: Voer een geheim in of selecteer een bestand.
+        secret_too_large: Het geheim overschrijdt de tekenlimiet.
+        file: Selecteer een bestand.
+        file_too_large: Het bestand overschrijdt de limiet van 512 KB.
+        password: Voer een ontsleutelingswachtwoord in.
+        invalid_ciphertext: De ingediende ciphertext is ongeldig.
+        file_not_enabled: Bestandsshares zijn niet ingeschakeld.
+        create: Share kon niet worden aangemaakt.
+    revoked: Share ingetrokken.
+    revoke: Intrekken
+    revoke_confirm: Deze share intrekken? De openbare link werkt dan niet meer.
+    deleted: Share verwijderd.
+    delete: Verwijderen
+    delete_confirm: Deze share permanent uit uw lijst verwijderen? Dit kan niet ongedaan worden gemaakt.
+    delete_all: Alles verwijderen
+    delete_all_confirm: Al uw shares permanent verwijderen? Dit kan niet ongedaan worden gemaakt.
+    deleted_all: '%count% share(s) verwijderd.'
+    view: Bekijken
+    preview:
+        title: Share-voorvertoning
+        intro: Ontsleuteling gebeurt in uw browser. Voorvertoning verbruikt geen lezing.
+        decrypt: Inhoud tonen
+        key_field: Ontsleutelingssleutel
+        key_help: Voer de sleutel in die werd getoond bij het aanmaken van deze share (indien mogelijk opgeslagen in deze browsersessie).
+        key_required: Voer de ontsleutelingssleutel voor deze share in.
+        public_link: Openbare link
+        close: Sluiten
+        failed: Deze share kon niet worden geladen.
+        access_log:
+            title: Openingsgeschiedenis
+            intro: Log van elke keer dat iemand de openbare link opende (geheim tonen).
+            empty: Deze link is nog niet geopend.
+            when: Datum
+            read: Lezing nr.
+            ip: IP
+            user_agent: Webbrowser
+    extend:
+        action: Verlengen
+        title: Share verlengen
+        intro: Voeg tijd of lezingen toe zonder een weergave te verbruiken. Laat een veld ongewijzigd om de huidige waarde te behouden.
+        current: Huidige limieten
+        expiration_field: Verlooptijd toevoegen
+        reads_field: Max. lezingen verhogen naar
+        keep_expiration: Vervaldatum niet wijzigen
+        keep_reads: Max. lezingen niet wijzigen
+        submit: Verlenging toepassen
+        success: Share bijgewerkt.
+        failed: Share kon niet worden bijgewerkt.
+        revoked: Ingetrokken shares kunnen niet worden verlengd.
+        invalid_expiration: Ongeldige vervaloptie.
+        invalid_max_reads: Ongeldige waarde voor max. lezingen.
+        max_reads_not_increased: Kies een hogere waarde voor max. lezingen dan de huidige limiet.
+        expiration_not_extended: Kies een langere verlenging van de vervaldatum.
+        nothing_to_extend: Selecteer minstens één verlengingsoptie.
+    expires:
+        field: Vervaldatum
+        1h: 1 uur
+        24h: 24 uur
+        7d: 7 dagen
+    reads:
+        field: Max. lezingen
+    create:
+        title: Nieuwe share
+        submit: Link aanmaken
+    list:
+        title: Mijn shares
+        type: Soort
+        created: Aangemaakt
+        expires: Verloopt
+        reads: Lezingen
+        status: Toestand
+        empty: U heeft nog geen shares aangemaakt.
+        retention_notice: Shares ouder dan %max_age% worden automatisch verwijderd.
+        summary: '%from%–%to% van %total%'
+        page: Pagina %page% / %pages%
+        previous: Vorige
+        next: Volgende
+    status:
+        active: Actief
+        revoked: Ingetrokken
+        unavailable: Niet beschikbaar
+    link:
+        label: Gegenereerde link (kopieer nu, wordt niet opnieuw getoond)
+        copy: Kopiëren
+    public:
+        title: Gedeeld geheim
+        intro: Klik om de inhoud te tonen. Elke lezing verbruikt een weergave.
+        e2e_notice: Ontsleuteling gebeurt in uw browser; alleen de versleutelde payload wordt van de server opgehaald.
+        reveal: Geheim tonen
+        unavailable: Deze link is niet meer beschikbaar (verlopen, ingetrokken of verbruikt).
+        password_field: Ontsleutelingswachtwoord
+        key_required: Voer de ontsleutelingssleutel in.
+        password_required: Voer het ontsleutelingswachtwoord in.
+        password_from_link: Wachtwoord geladen vanuit de link.
+        key_field: Ontsleutelingssleutel
+        key_help: Plak de sleutel die u apart ontving (korte link zonder ?decrypt_key=).
+        key_from_link: Sleutel geladen vanuit de link.
+        invalid_key: Onjuiste sleutel of onjuist wachtwoord.

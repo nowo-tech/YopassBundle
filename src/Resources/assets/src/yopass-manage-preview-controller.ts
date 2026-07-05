@@ -316,6 +316,8 @@ export default class extends Controller {
                     this.downloadLinkTarget.classList.remove('d-none');
                 }
             }
+
+            this.hideDecryptControls();
         } catch {
             this.showError('INVALID_KEY');
         }
@@ -518,8 +520,29 @@ export default class extends Controller {
             this.accessLogEmptyTarget.classList.add('d-none');
         }
 
+        this.showDecryptControls();
         this.hideExtendSuccess();
         this.hideError();
+    }
+
+    private hideDecryptControls(): void {
+        if (this.hasDecryptButtonTarget) {
+            this.decryptButtonTarget.classList.add('d-none');
+        }
+
+        if (this.hasPasswordPanelTarget) {
+            this.passwordPanelTarget.classList.add('d-none');
+        }
+
+        if (this.hasKeyPanelTarget) {
+            this.keyPanelTarget.classList.add('d-none');
+        }
+    }
+
+    private showDecryptControls(): void {
+        if (this.hasDecryptButtonTarget) {
+            this.decryptButtonTarget.classList.remove('d-none');
+        }
     }
 
     private showModal(): void {

@@ -1,0 +1,147 @@
+yopass:
+    title: Yopass
+    intro: Crea link crittografati monouso per condividere segreti in modo sicuro. Gestisci solo i tuoi share.
+    e2e_notice: Crittografia e decrittografia avvengono nel browser; il server non vede mai il testo in chiaro.
+    back: Indietro
+    access:
+        denied: Non hai accesso a questo strumento.
+    feature:
+        denied: Non hai il permesso per questa azione.
+    tab:
+        text: Testo
+        file: Archivio
+    type:
+        text: Testo
+        file: Archivio
+    secret:
+        field: Segreto
+        placeholder: Inserisci il segreto da condividere…
+        help: Sono ammessi testi multilinea. Max %limit% caratteri.
+        counter: '__COUNT__ / __LIMIT__ caratteri'
+        limit_reached: Limite di caratteri raggiunto. Rimuovi testo per continuare.
+    file:
+        field: Archivio
+        help: Max 512 KB. Crittografato nel browser prima del caricamento.
+    key:
+        generate: Genera automaticamente la chiave di decrittografia
+        mode_auto: Chiave generata automaticamente
+        mode_password: Password personalizzata
+        mode_help: Scegli una chiave casuale o una password da condividere separatamente.
+        mode_field: Modalità di crittografia
+        custom: Password di decrittografia
+        custom_help: Condividi il link e questa password su canali diversi.
+        embed_in_url: Includi chiave/password nell'URL (?decrypt_key=)
+        embed_help: La chiave viene passata come parametro ?decrypt_key= nel link one-click.
+        separate_label: Chiave / password (condividi separatamente)
+        separate_help: Invia il link su un canale e la chiave su un altro (Signal, SMS…).
+    result:
+        title: Segreto archiviato in modo sicuro
+        remember: Ricorda
+        remember_text: Il segreto può essere scaricato solo il numero di volte configurato. Non aprire tu il link one-click. È prudente inviare la chiave di decrittografia su un canale separato.
+        one_click: Link one-click
+        one_click_help: Condividi questo link per accedere direttamente al segreto.
+        short: Link breve
+        short_help: Richiede di condividere la chiave di decrittografia separatamente.
+        decryption_key: Chiave di decrittografia
+        decryption_key_help: Necessaria per decifrare il messaggio con il link breve.
+        key_unavailable: La chiave di decrittografia non è più disponibile. Copia i link subito dopo aver creato lo share.
+        create_another: Crea un altro segreto
+    error:
+        secret: Inserisci un segreto o seleziona un file.
+        secret_too_large: Il segreto supera il limite di caratteri.
+        file: Seleziona un file.
+        file_too_large: Il file supera il limite di 512 KB.
+        password: Inserisci una password di decrittografia.
+        invalid_ciphertext: Il ciphertext inviato non è valido.
+        file_not_enabled: Gli share di file non sono abilitati.
+        create: Impossibile creare lo share.
+    revoked: Share revocato.
+    revoke: Revoca
+    revoke_confirm: Revocare questo share? Il link pubblico smetterà di funzionare.
+    deleted: Share eliminato.
+    delete: Elimina
+    delete_confirm: Eliminare permanentemente questo share dalla tua lista? Questa azione non può essere annullata.
+    delete_all: Elimina tutto
+    delete_all_confirm: Eliminare permanentemente tutti i tuoi share? Questa azione non può essere annullata.
+    deleted_all: Eliminati %count% share.
+    view: Visualizza
+    preview:
+        title: Anteprima share
+        intro: La decrittografia avviene nel browser. L'anteprima non consuma una lettura.
+        decrypt: Mostra contenuto
+        key_field: Chiave di decrittografia
+        key_help: Inserisci la chiave mostrata quando hai creato questo share (memorizzata in questa sessione del browser quando possibile).
+        key_required: Inserisci la chiave di decrittografia per questo share.
+        public_link: Link pubblico
+        close: Chiudi
+        failed: Impossibile caricare questo share.
+        access_log:
+            title: Cronologia aperture
+            intro: Registro di ogni apertura del link pubblico (rivela segreto).
+            empty: Questo link non è ancora stato aperto.
+            when: Data
+            read: Lettura n.
+            ip: IP
+            user_agent: Navigatore
+    extend:
+        action: Estendi
+        title: Estendi share
+        intro: Aggiungi tempo o letture senza consumare una vista. Lascia un campo invariato per mantenere il valore attuale.
+        current: Limiti attuali
+        expiration_field: Aggiungi tempo di scadenza
+        reads_field: Aumenta letture max a
+        keep_expiration: Non modificare la scadenza
+        keep_reads: Non modificare le letture max
+        submit: Applica estensione
+        success: Share aggiornato.
+        failed: Impossibile aggiornare lo share.
+        revoked: Gli share revocati non possono essere estesi.
+        invalid_expiration: Opzione di scadenza non valida.
+        invalid_max_reads: Valore letture max non valido.
+        max_reads_not_increased: Scegli un valore di letture max superiore al limite attuale.
+        expiration_not_extended: Scegli un'estensione di scadenza più lunga.
+        nothing_to_extend: Seleziona almeno un'opzione di estensione.
+    expires:
+        field: Scadenza
+        1h: 1 ora
+        24h: 24 ore
+        7d: 7 giorni
+    reads:
+        field: Letture max
+    create:
+        title: Nuovo share
+        submit: Crea link
+    list:
+        title: I miei share
+        type: Tipo
+        created: Creato
+        expires: Scade
+        reads: Letture
+        status: Stato
+        empty: Non hai ancora creato alcuno share.
+        retention_notice: Gli share più vecchi di %max_age% vengono eliminati automaticamente.
+        summary: '%from%–%to% di %total%'
+        page: Pagina %page% / %pages%
+        previous: Precedente
+        next: Successivo
+    status:
+        active: Attivo
+        revoked: Revocato
+        unavailable: Non disponibile
+    link:
+        label: Link generato (copialo ora, non verrà mostrato di nuovo)
+        copy: Copia
+    public:
+        title: Segreto condiviso
+        intro: Clicca per rivelare il contenuto. Ogni lettura consuma una vista.
+        e2e_notice: La decrittografia avviene nel browser; dal server viene scaricato solo il payload crittografato.
+        reveal: Rivela segreto
+        unavailable: Questo link non è più disponibile (scaduto, revocato o consumato).
+        password_field: Password di decrittografia
+        key_required: Inserisci la chiave di decrittografia.
+        password_required: Inserisci la password di decrittografia.
+        password_from_link: Password caricata dal link.
+        key_field: Chiave di decrittografia
+        key_help: Incolla la chiave ricevuta separatamente (link breve senza ?decrypt_key=).
+        key_from_link: Chiave caricata dal link.
+        invalid_key: Chiave o password non corretta.

@@ -9,19 +9,40 @@ use Doctrine\ODM\MongoDB\DocumentManager;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
 
+use function is_int;
+
 /**
  * Doctrine MongoDB ODM implementation for MongoDB deployments.
  */
-final class DoctrineMongoShareRepository implements ShareRepositoryInterface
+final readonly class DoctrineMongoShareRepository implements ShareRepositoryInterface
 {
     public function __construct(
-        private readonly DocumentManager $documentManager,
+        private DocumentManager $documentManager,
     ) {
     }
 
     public function find(string $id): ?SecureShare
     {
         $document = $this->documentManager->find(SecureShareDocument::class, $id);
+
+        return $document instanceof SecureShareDocument ? $this->toEntity($document) : null;
+    }
+
+    public function consumeReadIfAvailable(string $id): ?SecureShare
+    {
+        $now = new DateTimeImmutable();
+
+        /** @var SecureShareDocument|null $document */
+        $document = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
+            ->findAndUpdate()
+            ->returnNew(true)
+            ->field('_id')->equals($id)
+            ->field('revokedAt')->equals(null)
+            ->field('expiresAt')->gt($now)
+            ->field('readsLeft')->gt(0)
+            ->field('readsLeft')->inc(-1)
+            ->getQuery()
+            ->execute();
 
         return $document instanceof SecureShareDocument ? $this->toEntity($document) : null;
     }
@@ -34,16 +55,18 @@ final class DoctrineMongoShareRepository implements ShareRepositoryInterface
             ['createdAt' => 'DESC'],
         );
 
-        return array_map(fn (SecureShareDocument $document): SecureShare => $this->toEntity($document), $documents);
+        return array_map($this->toEntity(...), $documents);
     }
 
     public function countByCreator(object $creator): int
     {
-        return (int) $this->documentManager->createQueryBuilder(SecureShareDocument::class)
+        $result = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
             ->field('creator')->equals($creator)
             ->count()
             ->getQuery()
             ->execute();
+
+        return is_int($result) ? $result : (int) $result;
     }
 
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array
@@ -57,7 +80,7 @@ final class DoctrineMongoShareRepository implements ShareRepositoryInterface
             ->getQuery()
             ->execute();
 
-        return array_map(fn (SecureShareDocument $document): SecureShare => $this->toEntity($document), $documents);
+        return array_map($this->toEntity(...), $documents);
     }
 
     public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int
@@ -138,7 +161,7 @@ final class DoctrineMongoShareRepository implements ShareRepositoryInterface
             ->setMaxReads($share->getMaxReads())
             ->setPayloadKind($share->getPayloadKind());
 
-        if ($share->getRevokedAt() !== null) {
+        if ($share->getRevokedAt() instanceof DateTimeImmutable) {
             $document->revoke();
         }
 
@@ -158,7 +181,7 @@ final class DoctrineMongoShareRepository implements ShareRepositoryInterface
             $share->consumeRead();
         }
 
-        if ($document->getRevokedAt() !== null) {
+        if ($document->getRevokedAt() instanceof DateTimeImmutable) {
             $share->revoke();
         }
 

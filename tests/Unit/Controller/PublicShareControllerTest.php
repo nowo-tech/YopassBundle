@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Nowo\YopassBundle\Controller\PublicShareController;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
@@ -51,7 +52,7 @@ final class PublicShareControllerTest extends TestCase
         $controller = $this->controllerWithShare($share);
         ControllerContainerBuilder::bind($controller);
 
-        $response = $controller->show($share->getId());
+        $response = $controller->show($share->getId(), Request::create('/share/' . $share->getId()));
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertStringContainsString('@NowoYopassBundle/public/reveal.html.twig', (string) $response->getContent());
@@ -68,7 +69,10 @@ final class PublicShareControllerTest extends TestCase
         $controller = $this->controllerWithShare($share);
         ControllerContainerBuilder::bind($controller);
 
-        self::assertSame(Response::HTTP_OK, $controller->show($share->getId())->getStatusCode());
+        self::assertSame(
+            Response::HTTP_OK,
+            $controller->show($share->getId(), Request::create('/share/' . $share->getId()))->getStatusCode(),
+        );
     }
 
     public function testShowThrowsNotFoundWhenMissing(): void
@@ -80,13 +84,14 @@ final class PublicShareControllerTest extends TestCase
             $shareRepository,
             new ShareRetriever($shareRepository),
             $this->accessLogger(),
+            $this->rateLimiter(),
             $this->templates,
             $this->routes,
         );
         ControllerContainerBuilder::bind($controller);
 
         $this->expectException(\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class);
-        $controller->show('missing');
+        $controller->show('missing', Request::create('/share/missing'));
     }
 
     public function testConsumeReturnsOkOrGone(): void
@@ -98,14 +103,14 @@ final class PublicShareControllerTest extends TestCase
             ->setMaxReads(1);
 
         $shareRepository = $this->createMock(ShareRepositoryInterface::class);
-        $shareRepository->method('find')->willReturnOnConsecutiveCalls($share, $share, null);
-        $shareRepository->method('persist');
-        $shareRepository->method('flush');
+        $shareRepository->method('consumeReadIfAvailable')->willReturnOnConsecutiveCalls($share, null);
+        $shareRepository->method('find')->willReturnOnConsecutiveCalls($share, null);
 
         $controller = new PublicShareController(
             $shareRepository,
             new ShareRetriever($shareRepository),
             $this->accessLogger(),
+            $this->rateLimiter(),
             $this->templates,
             $this->routes,
         );
@@ -128,9 +133,15 @@ final class PublicShareControllerTest extends TestCase
             $shareRepository,
             new ShareRetriever($shareRepository),
             $this->accessLogger(),
+            $this->rateLimiter(),
             $this->templates,
             $this->routes,
         );
+    }
+
+    private function rateLimiter(): PublicEndpointRateLimiter
+    {
+        return new PublicEndpointRateLimiter(null, 0, 0);
     }
 
     private function accessLogger(): ShareAccessLogger
