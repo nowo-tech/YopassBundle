@@ -43,11 +43,11 @@ final class ShareCreateType extends AbstractType
         $shareOptions       = $options['share_options'];
         $maxCiphertextBytes = (int) $options['max_ciphertext_bytes'];
         $expirationIds      = array_column($shareOptions['expiration_options'], 'id');
-        $expirationChoices  = array_combine($expirationIds, $expirationIds) ?: [];
+        $expirationChoices  = array_combine($expirationIds, $expirationIds);
         $maxReadsChoices    = array_combine(
             $shareOptions['max_reads_options'],
             $shareOptions['max_reads_options'],
-        ) ?: [];
+        );
 
         $builder
             ->add('ciphertext', HiddenType::class, [

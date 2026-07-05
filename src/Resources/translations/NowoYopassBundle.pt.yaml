@@ -1,0 +1,147 @@
+yopass:
+    title: Yopass
+    intro: Crie ligações encriptadas de utilização única para partilhar segredos em segurança. Só gere os seus próprios shares.
+    e2e_notice: A encriptação e desencriptação ocorrem no seu navegador; o servidor nunca vê texto em claro.
+    back: Voltar
+    access:
+        denied: Não tem acesso a esta ferramenta.
+    feature:
+        denied: Não tem permissão para esta ação.
+    tab:
+        text: Texto
+        file: Ficheiro
+    type:
+        text: Texto
+        file: Ficheiro
+    secret:
+        field: Segredo
+        placeholder: Introduza o segredo a partilhar…
+        help: Texto multilinha permitido. Máx. %limit% caracteres.
+        counter: '__COUNT__ / __LIMIT__ caracteres'
+        limit_reached: Limite de caracteres atingido. Remova texto para continuar.
+    file:
+        field: Ficheiro
+        help: Máx. 512 KB. Encriptado no navegador antes do envio.
+    key:
+        generate: Gerar chave de desencriptação automaticamente
+        mode_auto: Chave gerada automaticamente
+        mode_password: Palavra-passe personalizada
+        mode_help: Escolha uma chave aleatória ou uma palavra-passe a partilhar separadamente.
+        mode_field: Modo de encriptação
+        custom: Palavra-passe de desencriptação
+        custom_help: Partilhe a ligação e esta palavra-passe por canais diferentes.
+        embed_in_url: Incluir chave/palavra-passe no URL (?decrypt_key=)
+        embed_help: A chave é passada como parâmetro ?decrypt_key= na ligação one-click.
+        separate_label: Chave / palavra-passe (partilhar separadamente)
+        separate_help: Envie a ligação por um canal e a chave por outro (Signal, SMS…).
+    result:
+        title: Segredo armazenado em segurança
+        remember: Lembre-se
+        remember_text: O segredo só pode ser descarregado o número de vezes configurado. Não abra a ligação one-click. O mais prudente é enviar a chave de desencriptação por um canal separado.
+        one_click: Ligação one-click
+        one_click_help: Partilhe esta ligação para aceder diretamente ao segredo.
+        short: Ligação curta
+        short_help: Requer partilhar a chave de desencriptação separadamente.
+        decryption_key: Chave de desencriptação
+        decryption_key_help: Necessária para desencriptar a mensagem com a ligação curta.
+        key_unavailable: A chave de desencriptação já não está disponível. Copie as ligações logo após criar o share.
+        create_another: Criar outro segredo
+    error:
+        secret: Introduza um segredo ou selecione um ficheiro.
+        secret_too_large: O segredo excede o limite de caracteres.
+        file: Selecione um ficheiro.
+        file_too_large: O ficheiro excede o limite de 512 KB.
+        password: Introduza uma palavra-passe de desencriptação.
+        invalid_ciphertext: O ciphertext enviado não é válido.
+        file_not_enabled: Shares de ficheiro não estão ativados.
+        create: Não foi possível criar o share.
+    revoked: Share revogado.
+    revoke: Revogar
+    revoke_confirm: Revogar este share? A ligação pública deixará de funcionar.
+    deleted: Share eliminado.
+    delete: Eliminar
+    delete_confirm: Eliminar permanentemente este share da sua lista? Esta ação não pode ser desfeita.
+    delete_all: Eliminar tudo
+    delete_all_confirm: Eliminar permanentemente todos os seus shares? Esta ação não pode ser desfeita.
+    deleted_all: Eliminados %count% share(s).
+    view: Ver
+    preview:
+        title: Pré-visualização do share
+        intro: A desencriptação ocorre no seu navegador. A pré-visualização não consome uma leitura.
+        decrypt: Mostrar conteúdo
+        key_field: Chave de desencriptação
+        key_help: Introduza a chave mostrada quando criou este share (guardada nesta sessão do navegador quando possível).
+        key_required: Introduza a chave de desencriptação deste share.
+        public_link: Ligação pública
+        close: Fechar
+        failed: Não foi possível carregar este share.
+        access_log:
+            title: Histórico de aberturas
+            intro: Registo de cada abertura da ligação pública (revelar segredo).
+            empty: Esta ligação ainda não foi aberta.
+            when: Data
+            read: Leitura n.º
+            ip: IP
+            user_agent: Navegador
+    extend:
+        action: Estender
+        title: Estender share
+        intro: Adicione tempo ou leituras sem consumir uma visualização. Deixe um campo inalterado para manter o valor atual.
+        current: Limites atuais
+        expiration_field: Adicionar tempo de expiração
+        reads_field: Aumentar leituras máx. para
+        keep_expiration: Não alterar expiração
+        keep_reads: Não alterar leituras máx.
+        submit: Aplicar extensão
+        success: Share atualizado.
+        failed: Não foi possível atualizar o share.
+        revoked: Shares revogados não podem ser estendidos.
+        invalid_expiration: Opção de expiração inválida.
+        invalid_max_reads: Valor de leituras máx. inválido.
+        max_reads_not_increased: Escolha um valor de leituras máx. superior ao limite atual.
+        expiration_not_extended: Escolha uma extensão de expiração mais longa.
+        nothing_to_extend: Selecione pelo menos uma opção de extensão.
+    expires:
+        field: Expiração
+        1h: 1 hora
+        24h: 24 horas
+        7d: 7 dias
+    reads:
+        field: Leituras máx.
+    create:
+        title: Novo share
+        submit: Criar ligação
+    list:
+        title: Os meus shares
+        type: Tipo
+        created: Criado
+        expires: Expira
+        reads: Leituras
+        status: Estado
+        empty: Ainda não criou nenhum share.
+        retention_notice: Shares com mais de %max_age% são eliminados automaticamente.
+        summary: '%from%–%to% de %total%'
+        page: Página %page% / %pages%
+        previous: Anterior
+        next: Seguinte
+    status:
+        active: Ativo
+        revoked: Revogado
+        unavailable: Indisponível
+    link:
+        label: Ligação gerada (copie agora, não será mostrada novamente)
+        copy: Copiar
+    public:
+        title: Segredo partilhado
+        intro: Clique para revelar o conteúdo. Cada leitura consome uma visualização.
+        e2e_notice: A desencriptação ocorre no seu navegador; apenas a carga encriptada é obtida do servidor.
+        reveal: Revelar segredo
+        unavailable: Esta ligação já não está disponível (expirada, revogada ou consumida).
+        password_field: Palavra-passe de desencriptação
+        key_required: Introduza a chave de desencriptação.
+        password_required: Introduza a palavra-passe de desencriptação.
+        password_from_link: Palavra-passe carregada a partir da ligação.
+        key_field: Chave de desencriptação
+        key_help: Cole a chave recebida separadamente (ligação curta sem ?decrypt_key=).
+        key_from_link: Chave carregada a partir da ligação.
+        invalid_key: Chave ou palavra-passe incorreta.

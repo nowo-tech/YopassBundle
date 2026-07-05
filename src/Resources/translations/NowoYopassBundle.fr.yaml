@@ -1,0 +1,147 @@
+yopass:
+    title: Yopass
+    intro: Créez des liens chiffrés à usage unique pour partager des secrets en toute sécurité. Vous ne gérez que vos propres partages.
+    e2e_notice: Le chiffrement et le déchiffrement se font dans votre navigateur ; le serveur ne voit jamais le texte en clair.
+    back: Retour
+    access:
+        denied: Vous n'avez pas accès à cet outil.
+    feature:
+        denied: Vous n'avez pas la permission pour cette action.
+    tab:
+        text: Texte
+        file: Fichier
+    type:
+        text: Texte
+        file: Fichier
+    secret:
+        field: Contenu secret
+        placeholder: Saisissez le secret à partager…
+        help: Texte multiligne autorisé. Max. %limit% caractères.
+        counter: '__COUNT__ / __LIMIT__ caractères'
+        limit_reached: Limite de caractères atteinte. Supprimez du texte pour continuer.
+    file:
+        field: Fichier
+        help: Max. 512 Ko. Chiffré dans le navigateur avant l'envoi.
+    key:
+        generate: Générer automatiquement la clé de déchiffrement
+        mode_auto: Clé générée automatiquement
+        mode_password: Mot de passe personnalisé
+        mode_help: Choisissez une clé aléatoire ou un mot de passe à partager séparément.
+        mode_field: Mode de chiffrement
+        custom: Mot de passe de déchiffrement
+        custom_help: Partagez le lien et ce mot de passe via des canaux différents.
+        embed_in_url: Inclure clé/mot de passe dans l'URL (?decrypt_key=)
+        embed_help: La clé est transmise comme paramètre ?decrypt_key= dans le lien one-click.
+        separate_label: Clé / mot de passe (partager séparément)
+        separate_help: Envoyez le lien par un canal et la clé par un autre (Signal, SMS…).
+    result:
+        title: Secret stocké en toute sécurité
+        remember: Rappel
+        remember_text: Le secret ne peut être téléchargé que le nombre de fois configuré. N'ouvrez pas vous-même le lien one-click. Il est prudent d'envoyer la clé de déchiffrement par un canal séparé.
+        one_click: Lien one-click
+        one_click_help: Partagez ce lien pour accéder directement au secret.
+        short: Lien court
+        short_help: Nécessite de partager la clé de déchiffrement séparément.
+        decryption_key: Clé de déchiffrement
+        decryption_key_help: Requise pour déchiffrer le message avec le lien court.
+        key_unavailable: La clé de déchiffrement n'est plus disponible. Copiez les liens juste après la création du partage.
+        create_another: Créer un autre secret
+    error:
+        secret: Saisissez un secret ou sélectionnez un fichier.
+        secret_too_large: Le secret dépasse la limite de caractères.
+        file: Sélectionnez un fichier.
+        file_too_large: Le fichier dépasse la limite de 512 Ko.
+        password: Saisissez un mot de passe de déchiffrement.
+        invalid_ciphertext: Le ciphertext soumis n'est pas valide.
+        file_not_enabled: Les partages de fichiers ne sont pas activés.
+        create: Impossible de créer le partage.
+    revoked: Partage révoqué.
+    revoke: Révoquer
+    revoke_confirm: Révoquer ce partage ? Le lien public cessera de fonctionner.
+    deleted: Partage supprimé.
+    delete: Supprimer
+    delete_confirm: Supprimer définitivement ce partage de votre liste ? Cette action est irréversible.
+    delete_all: Tout supprimer
+    delete_all_confirm: Supprimer définitivement tous vos partages ? Cette action est irréversible.
+    deleted_all: '%count% partage(s) supprimé(s).'
+    view: Voir
+    preview:
+        title: Aperçu du partage
+        intro: Le déchiffrement se fait dans votre navigateur. L'aperçu ne consomme pas de lecture.
+        decrypt: Afficher le contenu
+        key_field: Clé de déchiffrement
+        key_help: Saisissez la clé affichée lors de la création de ce partage (stockée dans cette session du navigateur lorsque possible).
+        key_required: Saisissez la clé de déchiffrement pour ce partage.
+        public_link: Lien public
+        close: Fermer
+        failed: Impossible de charger ce partage.
+        access_log:
+            title: Historique d'ouvertures
+            intro: Journal de chaque ouverture du lien public (révéler le secret).
+            empty: Ce lien n'a pas encore été ouvert.
+            when: Date et heure
+            read: Lecture n°
+            ip: IP
+            user_agent: Navigateur
+    extend:
+        action: Prolonger
+        title: Prolonger le partage
+        intro: Ajoutez du temps ou des lectures sans consommer de vue. Laissez un champ inchangé pour conserver la valeur actuelle.
+        current: Limites actuelles
+        expiration_field: Ajouter du temps d'expiration
+        reads_field: Augmenter les lectures max à
+        keep_expiration: Ne pas modifier l'expiration
+        keep_reads: Ne pas modifier les lectures max
+        submit: Appliquer la prolongation
+        success: Partage mis à jour.
+        failed: Impossible de mettre à jour le partage.
+        revoked: Les partages révoqués ne peuvent pas être prolongés.
+        invalid_expiration: Option d'expiration invalide.
+        invalid_max_reads: Valeur de lectures max invalide.
+        max_reads_not_increased: Choisissez une valeur de lectures max supérieure à la limite actuelle.
+        expiration_not_extended: Choisissez une prolongation d'expiration plus longue.
+        nothing_to_extend: Sélectionnez au moins une option de prolongation.
+    expires:
+        field: Durée de validité
+        1h: 1 heure
+        24h: 24 heures
+        7d: 7 jours
+    reads:
+        field: Lectures max
+    create:
+        title: Nouveau partage
+        submit: Créer le lien
+    list:
+        title: Mes partages
+        type: Type de partage
+        created: Créé
+        expires: Expire
+        reads: Lectures
+        status: Statut
+        empty: Vous n'avez pas encore créé de partage.
+        retention_notice: Les partages de plus de %max_age% sont supprimés automatiquement.
+        summary: '%from%–%to% sur %total%'
+        page: Page %page% sur %pages%
+        previous: Précédent
+        next: Suivant
+    status:
+        active: Actif
+        revoked: Révoqué
+        unavailable: Indisponible
+    link:
+        label: Lien généré (copiez-le maintenant, il ne sera plus affiché)
+        copy: Copier
+    public:
+        title: Secret partagé
+        intro: Cliquez pour révéler le contenu. Chaque lecture consomme une vue.
+        e2e_notice: Le déchiffrement se fait dans votre navigateur ; seule la charge chiffrée est récupérée du serveur.
+        reveal: Révéler le secret
+        unavailable: Ce lien n'est plus disponible (expiré, révoqué ou consommé).
+        password_field: Mot de passe de déchiffrement
+        key_required: Saisissez la clé de déchiffrement.
+        password_required: Saisissez le mot de passe de déchiffrement.
+        password_from_link: Mot de passe chargé depuis le lien.
+        key_field: Clé de déchiffrement
+        key_help: Collez la clé reçue séparément (lien court sans ?decrypt_key=).
+        key_from_link: Clé chargée depuis le lien.
+        invalid_key: Clé ou mot de passe incorrect.

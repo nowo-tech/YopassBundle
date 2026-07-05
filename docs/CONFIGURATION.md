@@ -260,6 +260,20 @@ Default per-share grant: viewer is the creator. Copy example listeners from [`ex
 
 Services involved: `ShareLister` (manage list), `ShareAccessGuard` (created/preview/extend/revoke/delete).
 
+### Public rate limiting
+
+Anonymous `/share/*` routes can be rate limited per client IP:
+
+```yaml
+nowo_yopass:
+    public_rate_limit:
+        enabled: true          # default true
+        limit: 60              # requests per window
+        interval_seconds: 60   # window length
+```
+
+Requires Symfony **`cache.app`** (FrameworkBundle cache). When cache is unavailable or `enabled: false`, limiting is skipped. See [Security](SECURITY.md).
+
 ### Custom access checker interface
 
 ```php

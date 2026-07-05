@@ -28,12 +28,10 @@ final class ShareAccessLoggerTest extends TestCase
         $repository = $this->createMock(ShareAccessLogRepositoryInterface::class);
         $repository->expects(self::once())
             ->method('persist')
-            ->with(self::callback(static function (ShareAccessLog $log) use ($share): bool {
-                return $log->getShare() === $share
-                    && $log->getReadNumber() === 2
-                    && $log->getIpAddress() === '203.0.113.10'
-                    && str_contains((string) $log->getUserAgent(), 'TestAgent');
-            }));
+            ->with(self::callback(static fn (ShareAccessLog $log): bool => $log->getShare() === $share
+                && $log->getReadNumber() === 2
+                && $log->getIpAddress() === '203.0.113.10'
+                && str_contains((string) $log->getUserAgent(), 'TestAgent')));
         $repository->expects(self::once())->method('flush');
 
         $logger  = new ShareAccessLogger($repository, true);

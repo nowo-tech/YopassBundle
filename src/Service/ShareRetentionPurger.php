@@ -10,11 +10,11 @@ use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 /**
  * Deletes shares older than the configured retention age.
  */
-final class ShareRetentionPurger
+final readonly class ShareRetentionPurger
 {
-    private readonly bool $enabled;
+    private bool $enabled;
 
-    private readonly string $maxAge;
+    private string $maxAge;
 
     /**
      * @param array{
@@ -22,7 +22,7 @@ final class ShareRetentionPurger
      * } $shareOptions
      */
     public function __construct(
-        private readonly ShareRepositoryInterface $shareRepository,
+        private ShareRepositoryInterface $shareRepository,
         array $shareOptions,
     ) {
         $retention     = $shareOptions['retention'] ?? [];
@@ -39,7 +39,7 @@ final class ShareRetentionPurger
     {
         $cutoff = $this->resolveCutoff();
 
-        if ($cutoff === null) {
+        if (!$cutoff instanceof DateTimeImmutable) {
             return 0;
         }
 
@@ -56,7 +56,7 @@ final class ShareRetentionPurger
     {
         $cutoff = $this->resolveCutoff();
 
-        if ($cutoff === null) {
+        if (!$cutoff instanceof DateTimeImmutable) {
             return 0;
         }
 

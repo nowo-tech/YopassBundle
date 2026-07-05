@@ -17,11 +17,11 @@ use function count;
 /**
  * Loads shares for the manage list, dispatching events so applications can customize queries and filtering.
  */
-final class ShareLister
+final readonly class ShareLister
 {
     public function __construct(
-        private readonly ShareRepositoryInterface $shareRepository,
-        private readonly EventDispatcherInterface $eventDispatcher,
+        private ShareRepositoryInterface $shareRepository,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 

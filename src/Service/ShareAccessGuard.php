@@ -15,10 +15,10 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 /**
  * Checks per-share manage access, dispatching an event so applications can extend creator-only rules.
  */
-final class ShareAccessGuard
+final readonly class ShareAccessGuard
 {
     public function __construct(
-        private readonly EventDispatcherInterface $eventDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 

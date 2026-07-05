@@ -1,0 +1,16 @@
+YopassBundle installed.
+
+1. Configure security (config/packages/security.yaml):
+
+   access_control:
+       - { path: ^/share, roles: PUBLIC_ACCESS }
+       - { path: ^/tools/yopass, roles: ROLE_USER }
+
+2. Run Doctrine schema update or migration for {table_prefix}secure_shares.
+
+3. Install assets: php bin/console assets:install
+
+4. Optional: custom ACL via YopassAccessCheckerInterface and share events
+   (see vendor/nowo-tech/yopass-bundle/docs/examples/AccessControl.md).
+
+Public /share/* routes are rate limited per IP when cache.app is configured.

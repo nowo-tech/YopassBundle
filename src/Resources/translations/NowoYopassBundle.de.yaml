@@ -1,0 +1,147 @@
+yopass:
+    title: Yopass
+    intro: Erstellen Sie Einmal-Verschlüsselungslinks, um Geheimnisse sicher zu teilen. Sie verwalten nur Ihre eigenen Shares.
+    e2e_notice: Verschlüsselung und Entschlüsselung erfolgen in Ihrem Browser; der Server sieht niemals Klartext.
+    back: Zurück
+    access:
+        denied: Sie haben keinen Zugriff auf dieses Tool.
+    feature:
+        denied: Sie haben keine Berechtigung für diese Aktion.
+    tab:
+        text: Textinhalt
+        file: Datei
+    type:
+        text: Textinhalt
+        file: Datei
+    secret:
+        field: Geheimnis
+        placeholder: Geben Sie das zu teilende Geheimnis ein…
+        help: Mehrzeiliger Text erlaubt. Max. %limit% Zeichen.
+        counter: '__COUNT__ / __LIMIT__ Zeichen'
+        limit_reached: Zeichenlimit erreicht. Entfernen Sie Text, um fortzufahren.
+    file:
+        field: Datei
+        help: Max. 512 KB. Im Browser vor dem Upload verschlüsselt.
+    key:
+        generate: Entschlüsselungsschlüssel automatisch generieren
+        mode_auto: Automatisch generierter Schlüssel
+        mode_password: Benutzerdefiniertes Passwort
+        mode_help: Wählen Sie einen zufälligen Schlüssel oder ein Passwort, das Sie separat teilen.
+        mode_field: Verschlüsselungsmodus
+        custom: Entschlüsselungspasswort
+        custom_help: Teilen Sie den Link und dieses Passwort über verschiedene Kanäle.
+        embed_in_url: Schlüssel/Passwort in URL einbetten (?decrypt_key=)
+        embed_help: Der Schlüssel wird als ?decrypt_key=-Parameter im One-Click-Link übergeben.
+        separate_label: Schlüssel / Passwort (separat teilen)
+        separate_help: Senden Sie den Link über einen Kanal und den Schlüssel über einen anderen (Signal, SMS…).
+    result:
+        title: Geheimnis sicher gespeichert
+        remember: Merken
+        remember_text: Das Geheimnis kann nur die konfigurierte Anzahl von Malen heruntergeladen werden. Öffnen Sie den One-Click-Link nicht selbst. Vorsichtshalber sollten Sie den Entschlüsselungsschlüssel über einen separaten Kanal senden.
+        one_click: One-Click-Link
+        one_click_help: Teilen Sie diesen Link für direkten Zugriff auf das Geheimnis.
+        short: Kurzlink
+        short_help: Erfordert, den Entschlüsselungsschlüssel separat zu teilen.
+        decryption_key: Entschlüsselungsschlüssel
+        decryption_key_help: Erforderlich zum Entschlüsseln der Nachricht mit dem Kurzlink.
+        key_unavailable: Der Entschlüsselungsschlüssel ist nicht mehr verfügbar. Kopieren Sie die Links direkt nach dem Erstellen des Shares.
+        create_another: Weiteres Geheimnis erstellen
+    error:
+        secret: Geben Sie ein Geheimnis ein oder wählen Sie eine Datei.
+        secret_too_large: Das Geheimnis überschreitet das Zeichenlimit.
+        file: Wählen Sie eine Datei.
+        file_too_large: Die Datei überschreitet das Limit von 512 KB.
+        password: Geben Sie ein Entschlüsselungspasswort ein.
+        invalid_ciphertext: Der übermittelte Ciphertext ist ungültig.
+        file_not_enabled: Datei-Shares sind nicht aktiviert.
+        create: Share konnte nicht erstellt werden.
+    revoked: Share widerrufen.
+    revoke: Widerrufen
+    revoke_confirm: Diesen Share widerrufen? Der öffentliche Link funktioniert dann nicht mehr.
+    deleted: Share gelöscht.
+    delete: Löschen
+    delete_confirm: Diesen Share dauerhaft aus Ihrer Liste löschen? Dies kann nicht rückgängig gemacht werden.
+    delete_all: Alle löschen
+    delete_all_confirm: Alle Ihre Shares dauerhaft löschen? Dies kann nicht rückgängig gemacht werden.
+    deleted_all: '%count% Share(s) gelöscht.'
+    view: Anzeigen
+    preview:
+        title: Share-Vorschau
+        intro: Entschlüsselung erfolgt in Ihrem Browser. Die Vorschau verbraucht keine Lesung.
+        decrypt: Inhalt anzeigen
+        key_field: Entschlüsselungsschlüssel
+        key_help: Geben Sie den Schlüssel ein, der beim Erstellen dieses Shares angezeigt wurde (wenn möglich in dieser Browsersitzung gespeichert).
+        key_required: Geben Sie den Entschlüsselungsschlüssel für diesen Share ein.
+        public_link: Öffentlicher Link
+        close: Schließen
+        failed: Dieser Share konnte nicht geladen werden.
+        access_log:
+            title: Öffnungsverlauf
+            intro: Protokoll jedes Öffnens des öffentlichen Links (Geheimnis anzeigen).
+            empty: Dieser Link wurde noch nicht geöffnet.
+            when: Datum
+            read: Lesung Nr.
+            ip: IP
+            user_agent: Webbrowser
+    extend:
+        action: Verlängern
+        title: Share verlängern
+        intro: Fügen Sie Zeit oder Lesungen hinzu, ohne eine Ansicht zu verbrauchen. Lassen Sie ein Feld unverändert, um den aktuellen Wert beizubehalten.
+        current: Aktuelle Limits
+        expiration_field: Ablaufzeit hinzufügen
+        reads_field: Max. Lesungen erhöhen auf
+        keep_expiration: Ablauf nicht ändern
+        keep_reads: Max. Lesungen nicht ändern
+        submit: Verlängerung anwenden
+        success: Share aktualisiert.
+        failed: Share konnte nicht aktualisiert werden.
+        revoked: Widerrufene Shares können nicht verlängert werden.
+        invalid_expiration: Ungültige Ablaufoption.
+        invalid_max_reads: Ungültiger Wert für max. Lesungen.
+        max_reads_not_increased: Wählen Sie einen höheren Wert für max. Lesungen als das aktuelle Limit.
+        expiration_not_extended: Wählen Sie eine längere Ablaufverlängerung.
+        nothing_to_extend: Wählen Sie mindestens eine Verlängerungsoption.
+    expires:
+        field: Ablauf
+        1h: 1 Stunde
+        24h: 24 Stunden
+        7d: 7 Tage
+    reads:
+        field: Max. Lesungen
+    create:
+        title: Neuer Share
+        submit: Link erstellen
+    list:
+        title: Meine Shares
+        type: Typ
+        created: Erstellt
+        expires: Läuft ab
+        reads: Lesungen
+        status: Zustand
+        empty: Sie haben noch keine Shares erstellt.
+        retention_notice: Shares älter als %max_age% werden automatisch gelöscht.
+        summary: '%from%–%to% von %total%'
+        page: Seite %page% / %pages%
+        previous: Zurück
+        next: Weiter
+    status:
+        active: Aktiv
+        revoked: Widerrufen
+        unavailable: Nicht verfügbar
+    link:
+        label: Generierter Link (jetzt kopieren, er wird nicht erneut angezeigt)
+        copy: Kopieren
+    public:
+        title: Geteiltes Geheimnis
+        intro: Klicken Sie, um den Inhalt anzuzeigen. Jede Lesung verbraucht eine Ansicht.
+        e2e_notice: Entschlüsselung erfolgt in Ihrem Browser; vom Server wird nur die verschlüsselte Nutzlast abgerufen.
+        reveal: Geheimnis anzeigen
+        unavailable: Dieser Link ist nicht mehr verfügbar (abgelaufen, widerrufen oder aufgebraucht).
+        password_field: Entschlüsselungspasswort
+        key_required: Geben Sie den Entschlüsselungsschlüssel ein.
+        password_required: Geben Sie das Entschlüsselungspasswort ein.
+        password_from_link: Passwort aus dem Link geladen.
+        key_field: Entschlüsselungsschlüssel
+        key_help: Fügen Sie den separat erhaltenen Schlüssel ein (Kurzlink ohne ?decrypt_key=).
+        key_from_link: Schlüssel aus dem Link geladen.
+        invalid_key: Falscher Schlüssel oder falsches Passwort.

@@ -10,11 +10,11 @@ use Nowo\YopassBundle\Document\SecureShareDocument;
 /**
  * Applies configurable collection name and user document mapping to SecureShareDocument.
  */
-final class SecureShareDocumentMetadataListener
+final readonly class SecureShareDocumentMetadataListener
 {
     public function __construct(
-        private readonly string $collectionName,
-        private readonly string $userClass,
+        private string $collectionName,
+        private string $userClass,
     ) {
     }
 

@@ -16,11 +16,11 @@ use function mb_substr;
 /**
  * Records successful public share opens (consume) for the creator audit trail.
  */
-final class ShareAccessLogger
+final readonly class ShareAccessLogger
 {
     public function __construct(
-        private readonly ShareAccessLogRepositoryInterface $accessLogRepository,
-        private readonly bool $enabled,
+        private ShareAccessLogRepositoryInterface $accessLogRepository,
+        private bool $enabled,
     ) {
     }
 

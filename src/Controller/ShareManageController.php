@@ -41,7 +41,8 @@ final class ShareManageController extends AbstractController
      *     default_expiration: string,
      *     default_max_reads: int,
      *     max_reads_options: list<int>,
-     *     expiration_options: list<array{id: string, interval: string}>
+     *     expiration_options: list<array{id: string, interval: string}>,
+     *     list_page_size?: int
      * } $shareOptions
      * @param array{
      *     default_encryption: string,
@@ -115,7 +116,7 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         $this->denyUnlessFeature('create');
 
@@ -244,7 +245,7 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
-    public function revoke(string $id, Request $request): Response
+    public function revoke(string $id, Request $request): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         $this->denyUnlessFeature('revoke');
 
@@ -268,7 +269,7 @@ final class ShareManageController extends AbstractController
         return $this->redirectToRoute($this->routes['manage']['name']);
     }
 
-    public function delete(string $id, Request $request): Response
+    public function delete(string $id, Request $request): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         $this->denyUnlessFeature('revoke');
 
@@ -291,7 +292,7 @@ final class ShareManageController extends AbstractController
         return $this->redirectToRoute($this->routes['manage']['name']);
     }
 
-    public function deleteAll(Request $request): Response
+    public function deleteAll(Request $request): \Symfony\Component\HttpFoundation\RedirectResponse
     {
         $this->denyUnlessFeature('revoke');
 

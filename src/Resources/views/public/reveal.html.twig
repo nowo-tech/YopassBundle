@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ 'yopass.public.title'|trans({}, 'NowoYopassBundle') }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
     <style>body { background: #f6f8fb; }</style>
 </head>
 <body class="layout-fluid">
@@ -51,7 +51,7 @@
                         </div>
                     {% endif %}
 
-                    <button type="button" class="btn btn-primary" data-action="nowo-share-reveal#reveal">
+                    <button type="button" class="btn btn-primary" data-action="nowo-share-reveal#reveal" data-nowo-share-reveal-target="revealButton">
                         {{ 'yopass.public.reveal'|trans({}, 'NowoYopassBundle') }}
                     </button>
 

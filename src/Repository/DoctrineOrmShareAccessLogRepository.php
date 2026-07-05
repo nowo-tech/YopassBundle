@@ -11,10 +11,10 @@ use Nowo\YopassBundle\Entity\ShareAccessLog;
 /**
  * Doctrine ORM storage for share access logs.
  */
-final class DoctrineOrmShareAccessLogRepository implements ShareAccessLogRepositoryInterface
+final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessLogRepositoryInterface
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 

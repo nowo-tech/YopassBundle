@@ -14,10 +14,10 @@ use const JSON_THROW_ON_ERROR;
 /**
  * Returns encrypted payload and consumes a read — decryption happens in the browser.
  */
-final class ShareRetriever
+final readonly class ShareRetriever
 {
     public function __construct(
-        private readonly ShareRepositoryInterface $shareRepository,
+        private ShareRepositoryInterface $shareRepository,
     ) {
     }
 
@@ -26,13 +26,25 @@ final class ShareRetriever
      */
     public function consume(string $shareId): array
     {
+        $share = $this->shareRepository->consumeReadIfAvailable($shareId);
+
+        if ($share instanceof SecureShare) {
+            $ciphertext = $share->getCiphertext();
+
+            return [
+                'status'     => 'ok',
+                'ciphertext' => $ciphertext,
+                'mode'       => $this->resolveMode($ciphertext),
+            ];
+        }
+
         $share = $this->shareRepository->find($shareId);
 
         if (!$share instanceof SecureShare) {
             return ['status' => 'not_found'];
         }
 
-        if ($share->getRevokedAt() !== null) {
+        if ($share->getRevokedAt() instanceof DateTimeImmutable) {
             return ['status' => 'revoked'];
         }
 
@@ -40,22 +52,7 @@ final class ShareRetriever
             return ['status' => 'expired'];
         }
 
-        if ($share->getReadsLeft() <= 0) {
-            return ['status' => 'consumed'];
-        }
-
-        $ciphertext = $share->getCiphertext();
-        $mode       = $this->resolveMode($ciphertext);
-
-        $share->consumeRead();
-        $this->shareRepository->persist($share);
-        $this->shareRepository->flush();
-
-        return [
-            'status'     => 'ok',
-            'ciphertext' => $ciphertext,
-            'mode'       => $mode,
-        ];
+        return ['status' => 'consumed'];
     }
 
     /**
@@ -88,7 +85,7 @@ final class ShareRetriever
             'maxReads'     => $share->getMaxReads(),
             'readsLeft'    => $share->getReadsLeft(),
             'expiresAt'    => $share->getExpiresAt()->format(DateTimeImmutable::ATOM),
-            'extendable'   => $share->getRevokedAt() === null,
+            'extendable'   => !$share->getRevokedAt() instanceof DateTimeImmutable,
         ];
     }
 
@@ -99,7 +96,7 @@ final class ShareRetriever
 
     private function resolveAvailability(SecureShare $share): string
     {
-        if ($share->getRevokedAt() !== null) {
+        if ($share->getRevokedAt() instanceof DateTimeImmutable) {
             return 'revoked';
         }
 
@@ -121,7 +118,7 @@ final class ShareRetriever
             $parsed = json_decode($ciphertext, true, 512, JSON_THROW_ON_ERROR);
 
             if (($parsed['v'] ?? null) === 1 && isset($parsed['mode'])) {
-                return (string) $parsed['mode'];
+                return $parsed['mode'];
             }
         } catch (JsonException) {
             // Legacy raw box format.

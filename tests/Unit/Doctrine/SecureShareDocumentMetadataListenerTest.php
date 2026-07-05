@@ -19,7 +19,7 @@ final class SecureShareDocumentMetadataListenerTest extends TestCase
         $metadata                                 = new ClassMetadata(SecureShareDocument::class);
         $metadata->associationMappings['creator'] = [
             'fieldName'      => 'creator',
-            'targetDocument' => 'Symfony\\Component\\Security\\Core\\User\\UserInterface',
+            'targetDocument' => \Symfony\Component\Security\Core\User\UserInterface::class,
         ];
 
         $args = new LoadClassMetadataEventArgs(

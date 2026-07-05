@@ -21,6 +21,7 @@ export default class extends Controller {
         'key',
         'keyFromLinkHint',
         'downloadLink',
+        'revealButton',
     ];
 
     static values = {
@@ -40,6 +41,7 @@ export default class extends Controller {
     declare readonly keyTarget: HTMLInputElement;
     declare readonly keyFromLinkHintTarget: HTMLElement;
     declare readonly downloadLinkTarget: HTMLAnchorElement;
+    declare readonly revealButtonTarget: HTMLButtonElement;
     declare readonly consumeUrlValue: string;
     declare readonly shareIdValue: string;
     declare readonly modeValue: string;
@@ -52,6 +54,7 @@ export default class extends Controller {
     declare readonly hasKeyPanelTarget: boolean;
     declare readonly hasKeyFromLinkHintTarget: boolean;
     declare readonly hasDownloadLinkTarget: boolean;
+    declare readonly hasRevealButtonTarget: boolean;
     declare readonly hasPasswordTarget: boolean;
     declare readonly hasKeyTarget: boolean;
 
@@ -125,6 +128,8 @@ export default class extends Controller {
                     this.downloadLinkTarget.classList.remove('d-none');
                 }
             }
+
+            this.hideRevealControls();
         } catch {
             this.showError('INVALID_KEY');
         }
@@ -246,6 +251,20 @@ export default class extends Controller {
     private hideError(): void {
         if (this.hasErrorTarget) {
             this.errorTarget.classList.add('d-none');
+        }
+    }
+
+    private hideRevealControls(): void {
+        if (this.hasRevealButtonTarget) {
+            this.revealButtonTarget.classList.add('d-none');
+        }
+
+        if (this.hasPasswordPanelTarget) {
+            this.passwordPanelTarget.classList.add('d-none');
+        }
+
+        if (this.hasKeyPanelTarget) {
+            this.keyPanelTarget.classList.add('d-none');
         }
     }
 }

@@ -17,15 +17,6 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'yopass_secure_shares')]
 class SecureShare
 {
-    #[ORM\Id]
-    #[ORM\Column(type: Types::STRING, length: 36)]
-    private string $id;
-
-    /** @var object Application user entity (nowo_yopass.user_class) */
-    #[ORM\ManyToOne(targetEntity: 'Symfony\Component\Security\Core\User\UserInterface')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private object $creator;
-
     #[ORM\Column(type: Types::TEXT)]
     private string $ciphertext = '';
 
@@ -47,10 +38,13 @@ class SecureShare
     #[ORM\Column(name: 'payload_kind', length: 16, options: ['default' => 'text'])]
     private string $payloadKind = 'text';
 
-    public function __construct(string $id, object $creator)
+    public function __construct(#[ORM\Id]
+        #[ORM\Column(type: Types::STRING, length: 36)]
+        private string $id, /** @var object Application user entity (nowo_yopass.user_class) */
+        #[ORM\ManyToOne(targetEntity: \Symfony\Component\Security\Core\User\UserInterface::class)]
+        #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+        private object $creator)
     {
-        $this->id        = $id;
-        $this->creator   = $creator;
         $this->createdAt = new DateTimeImmutable();
     }
 
@@ -130,7 +124,7 @@ class SecureShare
 
     public function isAvailable(): bool
     {
-        if ($this->revokedAt !== null) {
+        if ($this->revokedAt instanceof DateTimeImmutable) {
             return false;
         }
 

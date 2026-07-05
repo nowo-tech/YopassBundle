@@ -1,0 +1,4 @@
+# config/routes/nowo_yopass.yaml
+nowo_yopass:
+    resource: .
+    type: nowo_yopass

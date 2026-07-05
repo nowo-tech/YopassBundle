@@ -16,7 +16,7 @@ final class YopassBundleIntegrationTest extends TestCase
     public function testExtensionAliasMatchesBundleConfiguration(): void
     {
         $bundle = new YopassBundle();
-        self::assertSame('nowo_yopass', $bundle->getContainerExtension()?->getAlias());
+        self::assertSame('nowo_yopass', $bundle->getContainerExtension()->getAlias());
     }
 
     public function testContainerBuildsCoreServicesFromMinimalConfig(): void

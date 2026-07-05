@@ -40,7 +40,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $configuration = new Configuration();
         $config        = $this->processConfiguration($configuration, $configs);
 
-        $storageName = rtrim($config['table_prefix'], '_') . '_secure_shares';
+        $storageName = rtrim((string) $config['table_prefix'], '_') . '_secure_shares';
         $database    = $config['database'];
         $driver      = DatabaseDriver::resolveDriver($database['driver'], $database['platform']);
         $collection  = is_string($database['collection']) && $database['collection'] !== ''
@@ -64,6 +64,16 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.sharing', $config['sharing']);
         $container->setParameter('nowo_yopass.expiration_options', $config['shares']['expiration_options']);
         $container->setParameter('nowo_yopass.access_log_enabled', $config['access_log']['enabled']);
+
+        $publicRateLimit = $config['public_rate_limit'];
+        $container->setParameter('nowo_yopass.public_rate_limit.enabled', $publicRateLimit['enabled']);
+        $container->register(\Nowo\YopassBundle\Security\PublicEndpointRateLimiter::class)
+            ->setAutowired(false)
+            ->setArguments([
+                $container->has('cache.app') ? new Reference('cache.app') : null,
+                $publicRateLimit['enabled'] ? (int) $publicRateLimit['limit'] : 0,
+                $publicRateLimit['enabled'] ? (int) $publicRateLimit['interval_seconds'] : 0,
+            ]);
 
         $this->registerShareRepository($container, $driver, $database, $storageName, $collection, $config);
 
@@ -217,7 +227,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
     ): void {
         $entityManagerName = (string) $database['entity_manager'];
         $accessLogEnabled  = (bool) $config['access_log']['enabled'];
-        $accessLogTable    = rtrim($config['table_prefix'], '_') . '_share_access_logs';
+        $accessLogTable    = rtrim((string) $config['table_prefix'], '_') . '_share_access_logs';
 
         $container->setDefinition(DoctrineOrmShareRepository::class, (new Definition(DoctrineOrmShareRepository::class))
             ->setAutowired(false)

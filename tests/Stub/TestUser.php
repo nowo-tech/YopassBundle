@@ -6,13 +6,13 @@ namespace Nowo\YopassBundle\Tests\Stub;
 
 use Symfony\Component\Security\Core\User\UserInterface;
 
-final class TestUser implements UserInterface
+final readonly class TestUser implements UserInterface
 {
     public function __construct(
-        private readonly string $id = 'user-1',
-        private readonly string $email = 'demo@example.com',
+        private string $id = 'user-1',
+        private string $email = 'demo@example.com',
         /** @var list<string> */
-        private readonly array $roles = ['ROLE_USER'],
+        private array $roles = ['ROLE_USER'],
     ) {
     }
 

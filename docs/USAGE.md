@@ -98,4 +98,4 @@ Or configure paths in `nowo_yopass.templates.*`.
 
 ## Translations
 
-Domain: `NowoYopassBundle`. Override in `translations/NowoYopassBundle.en.yaml`.
+Domain: `NowoYopassBundle`. Bundled locales: **en**, **es**, **de**, **fr**, **it**, **nl**, **pt**. Override in `translations/bundles/NowoYopassBundle/` or `translations/NowoYopassBundle.en.yaml`.

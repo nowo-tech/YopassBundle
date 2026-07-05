@@ -1,0 +1,51 @@
+# YopassBundle application configuration (Flex recipe defaults).
+# Full reference: vendor/nowo-tech/yopass-bundle/docs/CONFIGURATION.md
+
+nowo_yopass:
+    user_class: App\Entity\User
+    table_prefix: yopass_
+
+    database:
+        driver: doctrine_orm
+        platform: postgresql
+        connection: default
+        entity_manager: default
+
+    # file_handler: App\Yopass\LocalShareFileHandler  # optional file shares
+
+    # public_rate_limit:  # optional; enabled by default (requires cache.app)
+    #     enabled: true
+    #     limit: 60
+    #     interval_seconds: 60
+
+    routes:
+        manage:
+            path: /tools/yopass
+            name: nowo_yopass_index
+        create:
+            path: /tools/yopass/create
+            name: nowo_yopass_create
+        created:
+            path: /tools/yopass/{id}/created
+            name: nowo_yopass_created
+        preview:
+            path: /tools/yopass/{id}/preview
+            name: nowo_yopass_preview
+        extend:
+            path: /tools/yopass/{id}/extend
+            name: nowo_yopass_extend
+        revoke:
+            path: /tools/yopass/{id}/revoke
+            name: nowo_yopass_revoke
+        delete:
+            path: /tools/yopass/{id}/delete
+            name: nowo_yopass_delete
+        delete_all:
+            path: /tools/yopass/delete-all
+            name: nowo_yopass_delete_all
+        public_show:
+            path: /share/{id}
+            name: nowo_yopass_public_share
+        public_consume:
+            path: /share/{id}/consume
+            name: nowo_yopass_public_consume
