@@ -2,6 +2,24 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.1 (2026-07-07)
+
+Patch release. **Required if you upgraded to 1.2.0** and hit container build errors or custom repository fatals.
+
+### Fixes included
+
+- **`PublicEndpointRateLimiter`** autowiring — Symfony apps no longer fail with “Cannot autowire … `$limit`” on `cache:clear` / container compile.
+- **Custom repository decorators** — if you wrap `ShareRepositoryInterface` (e.g. offloading file ciphertext to disk/S3), implement `consumeReadIfAvailable()` by delegating to the inner repository, then hydrate references if needed (see demo `LocalOffloadingShareRepository`).
+
+### Upgrade steps
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console cache:clear
+```
+
+No schema or config changes required.
+
 ## 1.2.0 (2026-07-05)
 
 Minor release. **No breaking changes** for standard ORM/MongoDB installs. Custom repository implementations must add one new method (see below).

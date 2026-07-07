@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-07-07
+
+### Fixed
+
+- **`PublicEndpointRateLimiter`** — exclude from autowire scan so Symfony apps build the container correctly (explicit wiring via `YopassExtension`).
+- **Demo local repository** — `LocalOffloadingShareRepository` implements `consumeReadIfAvailable()` (delegate + hydrate file references).
+- **S3 scaffold** — generated `S3OffloadingShareRepository` includes `consumeReadIfAvailable()`.
+
 ## [1.2.0] - 2026-07-05
 
 ### Added
@@ -86,7 +94,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.0...v1.0.1

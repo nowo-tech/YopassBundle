@@ -37,3 +37,5 @@ For S3 instead of local disk, run `make scaffold-s3-examples`, set `YOPASS_USE_S
 ## Production
 
 Copy `YopassDemo/Local` into your app namespace, point `nowo_yopass.file_handler` and `database.repository` at the local services, and keep the storage path outside `public/`.
+
+Since **1.2.0**, custom repository decorators must also implement `consumeReadIfAvailable()` — delegate to the inner repository and hydrate offloaded ciphertext (see `LocalOffloadingShareRepository` in the demo).
