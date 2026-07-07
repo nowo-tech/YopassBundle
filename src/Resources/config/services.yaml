@@ -14,6 +14,7 @@ services:
             - '../../Repository/'   # Registered explicitly by driver (ORM, MongoDB, custom)
             - '../../Document/'
             - '../../Doctrine/'     # Metadata listeners wired in YopassExtension
+            - '../../Security/PublicEndpointRateLimiter.php'
 
     # Manage and public controllers must be public for Symfony routing.
     Nowo\YopassBundle\Controller\:

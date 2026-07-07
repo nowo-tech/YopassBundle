@@ -169,6 +169,21 @@ final class S3OffloadingShareRepository implements ShareRepositoryInterface
         return $share;
     }
 
+    public function consumeReadIfAvailable(string $id): ?SecureShare
+    {
+        $share = $this->inner->consumeReadIfAvailable($id);
+
+        if (!$share instanceof SecureShare) {
+            return null;
+        }
+
+        if ($this->store->isReference($share->getCiphertext())) {
+            $share->setCiphertext($this->store->download($share->getCiphertext()));
+        }
+
+        return $share;
+    }
+
     /** @return list<SecureShare> */
     public function findByCreator(object $creator): array
     {
