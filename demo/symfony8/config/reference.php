@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 // This file is auto-generated and is for apps only. Bundles SHOULD NOT rely on its content.
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
@@ -1351,6 +1349,11 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     },
  *     firewall?: scalar|Param|null, // Symfony firewall name where manage routes require authentication (documented for security.yaml). // Default: "main"
  *     public_firewall_paths?: list<scalar|Param|null>,
+ *     public_rate_limit?: array{ // Rate limit for public share endpoints (consume/show) per client IP.
+ *         enabled?: bool|Param, // Default: true
+ *         limit?: int|Param, // Default: 60
+ *         interval_seconds?: int|Param, // Default: 60
+ *     },
  * }
  * @psalm-type NowoTwigInspectorConfig = array{
  *     enabled_extensions?: list<scalar|Param|null>,
