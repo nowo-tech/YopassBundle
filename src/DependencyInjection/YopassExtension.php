@@ -67,12 +67,14 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
         $publicRateLimit = $config['public_rate_limit'];
         $container->setParameter('nowo_yopass.public_rate_limit.enabled', $publicRateLimit['enabled']);
+        $container->setParameter('nowo_yopass.public_rate_limit.limit', $publicRateLimit['enabled'] ? (int) $publicRateLimit['limit'] : 0);
+        $container->setParameter('nowo_yopass.public_rate_limit.interval_seconds', $publicRateLimit['enabled'] ? (int) $publicRateLimit['interval_seconds'] : 0);
         $container->register(\Nowo\YopassBundle\Security\PublicEndpointRateLimiter::class)
             ->setAutowired(false)
             ->setArguments([
                 $container->has('cache.app') ? new Reference('cache.app') : null,
-                $publicRateLimit['enabled'] ? (int) $publicRateLimit['limit'] : 0,
-                $publicRateLimit['enabled'] ? (int) $publicRateLimit['interval_seconds'] : 0,
+                '%nowo_yopass.public_rate_limit.limit%',
+                '%nowo_yopass.public_rate_limit.interval_seconds%',
             ]);
 
         $this->registerShareRepository($container, $driver, $database, $storageName, $collection, $config);
