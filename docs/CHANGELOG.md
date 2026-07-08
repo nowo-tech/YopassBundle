@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-07-08
+
+### Added
+
+- **GitHub Spec Kit** — baseline under `specs/001-baseline/` (100% `src/` inventory), `.specify/` scaffolding, Cursor Agent skills (`.cursor/skills/speckit-*`), and operator manual [`docs/SPEC-KIT.md`](SPEC-KIT.md).
+- **Spec-driven development** — expanded [`docs/SPEC-DRIVEN-DEVELOPMENT.md`](SPEC-DRIVEN-DEVELOPMENT.md) with contributor workflow and Spec Kit cross-links.
+
+### Changed
+
+- **README** — link to Spec Kit documentation.
+
 ## [1.2.1] - 2026-07-07
 
 ### Fixed
@@ -94,7 +105,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.0.1...v1.1.0

@@ -2,6 +2,16 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.2 (2026-07-08)
+
+Documentation and maintainer tooling only. **No application or configuration changes** for bundle consumers.
+
+Adds GitHub Spec Kit baseline (`specs/001-baseline/`), Cursor skills, and [`SPEC-KIT.md`](SPEC-KIT.md). Upgrade only if you want the latest docs in `vendor/nowo-tech/yopass-bundle/docs/`.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.2.1 (2026-07-07)
 
 Patch release. **Required if you upgraded to 1.2.0** and hit container build errors or custom repository fatals.
