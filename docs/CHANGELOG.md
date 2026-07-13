@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-07-13
+
+### Changed
+
+- **CI** — bump `actions/setup-node` from 4 to 6.
+- **Dev dependencies** — `doctrine/mongodb-odm` 2.16.3, `friendsofphp/php-cs-fixer` 3.95.13, `rector/rector` 2.5.6 (`composer.lock` only; no runtime bundle changes).
+
+### Fixed
+
+- **`.gitignore`** — ignore machine-specific `.cursor/sandbox.json`.
+
 ## [1.2.2] - 2026-07-08
 
 ### Added
@@ -105,7 +116,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.1.0...v1.2.0

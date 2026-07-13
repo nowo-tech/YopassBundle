@@ -2,6 +2,16 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.3 (2026-07-13)
+
+Maintenance release. **No application, configuration, or schema changes** for bundle consumers.
+
+Updates CI (`actions/setup-node` 6) and dev-only lockfile bumps. Upgrade only if you vendor docs or mirror the repo for development.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.2.2 (2026-07-08)
 
 Documentation and maintainer tooling only. **No application or configuration changes** for bundle consumers.
