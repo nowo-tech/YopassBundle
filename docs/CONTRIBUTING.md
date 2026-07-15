@@ -11,11 +11,24 @@ This project follows the [Contributor Covenant Code of Conduct](../CODE_OF_CONDU
 
 ```bash
 make up
+make setup-hooks   # REQ-GIT-001: install commit-msg hook (strips Cursor co-author trailers)
 make install
 make assets
 make test
 make test-ts
 ```
+
+### Git commit hygiene (REQ-GIT-001)
+
+Cursor and other agents may inject `Co-authored-by: Cursor <cursoragent@cursor.com>` even when the assistant omits it from the message. **Run `make setup-hooks` once per clone** so `.githooks/commit-msg` is copied to `.git/hooks/` and strips those lines on every commit.
+
+Before pushing a release commit:
+
+```bash
+make check-no-cursor-coauthor   # must pass on HEAD (run after git commit, before git push)
+```
+
+`make release-check` also runs this audit, but only **before** you commit release docs — always re-run `make check-no-cursor-coauthor` after the release commit.
 
 ## Quality checks
 

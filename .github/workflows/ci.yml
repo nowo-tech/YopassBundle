@@ -271,3 +271,18 @@ jobs:
 
       - run: composer install --prefer-dist --no-progress --no-interaction
       - run: composer audit
+
+  git-hygiene:
+    name: Git hygiene (REQ-GIT-001)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check for Cursor co-author trailers
+        run: |
+          chmod +x .scripts/check-no-cursor-coauthor.sh
+          ./.scripts/check-no-cursor-coauthor.sh HEAD

@@ -8,3 +8,5 @@ When creating git commits in this repository:
 - NEVER add `Co-authored-by: Cursor` or any Cursor agent co-author trailer to commit messages.
 - NEVER add `Co-authored-by: cursoragent@cursor.com` or similar Cursor attribution lines.
 - Commit messages must list only human authors; tooling attribution belongs in PR descriptions or release notes, not in git trailers.
+- Before committing, ensure **`make setup-hooks`** has been run in this clone so `.githooks/commit-msg` is active under `.git/hooks/`.
+- After `git commit`, run **`make check-no-cursor-coauthor`** before `git push`.

@@ -11,7 +11,7 @@ fi
 
 MATCHES="$(
   git log "${REF}" --format=%B \
-    | grep -E '^Co-authored-by: Cursor <cursoragent@cursor.com>$|^Co-authored-by:.*cursoragent@cursor\.com' \
+    | grep -E '(^Co-authored-by: Cursor <cursoragent@cursor.com>$|^Co-authored-by:.*cursoragent@cursor\.com| Co-authored-by: Cursor <cursoragent@cursor.com>| Co-authored-by:.*cursoragent@cursor\.com)' \
     || true
 )"
 

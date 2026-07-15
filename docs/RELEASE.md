@@ -16,6 +16,7 @@ Use this checklist when cutting a new version. The workflow [.github/workflows/r
 
 4. **Commit**
    - Commit `docs/CHANGELOG.md`, `docs/UPGRADING.md` and any other release-related changes.
+   - Run **`make check-no-cursor-coauthor`** on `HEAD` (REQ-GIT-001). If it fails, amend the commit message to remove Cursor `Co-authored-by` trailers, or rewrite with `.scripts/strip-cursor-coauthor-history.sh` from the parent `bundles/` repo.
    - Push to `main` (or merge your release branch).
 
 ## Tag and push

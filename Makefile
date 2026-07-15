@@ -1,5 +1,5 @@
 # Yopass Bundle - Development
-.PHONY: help up down build shell install test test-coverage coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples
+.PHONY: help up down build shell install test test-coverage coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor
 
 COMPOSE_FILE ?= docker-compose.yml
 COMPOSE     ?= /usr/bin/docker compose -f $(COMPOSE_FILE)
@@ -25,6 +25,7 @@ help:
 	@echo "  phpstan         Static analysis"
 	@echo "  qa              cs-check + test"
 	@echo "  release-check   Pre-release checks"
+	@echo "  setup-hooks     Install git hooks (REQ-GIT-001; run once per clone)"
 	@echo "  composer-sync   Validate and align composer.lock"
 	@echo "  clean           Remove vendor and cache"
 	@echo "  update / validate  Composer"
@@ -41,6 +42,7 @@ up:
 	@sleep 3
 	$(COMPOSE) exec -T $(SERVICE_PHP) composer install --no-interaction
 	$(COMPOSE) exec -T -e CI=true $(SERVICE_PHP) pnpm install
+	@$(MAKE) setup-hooks
 	@echo "Container ready."
 
 down:
@@ -140,3 +142,15 @@ include $(BUNDLE_ROOT)/../.scripts/Makefile.update-deps.mk
 check-no-cursor-coauthor:
 	@chmod +x .scripts/check-no-cursor-coauthor.sh
 	@./.scripts/check-no-cursor-coauthor.sh HEAD
+
+# REQ-MAKE-006 / REQ-GIT-001 — install versioned hooks into .git/hooks (not automatic from .githooks/)
+setup-hooks:
+	@mkdir -p .git/hooks
+	@if [ -f .githooks/commit-msg ]; then \
+		cp -f .githooks/commit-msg .git/hooks/commit-msg; \
+		chmod +x .git/hooks/commit-msg; \
+		echo "commit-msg hook installed (.git/hooks/commit-msg)"; \
+	else \
+		echo "ERROR: .githooks/commit-msg missing" >&2; \
+		exit 1; \
+	fi
