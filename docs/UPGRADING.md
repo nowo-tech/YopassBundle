@@ -2,6 +2,16 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.5 (2026-07-15)
+
+Maintainer tooling only. **No application, configuration, or schema changes** for bundle consumers.
+
+Hardens REQ-GIT-001 (git hooks, CI audit, contributor docs) and bumps dev-only lockfile dependencies. If you cloned the repo for development, run `make setup-hooks` once per clone.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.2.4 (2026-07-15)
 
 Documentation and maintainer tooling only. **No application, configuration, or schema changes** for bundle consumers.

@@ -34,6 +34,18 @@ git push origin vX.Y.Z
 - After the push, GitHub Actions creates the release and appends the changelog entry for that version to the release body.
 - Packagist will pick up the new tag automatically.
 
+### Example for v1.2.5
+
+After running `make release-check` and committing all changes:
+
+```bash
+git checkout main
+git pull origin main
+make check-no-cursor-coauthor
+git tag -a v1.2.5 -m "Release v1.2.5"
+git push origin v1.2.5
+```
+
 ### Example for v1.2.4
 
 After running `make release-check` and committing all changes:

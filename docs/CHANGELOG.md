@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.5] - 2026-07-15
+
+### Added
+
+- **REQ-GIT-001 hardening** — `make setup-hooks` (installs `commit-msg` hook; runs on `make up`); CI job `git-hygiene` on every push/PR; post-commit audit documented in CONTRIBUTING and RELEASE.
+
+### Changed
+
+- **Git hooks / audit** — `commit-msg` and `check-no-cursor-coauthor` also strip/detect same-line Cursor co-author trailers.
+- **Dev dependencies** — `friendsofphp/php-cs-fixer` 3.95.14, `rector/rector` 2.5.7 (`composer.lock` only).
+
+### Fixed
+
+- **Git history** — removed accidental `Co-authored-by: Cursor` trailer from v1.2.4 release commit (history rewrite).
+
 ## [1.2.4] - 2026-07-15
 
 ### Added
@@ -128,7 +143,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.4...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.5...HEAD
+[1.2.5]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.1...v1.2.2
