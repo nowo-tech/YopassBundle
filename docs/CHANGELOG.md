@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.4] - 2026-07-15
+
+### Added
+
+- **Code of Conduct** — Contributor Covenant (`CODE_OF_CONDUCT.md`); linked from README and CONTRIBUTING.
+- **Git hygiene** — `commit-msg` hook and `check-no-cursor-coauthor` script to block Cursor agent `Co-authored-by` trailers; integrated into `make release-check`. Cursor rule `.cursor/rules/01-git-commits.mdc`.
+
+### Changed
+
+- **Frontend dev dependencies** — TypeScript 7.0.2, Vite 8.1.4 (`package.json` / lockfile).
+- **Code style** — PHP CS Fixer pass on bundle sources.
+
 ## [1.2.3] - 2026-07-13
 
 ### Changed
@@ -116,7 +128,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.3...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.4...HEAD
+[1.2.4]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.0...v1.2.1

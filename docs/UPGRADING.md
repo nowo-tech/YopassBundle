@@ -2,6 +2,16 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.4 (2026-07-15)
+
+Documentation and maintainer tooling only. **No application, configuration, or schema changes** for bundle consumers.
+
+Adds Code of Conduct, git commit hygiene checks, and bumps frontend dev dependencies (TypeScript, Vite). Upgrade only if you want updated docs or mirror the repo for development.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.2.3 (2026-07-13)
 
 Maintenance release. **No application, configuration, or schema changes** for bundle consumers.
