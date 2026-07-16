@@ -1,5 +1,5 @@
 # Yopass Bundle - Development
-.PHONY: help up down build shell install test test-coverage coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor
+.PHONY: help up down build shell install test test-coverage coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor strip-cursor-coauthor-from-history
 
 COMPOSE_FILE ?= docker-compose.yml
 COMPOSE     ?= /usr/bin/docker compose -f $(COMPOSE_FILE)
@@ -154,3 +154,7 @@ setup-hooks:
 		echo "ERROR: .githooks/commit-msg missing" >&2; \
 		exit 1; \
 	fi
+
+strip-cursor-coauthor-from-history:
+	@chmod +x .scripts/strip-cursor-coauthor-from-history.sh
+	@./.scripts/strip-cursor-coauthor-from-history.sh main

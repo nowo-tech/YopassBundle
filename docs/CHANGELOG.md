@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-07-16
+
+### Added
+
+- **`docs/GITHUB_CI.md`** — GitHub Actions CI requirements for REQ-GIT-001 (verify, rewrite history, job example).
+- **`make strip-cursor-coauthor-from-history`** — local history rewrite via `.scripts/strip-cursor-coauthor-from-history.sh` when trailers were already pushed.
+
+### Changed
+
+- **`check-no-cursor-coauthor`** — clearer errors (bundle-local `.git` guard, offending commit list).
+- **CONTRIBUTING / README** — link to GITHUB_CI and history-rewrite guidance.
+- **Dev dependencies** — `friendsofphp/php-cs-fixer` 3.95.15 (`composer.lock` only).
+
+### Fixed
+
+- **Demo** — `demo/symfony8/config/reference.php` sync (strict types / CS Fixer).
+
 ## [1.2.5] - 2026-07-15
 
 ### Added
@@ -143,7 +160,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.5...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...HEAD
+[1.2.6]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.5...v1.2.6
 [1.2.5]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.2...v1.2.3

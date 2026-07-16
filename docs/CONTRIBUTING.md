@@ -30,6 +30,8 @@ make check-no-cursor-coauthor   # must pass on HEAD (run after git commit, befor
 
 `make release-check` also runs this audit, but only **before** you commit release docs — always re-run `make check-no-cursor-coauthor` after the release commit.
 
+If CI fails because trailers are already on the remote, see [GITHUB_CI.md](GITHUB_CI.md) (REQ-GIT-001) and run `make strip-cursor-coauthor-from-history` before `git push --force-with-lease`.
+
 ## Quality checks
 
 | Command | Scope |

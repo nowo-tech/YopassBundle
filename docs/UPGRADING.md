@@ -2,6 +2,16 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.6 (2026-07-16)
+
+Maintainer tooling and documentation only. **No application, configuration, or schema changes** for bundle consumers.
+
+Adds [`GITHUB_CI.md`](GITHUB_CI.md) and `make strip-cursor-coauthor-from-history` for REQ-GIT-001 cleanup. Upgrade only if you mirror the repo for development or want the latest docs.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.2.5 (2026-07-15)
 
 Maintainer tooling only. **No application, configuration, or schema changes** for bundle consumers.

@@ -16,7 +16,7 @@ Use this checklist when cutting a new version. The workflow [.github/workflows/r
 
 4. **Commit**
    - Commit `docs/CHANGELOG.md`, `docs/UPGRADING.md` and any other release-related changes.
-   - Run **`make check-no-cursor-coauthor`** on `HEAD` (REQ-GIT-001). If it fails, amend the commit message to remove Cursor `Co-authored-by` trailers, or rewrite with `.scripts/strip-cursor-coauthor-history.sh` from the parent `bundles/` repo.
+   - Run **`make check-no-cursor-coauthor`** on `HEAD` (REQ-GIT-001). If it fails, amend the commit message to remove Cursor `Co-authored-by` trailers, or rewrite with `make strip-cursor-coauthor-from-history` (see [GITHUB_CI.md](GITHUB_CI.md)).
    - Push to `main` (or merge your release branch).
 
 ## Tag and push
@@ -33,6 +33,18 @@ git push origin vX.Y.Z
 - Tag format must be **`vX.Y.Z`** (e.g. `v1.0.0`) so the workflow and Packagist recognize it.
 - After the push, GitHub Actions creates the release and appends the changelog entry for that version to the release body.
 - Packagist will pick up the new tag automatically.
+
+### Example for v1.2.6
+
+After running `make release-check` and committing all changes:
+
+```bash
+git checkout main
+git pull origin main
+make check-no-cursor-coauthor
+git tag -a v1.2.6 -m "Release v1.2.6"
+git push origin v1.2.6
+```
 
 ### Example for v1.2.5
 
