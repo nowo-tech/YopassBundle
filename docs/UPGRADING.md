@@ -2,6 +2,16 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.8 (2026-07-22)
+
+Maintenance release. **No application, configuration, or schema changes** for bundle consumers.
+
+Applies the PHP-CS-Fixer `import_symbols` pass enabled in 1.2.7 and bumps Doctrine lockfile entries. No action required beyond a normal Composer update if you vendor the package.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.2.7 (2026-07-22)
 
 Maintainer / demo tooling only. **No application, configuration, or schema changes** for bundle consumers.
