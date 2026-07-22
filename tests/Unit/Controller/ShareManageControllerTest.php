@@ -7,12 +7,14 @@ namespace Nowo\YopassBundle\Tests\Unit\Controller;
 use DateTimeImmutable;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
+use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Service\ShareRetriever;
@@ -25,6 +27,7 @@ use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -196,7 +199,7 @@ final class ShareManageControllerTest extends TestCase
         $shareRepository->method('persist');
         $shareRepository->method('flush');
 
-        $fileHandler = $this->createMock(\Nowo\YopassBundle\Service\ShareFileHandlerInterface::class);
+        $fileHandler = $this->createMock(ShareFileHandlerInterface::class);
         $fileHandler->method('getMaxFileBytes')->willReturn(512 * 1024);
 
         $controller = $this->controller(
@@ -267,7 +270,7 @@ final class ShareManageControllerTest extends TestCase
         $controller = $this->controller(shareRepository: $shareRepository);
         ControllerContainerBuilder::bind($controller, $other);
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class);
+        $this->expectException(NotFoundHttpException::class);
         $controller->preview($share->getId());
     }
 
@@ -337,7 +340,7 @@ final class ShareManageControllerTest extends TestCase
         $container  = ControllerContainerBuilder::bind($controller, $other);
         $token      = ControllerContainerBuilder::csrfToken($container, 'revoke-share-' . $share->getId());
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class);
+        $this->expectException(NotFoundHttpException::class);
         $controller->revoke($share->getId(), Request::create('/', 'POST', ['_token' => $token]));
     }
 
@@ -379,7 +382,7 @@ final class ShareManageControllerTest extends TestCase
         $container  = ControllerContainerBuilder::bind($controller, $other);
         $token      = ControllerContainerBuilder::csrfToken($container, 'delete-share-' . $share->getId());
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class);
+        $this->expectException(NotFoundHttpException::class);
         $controller->delete($share->getId(), Request::create('/', 'POST', ['_token' => $token]));
     }
 
@@ -507,7 +510,7 @@ final class ShareManageControllerTest extends TestCase
         $container  = ControllerContainerBuilder::bind($controller, new TestUser());
         $token      = ControllerContainerBuilder::csrfToken($container, 'revoke-share-missing');
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class);
+        $this->expectException(NotFoundHttpException::class);
         $controller->revoke('missing', Request::create('/', 'POST', ['_token' => $token]));
     }
 
@@ -532,7 +535,7 @@ final class ShareManageControllerTest extends TestCase
         ?ShareRetentionPurger $retentionPurger = null,
         int $maxCiphertextBytes = 700_000,
         bool $fileSharesEnabled = false,
-        ?\Nowo\YopassBundle\Service\ShareFileHandlerInterface $fileHandler = null,
+        ?ShareFileHandlerInterface $fileHandler = null,
     ): ShareManageController {
         $translator = $this->createMock(TranslatorInterface::class);
         $translator->method('trans')->willReturnArgument(0);
@@ -545,7 +548,7 @@ final class ShareManageControllerTest extends TestCase
         $shareRetriever ??= new ShareRetriever($shareRepository);
         $shareExtender ??= new ShareExtender($shareRepository, DefaultShareOptions::get());
         $accessLogger ??= new ShareAccessLogger(
-            $this->createMock(\Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface::class),
+            $this->createMock(ShareAccessLogRepositoryInterface::class),
             false,
         );
         $retentionPurger ??= new ShareRetentionPurger($shareRepository, DefaultShareOptions::get());

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\DependencyInjection;
 
+use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
@@ -14,6 +15,7 @@ use Nowo\YopassBundle\Repository\NullShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
+use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
@@ -69,7 +71,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.public_rate_limit.enabled', $publicRateLimit['enabled']);
         $container->setParameter('nowo_yopass.public_rate_limit.limit', $publicRateLimit['enabled'] ? (int) $publicRateLimit['limit'] : 0);
         $container->setParameter('nowo_yopass.public_rate_limit.interval_seconds', $publicRateLimit['enabled'] ? (int) $publicRateLimit['interval_seconds'] : 0);
-        $container->register(\Nowo\YopassBundle\Security\PublicEndpointRateLimiter::class)
+        $container->register(PublicEndpointRateLimiter::class)
             ->setAutowired(false)
             ->setArguments([
                 $container->has('cache.app') ? new Reference('cache.app') : null,
@@ -105,7 +107,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.file_shares_enabled', $enabled);
         $container->setParameter('nowo_yopass.file_handler', $enabled ? $fileHandlerId : null);
 
-        $container->getDefinition(\Nowo\YopassBundle\Controller\ShareManageController::class)
+        $container->getDefinition(ShareManageController::class)
             ->setArgument('$fileSharesEnabled', $enabled);
     }
 

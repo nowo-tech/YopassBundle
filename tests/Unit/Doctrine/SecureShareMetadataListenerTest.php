@@ -11,6 +11,7 @@ use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
 use PHPUnit\Framework\TestCase;
 use stdClass;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 final class SecureShareMetadataListenerTest extends TestCase
 {
@@ -20,7 +21,7 @@ final class SecureShareMetadataListenerTest extends TestCase
         $metadata->table                          = ['name' => 'yopass_secure_shares'];
         $metadata->associationMappings['creator'] = [
             'fieldName'    => 'creator',
-            'targetEntity' => \Symfony\Component\Security\Core\User\UserInterface::class,
+            'targetEntity' => UserInterface::class,
         ];
 
         $args = $this->createMock(LoadClassMetadataEventArgs::class);

@@ -11,6 +11,7 @@ use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use PHPUnit\Framework\TestCase;
 use stdClass;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 final class SecureShareDocumentMetadataListenerTest extends TestCase
 {
@@ -19,7 +20,7 @@ final class SecureShareDocumentMetadataListenerTest extends TestCase
         $metadata                                 = new ClassMetadata(SecureShareDocument::class);
         $metadata->associationMappings['creator'] = [
             'fieldName'      => 'creator',
-            'targetDocument' => \Symfony\Component\Security\Core\User\UserInterface::class,
+            'targetDocument' => UserInterface::class,
         ];
 
         $args = new LoadClassMetadataEventArgs(

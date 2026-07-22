@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Entity;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * Ephemeral encrypted secret (Yopass-style share).
@@ -41,7 +42,7 @@ class SecureShare
     public function __construct(#[ORM\Id]
         #[ORM\Column(type: Types::STRING, length: 36)]
         private string $id, /** @var object Application user entity (nowo_yopass.user_class) */
-        #[ORM\ManyToOne(targetEntity: \Symfony\Component\Security\Core\User\UserInterface::class)]
+        #[ORM\ManyToOne(targetEntity: UserInterface::class)]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
         private object $creator)
     {

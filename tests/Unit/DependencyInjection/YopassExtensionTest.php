@@ -4,19 +4,28 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Tests\Unit\DependencyInjection;
 
+use Doctrine\Bundle\DoctrineBundle\DependencyInjection\DoctrineExtension;
+use Doctrine\Bundle\MongoDBBundle\DependencyInjection\DoctrineMongoDBExtension;
+use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
+use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Repository\NullShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
+use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use PHPUnit\Framework\TestCase;
 use stdClass;
+use Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
 
 final class YopassExtensionTest extends TestCase
 {
@@ -64,8 +73,8 @@ final class YopassExtensionTest extends TestCase
             DoctrineOrmShareRepository::class,
             (string) $this->container->getAlias(ShareRepositoryInterface::class),
         );
-        self::assertTrue($this->container->hasDefinition(\Nowo\YopassBundle\Controller\ShareManageController::class));
-        self::assertTrue($this->container->hasDefinition(\Nowo\YopassBundle\Security\PublicEndpointRateLimiter::class));
+        self::assertTrue($this->container->hasDefinition(ShareManageController::class));
+        self::assertTrue($this->container->hasDefinition(PublicEndpointRateLimiter::class));
     }
 
     public function testLoadUsesCustomTablePrefix(): void
@@ -80,7 +89,7 @@ final class YopassExtensionTest extends TestCase
 
     public function testLoadRegistersFileHandlerWhenConfigured(): void
     {
-        $this->container->setDefinition('app.yopass.file_handler', new \Symfony\Component\DependencyInjection\Definition(stdClass::class));
+        $this->container->setDefinition('app.yopass.file_handler', new Definition(stdClass::class));
 
         $this->extension->load([[
             'user_class'   => 'App\\Entity\\User',
@@ -95,13 +104,13 @@ final class YopassExtensionTest extends TestCase
 
         self::assertSame(
             'app.yopass.file_handler',
-            (string) $this->container->getAlias(\Nowo\YopassBundle\Service\ShareFileHandlerInterface::class),
+            (string) $this->container->getAlias(ShareFileHandlerInterface::class),
         );
     }
 
     public function testLoadUsesCustomAccessCheckerService(): void
     {
-        $this->container->setDefinition('app.yopass.access', new \Symfony\Component\DependencyInjection\Definition(stdClass::class));
+        $this->container->setDefinition('app.yopass.access', new Definition(stdClass::class));
 
         $this->extension->load([[
             'user_class' => 'App\\Entity\\User',
@@ -114,7 +123,7 @@ final class YopassExtensionTest extends TestCase
 
     public function testLoadUsesCustomRepositoryForCustomDriver(): void
     {
-        $this->container->setDefinition('app.yopass.repository', new \Symfony\Component\DependencyInjection\Definition(stdClass::class));
+        $this->container->setDefinition('app.yopass.repository', new Definition(stdClass::class));
 
         $this->extension->load([[
             'user_class' => 'App\\Entity\\User',
@@ -130,7 +139,7 @@ final class YopassExtensionTest extends TestCase
 
     public function testLoadFailsWhenCustomDriverHasNoRepository(): void
     {
-        $this->expectException(\Symfony\Component\Config\Definition\Exception\InvalidConfigurationException::class);
+        $this->expectException(InvalidConfigurationException::class);
         $this->extension->load([[
             'user_class' => 'App\\Entity\\User',
             'database'   => ['driver' => 'custom'],
@@ -153,8 +162,8 @@ final class YopassExtensionTest extends TestCase
 
     public function testPrependRegistersMongoMappingsWhenPlatformIsMongo(): void
     {
-        $this->container->registerExtension(new \Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension());
-        $this->container->registerExtension(new \Doctrine\Bundle\MongoDBBundle\DependencyInjection\DoctrineMongoDBExtension());
+        $this->container->registerExtension(new FrameworkExtension());
+        $this->container->registerExtension(new DoctrineMongoDBExtension());
         $this->container->registerExtension($this->extension);
         $this->container->loadFromExtension('nowo_yopass', [
             'user_class' => 'App\\Entity\\User',
@@ -182,9 +191,9 @@ final class YopassExtensionTest extends TestCase
             ],
         ]], $this->container);
 
-        self::assertTrue($this->container->hasDefinition(\Nowo\YopassBundle\Repository\DoctrineMongoShareRepository::class));
+        self::assertTrue($this->container->hasDefinition(DoctrineMongoShareRepository::class));
         self::assertSame(
-            \Nowo\YopassBundle\Repository\DoctrineMongoShareRepository::class,
+            DoctrineMongoShareRepository::class,
             (string) $this->container->getAlias(ShareRepositoryInterface::class),
         );
         self::assertFalse($this->container->hasDefinition(SecureShareMetadataListener::class));
@@ -212,8 +221,8 @@ final class YopassExtensionTest extends TestCase
 
     public function testPrependDefaultsToOrmWithoutBundleConfig(): void
     {
-        $this->container->registerExtension(new \Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension());
-        $this->container->registerExtension(new \Doctrine\Bundle\DoctrineBundle\DependencyInjection\DoctrineExtension());
+        $this->container->registerExtension(new FrameworkExtension());
+        $this->container->registerExtension(new DoctrineExtension());
         $this->container->registerExtension($this->extension);
 
         $this->extension->prepend($this->container);
@@ -225,8 +234,8 @@ final class YopassExtensionTest extends TestCase
 
     public function testPrependRegistersFrameworkAssetsAndDoctrineMappings(): void
     {
-        $this->container->registerExtension(new \Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension());
-        $this->container->registerExtension(new \Doctrine\Bundle\DoctrineBundle\DependencyInjection\DoctrineExtension());
+        $this->container->registerExtension(new FrameworkExtension());
+        $this->container->registerExtension(new DoctrineExtension());
         $this->extension->prepend($this->container);
 
         $configs = $this->container->getExtensionConfig('framework');

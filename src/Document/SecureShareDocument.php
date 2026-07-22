@@ -6,9 +6,11 @@ namespace Nowo\YopassBundle\Document;
 
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
+use Nowo\YopassBundle\Entity\SecureShare;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * MongoDB document mapped to the same logical schema as {@see \Nowo\YopassBundle\Entity\SecureShare}.
+ * MongoDB document mapped to the same logical schema as {@see SecureShare}.
  */
 #[ODM\Document]
 class SecureShareDocument
@@ -36,7 +38,7 @@ class SecureShareDocument
 
     public function __construct(#[ODM\Id(type: 'string', strategy: 'NONE')]
         private string $id, /** @var object Application user entity (nowo_yopass.user_class) */
-        #[ODM\ReferenceOne(storeAs: 'id', targetDocument: \Symfony\Component\Security\Core\User\UserInterface::class)]
+        #[ODM\ReferenceOne(storeAs: 'id', targetDocument: UserInterface::class)]
         private object $creator)
     {
         $this->createdAt = new DateTimeImmutable();

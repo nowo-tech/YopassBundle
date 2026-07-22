@@ -24,6 +24,7 @@ use Nowo\YopassBundle\YopassBundle;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -116,7 +117,7 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
-    public function create(Request $request): \Symfony\Component\HttpFoundation\RedirectResponse
+    public function create(Request $request): RedirectResponse
     {
         $this->denyUnlessFeature('create');
 
@@ -245,7 +246,7 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
-    public function revoke(string $id, Request $request): \Symfony\Component\HttpFoundation\RedirectResponse
+    public function revoke(string $id, Request $request): RedirectResponse
     {
         $this->denyUnlessFeature('revoke');
 
@@ -269,7 +270,7 @@ final class ShareManageController extends AbstractController
         return $this->redirectToRoute($this->routes['manage']['name']);
     }
 
-    public function delete(string $id, Request $request): \Symfony\Component\HttpFoundation\RedirectResponse
+    public function delete(string $id, Request $request): RedirectResponse
     {
         $this->denyUnlessFeature('revoke');
 
@@ -292,7 +293,7 @@ final class ShareManageController extends AbstractController
         return $this->redirectToRoute($this->routes['manage']['name']);
     }
 
-    public function deleteAll(Request $request): \Symfony\Component\HttpFoundation\RedirectResponse
+    public function deleteAll(Request $request): RedirectResponse
     {
         $this->denyUnlessFeature('revoke');
 

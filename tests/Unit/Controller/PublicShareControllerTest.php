@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Tests\Unit\Controller;
 use DateTimeImmutable;
 use Nowo\YopassBundle\Controller\PublicShareController;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
@@ -16,6 +17,7 @@ use Nowo\YopassBundle\Tests\Support\ControllerContainerBuilder;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class PublicShareControllerTest extends TestCase
 {
@@ -90,7 +92,7 @@ final class PublicShareControllerTest extends TestCase
         );
         ControllerContainerBuilder::bind($controller);
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\NotFoundHttpException::class);
+        $this->expectException(NotFoundHttpException::class);
         $controller->show('missing', Request::create('/share/missing'));
     }
 
@@ -146,7 +148,7 @@ final class PublicShareControllerTest extends TestCase
 
     private function accessLogger(): ShareAccessLogger
     {
-        $repository = $this->createMock(\Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface::class);
+        $repository = $this->createMock(ShareAccessLogRepositoryInterface::class);
 
         return new ShareAccessLogger($repository, false);
     }
