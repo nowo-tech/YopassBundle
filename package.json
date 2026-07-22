@@ -16,7 +16,7 @@
         "@hotwired/stimulus": "^3.2.2",
         "@vitest/coverage-v8": "^3.0.0",
         "typescript": "^7.0.2",
-        "vite": "^8.1.4",
+        "vite": "^8.1.5",
         "vitest": "^3.0.0"
     }
 }
