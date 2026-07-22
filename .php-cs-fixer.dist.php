@@ -97,4 +97,6 @@ return (new Config())
         (new Finder())
             ->in(__DIR__)
             ->exclude(['vendor', 'var', 'coverage', '.phpunit.cache'])
+            // Symfony dumps this without declare(strict_types=1); regenerating would undo CS fixes.
+            ->notPath('demo/symfony8/config/reference.php')
     );
