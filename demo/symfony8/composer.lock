@@ -1300,7 +1300,7 @@
             "dist": {
                 "type": "path",
                 "url": "/var/yopass-bundle",
-                "reference": "1303d834f53e21499063886a489debf9650e8ab7"
+                "reference": "91ee89598a0aecdef47a73e572b1c6a7c0bf3975"
             },
             "require": {
                 "doctrine/doctrine-bundle": "^2.10 || ^3.0",
