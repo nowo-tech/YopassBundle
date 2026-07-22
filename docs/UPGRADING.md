@@ -2,6 +2,16 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.2.7 (2026-07-22)
+
+Maintainer / demo tooling only. **No application, configuration, or schema changes** for bundle consumers.
+
+Expands REQ-GIT-001 docs/scripts, bumps Vite and `setup-node`, and adds demo `FRANKENPHP_MODE` (`classic`|`worker`). If you run the Symfony 8 demo, copy the new `FRANKENPHP_MODE` key from `.env.example` into `.env` and recreate the container after changing it.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.2.6 (2026-07-16)
 
 Maintainer tooling and documentation only. **No application, configuration, or schema changes** for bundle consumers.

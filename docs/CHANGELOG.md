@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-07-22
+
+### Added
+
+- **Demo `FRANKENPHP_MODE`** — switch FrankenPHP `classic` vs `worker` via `.env` / Compose (default `worker`); documented in [`DEMO-FRANKENPHP.md`](DEMO-FRANKENPHP.md).
+- **`docs/GITHUB_CI.md`** — expanded REQ-GIT-001 operator manual (adoption checklist, pitfalls, multi-bundle tools, acceptance criteria).
+
+### Changed
+
+- **REQ-GIT-001 scripts** — `check-no-cursor-coauthor` uses `--no-replace-objects`; strip script requires a clean working tree before rewrite.
+- **CI** — `actions/setup-node` 6 → 7.
+- **Frontend** — Vite 8.1.4 → 8.1.5.
+- **PHP-CS-Fixer** — `fully_qualified_strict_types` with `import_symbols: true`.
+
+### Fixed
+
+- **Demo** — `reference.php` / path lock sync for local path repository.
+
 ## [1.2.6] - 2026-07-16
 
 ### Added
@@ -160,7 +178,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...HEAD
+[1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
 [1.2.6]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.5...v1.2.6
 [1.2.5]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.3...v1.2.4
