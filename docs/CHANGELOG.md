@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-07-27
+
+### Added
+
+- **REQ-DI-001** — `Psr\Clock\ClockInterface` (via `symfony/clock`) on share retrieve/extend/purge services and Doctrine share repositories; optional constructor arg defaults to `Symfony\Component\Clock\Clock` for manual wiring in tests.
+- **REQ-REL-003 / REQ-MAKE-002** — `make check-open-prs` (`.scripts/check-open-prs.sh`) wired into `release-check`.
+- **REQ-SF-005** — `SYMFONY_DEPRECATIONS_HELPER=max[direct]=0` in `phpunit.xml.dist`.
+- **REQ-DOCS-018** — GitHub About: plain-text description, website, and topics (`php`, `symfony`, `symfony-bundle`, …).
+
+### Changed
+
+- **REQ-SEC-004** — security docs reflect public rate limits and observability posture for re-audit (see [SECURITY.md](SECURITY.md)).
+
 ## [1.3.0] - 2026-07-27
 
 ### Added

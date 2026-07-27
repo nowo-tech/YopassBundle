@@ -6,6 +6,8 @@ namespace Nowo\YopassBundle\Service;
 
 use DateTimeImmutable;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\Clock;
 
 /**
  * Deletes shares older than the configured retention age.
@@ -16,6 +18,8 @@ final readonly class ShareRetentionPurger
 
     private string $maxAge;
 
+    private ClockInterface $clock;
+
     /**
      * @param array{
      *     retention?: array{enabled?: bool, max_age?: string}
@@ -24,10 +28,12 @@ final readonly class ShareRetentionPurger
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         array $shareOptions,
+        ?ClockInterface $clock = null,
     ) {
         $retention     = $shareOptions['retention'] ?? [];
         $this->enabled = (bool) ($retention['enabled'] ?? false);
         $this->maxAge  = (string) ($retention['max_age'] ?? '');
+        $this->clock   = $clock ?? new Clock();
     }
 
     public function isEnabled(): bool
@@ -75,8 +81,13 @@ final readonly class ShareRetentionPurger
             return null;
         }
 
-        $cutoff = (new DateTimeImmutable())->modify('-' . $this->maxAge);
+        $cutoff = $this->now()->modify('-' . $this->maxAge);
 
         return $cutoff === false ? null : $cutoff;
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return $this->clock->now();
     }
 }

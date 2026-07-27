@@ -8,6 +8,8 @@ use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\Clock;
 
 use function is_int;
 
@@ -16,9 +18,13 @@ use function is_int;
  */
 final readonly class DoctrineMongoShareRepository implements ShareRepositoryInterface
 {
+    private ClockInterface $clock;
+
     public function __construct(
         private DocumentManager $documentManager,
+        ?ClockInterface $clock = null,
     ) {
+        $this->clock = $clock ?? new Clock();
     }
 
     public function find(string $id): ?SecureShare
@@ -30,7 +36,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
 
     public function consumeReadIfAvailable(string $id): ?SecureShare
     {
-        $now = new DateTimeImmutable();
+        $now = $this->now();
 
         /** @var SecureShareDocument|null $document */
         $document = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
@@ -201,5 +207,10 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         }
 
         return $count;
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return $this->clock->now();
     }
 }

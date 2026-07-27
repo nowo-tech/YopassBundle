@@ -8,6 +8,8 @@ use DateTimeImmutable;
 use JsonException;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\Clock;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -16,9 +18,13 @@ use const JSON_THROW_ON_ERROR;
  */
 final readonly class ShareRetriever
 {
+    private ClockInterface $clock;
+
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
+        ?ClockInterface $clock = null,
     ) {
+        $this->clock = $clock ?? new Clock();
     }
 
     /**
@@ -48,7 +54,7 @@ final readonly class ShareRetriever
             return ['status' => 'revoked'];
         }
 
-        if ($share->getExpiresAt() <= new DateTimeImmutable()) {
+        if ($share->getExpiresAt() <= $this->now()) {
             return ['status' => 'expired'];
         }
 
@@ -100,7 +106,7 @@ final readonly class ShareRetriever
             return 'revoked';
         }
 
-        if ($share->getExpiresAt() <= new DateTimeImmutable()) {
+        if ($share->getExpiresAt() <= $this->now()) {
             return 'expired';
         }
 
@@ -125,5 +131,10 @@ final readonly class ShareRetriever
         }
 
         return 'key';
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return $this->clock->now();
     }
 }

@@ -2,6 +2,19 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.3.1 (2026-07-27)
+
+Maintainer / compliance release. **No configuration or schema changes** for typical consumers.
+
+- Services and Doctrine share repositories accept an optional `Psr\Clock\ClockInterface` (autowired in Symfony apps via `symfony/clock`). Manual `new ShareRetriever($repo)` / similar call sites keep working (default wall clock).
+- Doctrine entities / documents still stamp `createdAt` / `revokedAt` with `new DateTimeImmutable()` at construction (entity lifecycle; not container services).
+- `make release-check` now runs `check-open-prs` (requires authenticated `gh`).
+- PHPUnit fails on **direct** Symfony deprecations from this package (`max[direct]=0`).
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.3.0 (2026-07-27)
 
 ### Web UI contract (REQ-UI-001) and security defaults (REQ-UI-002)

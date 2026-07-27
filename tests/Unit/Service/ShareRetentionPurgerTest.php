@@ -9,6 +9,7 @@ use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 
 final class ShareRetentionPurgerTest extends TestCase
 {
@@ -28,11 +29,12 @@ final class ShareRetentionPurgerTest extends TestCase
         $repository = $this->createMock(ShareRepositoryInterface::class);
         $repository->expects(self::once())
             ->method('removeByCreatorOlderThan')
-            ->with($user, self::callback(static fn (DateTimeImmutable $cutoff): bool => $cutoff < new DateTimeImmutable('-29 days')))
+            ->with($user, self::callback(static fn (DateTimeImmutable $cutoff): bool => $cutoff->format('Y-m-d') === '2026-06-27'))
             ->willReturn(3);
         $repository->expects(self::once())->method('flush');
 
-        $removed = (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '1 month']]))->purgeForCreator($user);
+        $clock   = new MockClock('2026-07-27 12:00:00');
+        $removed = (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '1 month']], $clock))->purgeForCreator($user);
 
         self::assertSame(3, $removed);
     }

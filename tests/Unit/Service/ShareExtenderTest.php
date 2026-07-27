@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\Service;
 
 use DateTimeImmutable;
+use DateTimeZone;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
@@ -12,21 +13,38 @@ use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 
 final class ShareExtenderTest extends TestCase
 {
     public function testExtendExpirationFromCurrentExpiry(): void
     {
         $share = $this->share();
-        $share->setExpiresAt(new DateTimeImmutable('+1 hour'));
+        $share->setExpiresAt(new DateTimeImmutable('2026-07-27 13:00:00', new DateTimeZone('UTC')));
 
         $repository = $this->repositoryWithShare($share);
         $repository->expects(self::once())->method('persist')->with($share);
         $repository->expects(self::once())->method('flush');
 
-        (new ShareExtender($repository, DefaultShareOptions::get()))->extend($share, '24h', null);
+        $clock = new MockClock('2026-07-27 12:00:00');
+        (new ShareExtender($repository, DefaultShareOptions::get(), $clock))->extend($share, '24h', null);
 
-        self::assertGreaterThan(new DateTimeImmutable('+23 hours'), $share->getExpiresAt());
+        self::assertSame('2026-07-28T13:00:00+00:00', $share->getExpiresAt()->setTimezone(new DateTimeZone('UTC'))->format(DateTimeImmutable::ATOM));
+    }
+
+    public function testExtendExpirationFromClockWhenShareAlreadyExpired(): void
+    {
+        $share = $this->share();
+        $share->setExpiresAt(new DateTimeImmutable('2026-07-27 10:00:00', new DateTimeZone('UTC')));
+
+        $repository = $this->repositoryWithShare($share);
+        $repository->expects(self::once())->method('persist');
+        $repository->expects(self::once())->method('flush');
+
+        $clock = new MockClock('2026-07-27 12:00:00');
+        (new ShareExtender($repository, DefaultShareOptions::get(), $clock))->extend($share, '1h', null);
+
+        self::assertSame('2026-07-27T13:00:00+00:00', $share->getExpiresAt()->setTimezone(new DateTimeZone('UTC'))->format(DateTimeImmutable::ATOM));
     }
 
     public function testExtendMaxReadsAddsRemainingReads(): void

@@ -88,7 +88,7 @@ make -C demo up-symfony8
 
 ## Tests and Coverage
 
-Current coverage: PHP ~100% (lines).
+Current coverage: PHP ~100% (lines); TypeScript ~76% (lines — password-mode paths need browser sodium).
 
 ```bash
 make test              # PHPUnit

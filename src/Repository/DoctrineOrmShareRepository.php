@@ -7,15 +7,21 @@ namespace Nowo\YopassBundle\Repository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\Clock;
 
 /**
  * Doctrine ORM implementation for PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle, etc.
  */
 final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface
 {
+    private ClockInterface $clock;
+
     public function __construct(
         private EntityManagerInterface $entityManager,
+        ?ClockInterface $clock = null,
     ) {
+        $this->clock = $clock ?? new Clock();
     }
 
     public function find(string $id): ?SecureShare
@@ -27,7 +33,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
 
     public function consumeReadIfAvailable(string $id): ?SecureShare
     {
-        $now     = new DateTimeImmutable();
+        $now     = $this->now();
         $updated = (int) $this->entityManager->createQueryBuilder()
             ->update(SecureShare::class, 's')
             ->set('s.readsLeft', 's.readsLeft - 1')
@@ -127,5 +133,10 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     public function flush(): void
     {
         $this->entityManager->flush();
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return $this->clock->now();
     }
 }

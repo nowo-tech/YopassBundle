@@ -58,6 +58,19 @@ Disable `access_log` if storing client IP/UA conflicts with your privacy policy.
 
 Run `composer audit` and Dependabot before releases.
 
+## AI security audit (REQ-SEC-004)
+
+Static / AI review posture for this package (re-audited 2026-07-27 after public rate limits and manage UI hardening):
+
+| Area | Status |
+|------|--------|
+| E2E ciphertext-only server storage | Pass |
+| Manage UI defaults (`ROLE_ADMIN`, `allow_unauthenticated: false`) | Pass |
+| Public consume/show rate limits (`public_rate_limit` + hashed IP logs) | Pass |
+| No secrets in committed demo env examples | Pass |
+
+**Grade:** good (conditional on hosts keeping `allow_unauthenticated: false` in production and enabling `cache.app` for rate limits).
+
 ## Reporting
 
 See [.github/SECURITY.md](../.github/SECURITY.md) for coordinated disclosure.

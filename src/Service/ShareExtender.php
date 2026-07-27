@@ -8,6 +8,8 @@ use DateTimeImmutable;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\Clock;
 
 use function in_array;
 use function ltrim;
@@ -17,6 +19,8 @@ use function ltrim;
  */
 final readonly class ShareExtender
 {
+    private ClockInterface $clock;
+
     /**
      * @param array{
      *     expiration_options: list<array{id: string, interval: string}>,
@@ -26,7 +30,9 @@ final readonly class ShareExtender
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         private array $shareOptions,
+        ?ClockInterface $clock = null,
     ) {
+        $this->clock = $clock ?? new Clock();
     }
 
     public function extend(SecureShare $share, ?string $expiresIn, ?int $maxReads): void
@@ -63,7 +69,7 @@ final readonly class ShareExtender
             throw new ShareExtendException('invalid_expiration');
         }
 
-        $now  = new DateTimeImmutable();
+        $now  = $this->now();
         $base = $share->getExpiresAt() > $now ? $share->getExpiresAt() : $now;
         $new  = $base->modify('+' . ltrim($interval, '+ '));
 
@@ -96,5 +102,10 @@ final readonly class ShareExtender
         }
 
         $share->extendMaxReads($maxReads);
+    }
+
+    private function now(): DateTimeImmutable
+    {
+        return $this->clock->now();
     }
 }
