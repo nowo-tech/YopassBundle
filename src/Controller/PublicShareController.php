@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Controller;
 use JsonException;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareRetriever;
@@ -14,12 +15,18 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\Routing\Attribute\Route;
 
 use const JSON_THROW_ON_ERROR;
 
 /**
  * Public share retrieval — returns ciphertext only (decryption in browser).
+ *
+ * Paths and methods are declared with {@see Route} attributes (REQ-SF-004);
+ * {@see YopassRouteLoader} imports them and applies config path/name overrides.
  */
+#[AsController]
 final class PublicShareController extends AbstractController
 {
     /**
@@ -36,6 +43,7 @@ final class PublicShareController extends AbstractController
     ) {
     }
 
+    #[Route('/share/{id}', name: 'nowo_yopass_public_share', methods: ['GET'])]
     public function show(string $id, Request $request): Response
     {
         $this->rateLimiter->consume($request, 'show');
@@ -61,6 +69,7 @@ final class PublicShareController extends AbstractController
         ]);
     }
 
+    #[Route('/share/{id}/consume', name: 'nowo_yopass_public_consume', methods: ['POST'])]
     public function consume(string $id, Request $request): JsonResponse
     {
         $this->rateLimiter->consume($request, 'consume');

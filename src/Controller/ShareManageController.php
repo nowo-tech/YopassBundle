@@ -11,6 +11,7 @@ use Nowo\YopassBundle\Event\ShareAccessAction;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Form\ShareCreateType;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
@@ -27,12 +28,19 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\AsController;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Authenticated Yopass-style share management (E2E encrypted in the browser).
+ *
+ * Paths, names, methods, and requirements are declared with {@see Route} attributes (REQ-SF-004).
+ * {@see YopassRouteLoader} imports those attributes and applies {@code nowo_yopass.routes} /
+ * {@code route_prefix} overrides so hosts need not fork controllers.
  */
+#[AsController]
 final class ShareManageController extends AbstractController
 {
     /**
@@ -76,6 +84,7 @@ final class ShareManageController extends AbstractController
     ) {
     }
 
+    #[Route('/tools/yopass', name: 'nowo_yopass_index', methods: ['GET'])]
     public function index(Request $request): Response
     {
         $this->denyUnlessFeature('list');
@@ -117,6 +126,7 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
+    #[Route('/tools/yopass/create', name: 'nowo_yopass_create', methods: ['POST'])]
     public function create(Request $request): RedirectResponse
     {
         $this->denyUnlessFeature('create');
@@ -150,6 +160,7 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
+    #[Route('/tools/yopass/{id}/created', name: 'nowo_yopass_created', methods: ['GET'])]
     public function created(string $id): Response
     {
         $this->denyUnlessFeature('create');
@@ -173,6 +184,7 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
+    #[Route('/tools/yopass/{id}/preview', name: 'nowo_yopass_preview', methods: ['GET'])]
     public function preview(string $id): JsonResponse
     {
         $this->denyUnlessFeature('list');
@@ -202,6 +214,7 @@ final class ShareManageController extends AbstractController
         return new JsonResponse($result);
     }
 
+    #[Route('/tools/yopass/{id}/extend', name: 'nowo_yopass_extend', methods: ['POST'])]
     public function extend(string $id, Request $request): JsonResponse
     {
         $this->denyUnlessFeature('revoke');
@@ -246,6 +259,7 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
+    #[Route('/tools/yopass/{id}/revoke', name: 'nowo_yopass_revoke', methods: ['POST'])]
     public function revoke(string $id, Request $request): RedirectResponse
     {
         $this->denyUnlessFeature('revoke');
@@ -270,6 +284,7 @@ final class ShareManageController extends AbstractController
         return $this->redirectToRoute($this->routes['manage']['name']);
     }
 
+    #[Route('/tools/yopass/{id}/delete', name: 'nowo_yopass_delete', methods: ['POST'])]
     public function delete(string $id, Request $request): RedirectResponse
     {
         $this->denyUnlessFeature('revoke');
@@ -293,6 +308,7 @@ final class ShareManageController extends AbstractController
         return $this->redirectToRoute($this->routes['manage']['name']);
     }
 
+    #[Route('/tools/yopass/delete-all', name: 'nowo_yopass_delete_all', methods: ['POST'])]
     public function deleteAll(Request $request): RedirectResponse
     {
         $this->denyUnlessFeature('revoke');

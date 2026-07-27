@@ -41,6 +41,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
     {
         $configuration = new Configuration();
         $config        = $this->processConfiguration($configuration, $configs);
+        $config        = $this->resolveWebUiLayout($config);
 
         $storageName = rtrim((string) $config['table_prefix'], '_') . '_secure_shares';
         $database    = $config['database'];
@@ -59,6 +60,10 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.dashboard_route', $config['dashboard_route']);
         $container->setParameter('nowo_yopass.routes', $config['routes']);
         $container->setParameter('nowo_yopass.templates', $config['templates']);
+        $container->setParameter('nowo_yopass.web_ui.enabled', $config['web_ui']['enabled']);
+        $container->setParameter('nowo_yopass.web_ui.layout_template', $config['web_ui']['layout_template']);
+        $container->setParameter('nowo_yopass.web_ui.css_framework', $config['web_ui']['css_framework']);
+        $container->setParameter('nowo_yopass.web_ui.icon_set', $config['web_ui']['icon_set']);
         $container->setParameter('nowo_yopass.firewall', $config['firewall']);
         $container->setParameter('nowo_yopass.public_firewall_paths', $config['public_firewall_paths']);
         $container->setParameter('nowo_yopass.security', $config['security']);
@@ -77,6 +82,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 $container->has('cache.app') ? new Reference('cache.app') : null,
                 '%nowo_yopass.public_rate_limit.limit%',
                 '%nowo_yopass.public_rate_limit.interval_seconds%',
+                $container->has('logger') ? new Reference('logger') : null,
             ]);
 
         $this->registerShareRepository($container, $driver, $database, $storageName, $collection, $config);
@@ -99,6 +105,29 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $loader->load('services.yaml');
 
         $this->registerFileHandler($container, $config['file_handler'] ?? null);
+    }
+
+    /**
+     * Resolves layout_template and keeps templates.layout in sync (BC alias).
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, mixed>
+     */
+    private function resolveWebUiLayout(array $config): array
+    {
+        $defaultLayout  = '@NowoYopassBundle/layout.html.twig';
+        $layoutTemplate = (string) $config['web_ui']['layout_template'];
+        $legacyLayout   = (string) $config['templates']['layout'];
+
+        if ($layoutTemplate === $defaultLayout && $legacyLayout !== $defaultLayout) {
+            $layoutTemplate = $legacyLayout;
+        }
+
+        $config['web_ui']['layout_template'] = $layoutTemplate;
+        $config['templates']['layout']       = $layoutTemplate;
+
+        return $config;
     }
 
     private function registerFileHandler(ContainerBuilder $container, mixed $fileHandlerId): void

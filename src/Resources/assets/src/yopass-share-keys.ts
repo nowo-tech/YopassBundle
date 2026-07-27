@@ -1,4 +1,7 @@
+/** sessionStorage key prefix for persisted decryption material per share id. */
 export const SHARE_KEY_STORAGE_PREFIX = 'nowo_yopass:key:';
+
+/** sessionStorage key for material waiting to be bound after create redirect. */
 export const PENDING_KEY_STORAGE = 'nowo_yopass:pending-key';
 
 export type StoredShareKey = {
@@ -6,6 +9,9 @@ export type StoredShareKey = {
     material: string;
 };
 
+/**
+ * Persists decryption material for a share in `sessionStorage`.
+ */
 export function storeShareKey(shareId: string, mode: 'key' | 'password', material: string): void {
     if (material === '') {
         return;
@@ -15,6 +21,9 @@ export function storeShareKey(shareId: string, mode: 'key' | 'password', materia
     sessionStorage.setItem(`${SHARE_KEY_STORAGE_PREFIX}${shareId}`, JSON.stringify(payload));
 }
 
+/**
+ * Stores decryption material temporarily until the created page binds it to a share id.
+ */
 export function storePendingShareKey(mode: 'key' | 'password', material: string): void {
     if (material === '') {
         return;
@@ -24,6 +33,9 @@ export function storePendingShareKey(mode: 'key' | 'password', material: string)
     sessionStorage.setItem(PENDING_KEY_STORAGE, JSON.stringify(payload));
 }
 
+/**
+ * Moves pending material onto the given share id, or falls back to an already stored key.
+ */
 export function consumePendingShareKey(shareId: string): StoredShareKey | null {
     const pendingRaw = sessionStorage.getItem(PENDING_KEY_STORAGE);
 
@@ -50,6 +62,9 @@ export function consumePendingShareKey(shareId: string): StoredShareKey | null {
     return loadShareKey(shareId);
 }
 
+/**
+ * Loads decryption material previously stored for a share id.
+ */
 export function loadShareKey(shareId: string): StoredShareKey | null {
     const raw = sessionStorage.getItem(`${SHARE_KEY_STORAGE_PREFIX}${shareId}`);
 

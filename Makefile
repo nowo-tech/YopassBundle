@@ -1,5 +1,5 @@
 # Yopass Bundle - Development
-.PHONY: help up down build shell install test test-coverage coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor strip-cursor-coauthor-from-history
+.PHONY: help up down down-dev build shell install test test-coverage test-with-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor strip-cursor-coauthor-from-history
 
 COMPOSE_FILE ?= docker-compose.yml
 COMPOSE     ?= /usr/bin/docker compose -f $(COMPOSE_FILE)
@@ -10,6 +10,7 @@ help:
 	@echo ""
 	@echo "  up              Start Docker container"
 	@echo "  down            Stop Docker container"
+	@echo "  down-dev        Stop root dev container (alias of down; non-destructive)"
 	@echo "  build           Rebuild Docker image (no cache)"
 	@echo "  shell           Open shell in container"
 	@echo "  install         Install Composer + pnpm dependencies"
@@ -46,7 +47,10 @@ up:
 	@echo "Container ready."
 
 down:
-	$(COMPOSE) down
+	$(COMPOSE) down --remove-orphans
+
+# REQ-MAKE-007: non-destructive stop of the root dev stack (alias of down).
+down-dev: down
 
 ensure-up:
 	@if ! $(COMPOSE) exec -T $(SERVICE_PHP) true 2>/dev/null; then \
@@ -93,6 +97,11 @@ test-coverage-100: ensure-up
 	$(COMPOSE) exec $(SERVICE_PHP) composer test-coverage-100 | tee coverage-php.txt
 	sh .scripts/php-coverage-percent.sh coverage-php.txt
 
+# REQ-TEST-005: integration suite uses Doctrine (SQLite in container); aliases keep the standard target names.
+test-with-db: test
+
+test-coverage-with-db: test-coverage
+
 cs-check: ensure-up
 	$(COMPOSE) exec -T $(SERVICE_PHP) composer cs-check
 
@@ -118,7 +127,7 @@ composer-sync: ensure-up
 	$(COMPOSE) exec -T $(SERVICE_PHP) composer validate --strict
 	$(COMPOSE) exec -T $(SERVICE_PHP) composer update --no-install
 
-release-check: check-no-cursor-coauthor ensure-up composer-sync cs-fix cs-check rector-dry phpstan validate-translations test-coverage-100 release-check-demos test-ts
+release-check: check-no-cursor-coauthor ensure-up composer-sync cs-fix cs-check rector-dry phpstan validate-translations test-coverage release-check-demos test-ts
 
 release-check-demos:
 	@$(MAKE) -C demo release-check

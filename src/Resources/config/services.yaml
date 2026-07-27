@@ -66,3 +66,10 @@ services:
         arguments:
             $templates: '%nowo_yopass.templates%'
             $routes: '%nowo_yopass.routes%'
+
+    # REQ-UI-001: Twig globals for layout / CSS framework / icon set.
+    Nowo\YopassBundle\Twig\YopassTwigExtension:
+        arguments:
+            $layoutTemplate: '%nowo_yopass.web_ui.layout_template%'
+            $cssFramework: '%nowo_yopass.web_ui.css_framework%'
+            $iconSet: '%nowo_yopass.web_ui.icon_set%'

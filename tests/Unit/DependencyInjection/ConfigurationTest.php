@@ -28,6 +28,15 @@ final class ConfigurationTest extends TestCase
         self::assertSame('/tools/yopass/{id}/created', $config['routes']['created']['path']);
         self::assertSame('/share/{id}', $config['routes']['public_show']['path']);
         self::assertSame(['ROLE_ADMIN'], $config['security']['admin_roles']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['access_roles']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['create_roles']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['list_roles']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['revoke_roles']);
+        self::assertFalse($config['security']['allow_unauthenticated']);
+        self::assertTrue($config['web_ui']['enabled']);
+        self::assertSame('@NowoYopassBundle/layout.html.twig', $config['web_ui']['layout_template']);
+        self::assertSame('tabler', $config['web_ui']['css_framework']);
+        self::assertSame('tabler-icons', $config['web_ui']['icon_set']);
         self::assertNull($config['file_handler']);
         self::assertSame(512 * 1024, $config['max_secret_chars']);
         self::assertSame('1h', $config['shares']['default_expiration']);

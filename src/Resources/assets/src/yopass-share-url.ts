@@ -1,3 +1,4 @@
+/** Canonical query parameter for one-click decrypt links. */
 export const SHARE_DECRYPT_KEY_QUERY_PARAM = 'decrypt_key';
 
 /** @deprecated Legacy param names kept for backward compatibility when reading URLs. */
@@ -6,10 +7,16 @@ const LEGACY_PASSWORD_QUERY_PARAM = 'password';
 
 export type ShareUrlKeyMode = 'key' | 'password';
 
+/**
+ * Returns the query parameter name used when embedding decryption material in a share URL.
+ */
 export function getShareKeyQueryParam(_mode: ShareUrlKeyMode = 'key'): string {
     return SHARE_DECRYPT_KEY_QUERY_PARAM;
 }
 
+/**
+ * Reads decryption material from the current URL for the expected mode (supports legacy params).
+ */
 export function readShareKeyFromUrl(mode: ShareUrlKeyMode): string {
     const params = new URLSearchParams(window.location.search);
     const decryptKey = params.get(SHARE_DECRYPT_KEY_QUERY_PARAM)?.trim() ?? '';
@@ -37,6 +44,9 @@ export function readShareKeyFromUrl(mode: ShareUrlKeyMode): string {
     return readLegacyHashMaterial();
 }
 
+/**
+ * Reads decryption material from the URL and infers whether it is a key or password.
+ */
 export function readShareKeyFromUrlAnyMode(): { material: string; mode: ShareUrlKeyMode } | null {
     const params = new URLSearchParams(window.location.search);
     const decryptKey = params.get(SHARE_DECRYPT_KEY_QUERY_PARAM)?.trim() ?? '';
@@ -66,6 +76,9 @@ export function readShareKeyFromUrlAnyMode(): { material: string; mode: ShareUrl
     return null;
 }
 
+/**
+ * Builds a relative share URL with decryption material in the query string.
+ */
 export function buildShareUrlWithKey(
     baseUrl: string,
     keyMaterial: string,
@@ -77,6 +90,9 @@ export function buildShareUrlWithKey(
     return `${url.pathname}${url.search}`;
 }
 
+/**
+ * Builds an absolute share URL with decryption material in the query string.
+ */
 export function buildFullShareUrlWithKey(
     baseUrl: string,
     keyMaterial: string,
@@ -88,6 +104,9 @@ export function buildFullShareUrlWithKey(
     return url.toString();
 }
 
+/**
+ * Removes decryption material from the address bar without reloading the page.
+ */
 export function stripShareKeyFromUrl(_mode?: ShareUrlKeyMode): void {
     const url = new URL(window.location.href);
 

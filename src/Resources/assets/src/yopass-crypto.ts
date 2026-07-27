@@ -33,14 +33,17 @@ export type EncryptResult = {
 
 export const DEFAULT_MAX_SECRET_CHARS = 512 * 1024;
 
+/** Counts Unicode code points in a secret string (not UTF-16 code units). */
 export function countSecretCharacters(text: string): number {
     return [...text].length;
 }
 
+/** Returns whether the secret fits within the configured character limit. */
 export function isSecretWithinCharacterLimit(text: string, maxChars: number): boolean {
     return countSecretCharacters(text) <= maxChars;
 }
 
+/** Counts characters for submit validation after trimming whitespace. */
 export function countSecretCharactersForSubmit(text: string): number {
     return countSecretCharacters(text.trim());
 }
@@ -57,6 +60,9 @@ async function ready(): Promise<typeof _sodium> {
     return _sodium;
 }
 
+/**
+ * Encrypts a text or file payload with a generated key or a user password (libsodium secretbox).
+ */
 export async function encryptPayload(
     payload: YopassPayload,
     options: EncryptOptions,
@@ -103,6 +109,11 @@ export async function encryptPayload(
     };
 }
 
+/**
+ * Decrypts a ciphertext envelope (or legacy raw box) and returns the payload.
+ *
+ * @throws {Error} When the key/password is wrong (`INVALID_KEY`).
+ */
 export async function decryptPayload(ciphertext: string, keyOrPassword: string): Promise<YopassPayload> {
     const sodium = await ready();
     const envelope = parseEnvelope(ciphertext);
@@ -115,6 +126,11 @@ export async function decryptPayload(ciphertext: string, keyOrPassword: string):
     return JSON.parse(plaintext) as YopassPayload;
 }
 
+/**
+ * Reads a browser `File` into a base64 file payload for encryption.
+ *
+ * @throws {Error} `FILE_TOO_LARGE` when the file exceeds `maxFileBytes`.
+ */
 export async function readFileAsPayload(file: File, maxFileBytes: number = 512 * 1024): Promise<YopassFilePayload> {
     if (file.size > maxFileBytes) {
         throw new Error('FILE_TOO_LARGE');
@@ -133,6 +149,9 @@ export async function readFileAsPayload(file: File, maxFileBytes: number = 512 *
     };
 }
 
+/**
+ * Converts a decrypted payload into display data (plain text or downloadable Blob).
+ */
 export async function payloadToDisplayAsync(
     payload: YopassPayload,
 ): Promise<{ type: 'text'; text: string } | { type: 'file'; filename: string; mime: string; blob: Blob }> {

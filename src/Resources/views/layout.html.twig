@@ -5,20 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Yopass{% endblock %}</title>
     {% block styles %}
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
-        <style>
-            body { background: #f6f8fb; }
-            .container-narrow { max-width: 960px; }
-        </style>
+        {% block stylesheets %}
+            {% block nowo_ui_styles %}
+                {% set framework = nowo_yopass_css_framework|default('tabler') %}
+                {% if framework in ['tabler', 'bootstrap', 'bootstrap5'] %}
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+                {% elseif framework == 'bootstrap4' %}
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+                {% endif %}
+                {% set icons = nowo_yopass_icon_set|default('tabler-icons') %}
+                {% if icons == 'tabler-icons' %}
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+                {% elseif icons == 'bootstrap-icons' %}
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+                {% endif %}
+                <style>
+                    body { background: #f6f8fb; }
+                    .container-narrow { max-width: 960px; }
+                </style>
+            {% endblock %}
+        {% endblock %}
     {% endblock %}
 </head>
 <body>
-<div class="page">
-    <div class="container container-narrow py-4">
-        {% block body %}{% endblock %}
+<div class="page nowo-ui-page">
+    <div class="container container-narrow py-4 nowo-ui-page-inner">
+        {% block body %}
+            {% block nowo_ui_content %}{% endblock %}
+        {% endblock %}
     </div>
 </div>
-{% block javascripts %}{% endblock %}
+{% block javascripts %}
+    {% block nowo_ui_scripts %}{% endblock %}
+{% endblock %}
 </body>
 </html>

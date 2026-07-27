@@ -2,6 +2,51 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.3.0 (2026-07-27)
+
+### Web UI contract (REQ-UI-001) and security defaults (REQ-UI-002)
+
+**Action required** if you rely on the previous `ROLE_USER` defaults or hard-coded layout paths.
+
+1. **Role defaults** — `security.access_roles`, `create_roles`, `list_roles`, and `revoke_roles` now default to `[ROLE_ADMIN]`. Either grant your users `ROLE_ADMIN`, or set explicit roles in `config/packages/nowo_yopass.yaml`:
+
+```yaml
+nowo_yopass:
+    security:
+        access_roles: [ROLE_USER]
+        create_roles: [ROLE_USER]
+        list_roles: [ROLE_USER]
+        revoke_roles: [ROLE_USER]
+```
+
+2. **Firewall** — align `security.access_control` with your configured roles (e.g. `ROLE_ADMIN` for `/tools/yopass` when using defaults).
+
+3. **Layout integration** — manage pages now extend the Twig global `nowo_yopass_layout_template`. Prefer `web_ui.layout_template` over `templates.layout` (still supported as a BC alias).
+
+```yaml
+nowo_yopass:
+    web_ui:
+        layout_template: 'base.html.twig'
+        css_framework: bootstrap5   # or tabler, tailwind, foundation, custom
+        icon_set: bootstrap-icons
+```
+
+4. **SecurityBundle** — when `security.allow_unauthenticated` is `false` (default), compilation fails without SecurityBundle. Demos may set `allow_unauthenticated: true`; production must not.
+
+5. **Template overrides** — if you override manage templates, use `{% extends nowo_yopass_layout_template %}` and `{{ parent() }}` in `stylesheets` / `javascripts` blocks.
+
+6. **PHPStan FrankenPHP (REQ-CS-005)** — `require-dev` now includes `nowo-tech/phpstan-frankenphp`; `phpstan.neon.dist` includes classic + worker rulesets. Run `composer update nowo-tech/phpstan-frankenphp` in your clone if you develop the bundle.
+
+7. **Demo PHP 8.5** — Symfony 8 demo FrankenPHP image is `dunglas/frankenphp:1-php8.5-bookworm`; recreate the demo container after pull.
+
+8. **Routes (REQ-SF-004)** — controllers declare `#[Route]` attributes; the Flex recipe still imports `type: nowo_yopass` so path/name overrides keep working. Do **not** also attribute-import the controllers or routes will duplicate. The loader reads public `Route` attribute properties (Symfony Routing 8.1+) and remains safe under FrankenPHP worker reloads.
+
+Public reveal pages are unchanged for consumers. Rebuild published assets if you fork the frontend (`pnpm run build`).
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.2.8 (2026-07-22)
 
 Maintenance release. **No application, configuration, or schema changes** for bundle consumers.

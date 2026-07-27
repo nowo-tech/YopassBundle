@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 // This file is auto-generated and is for apps only. Bundles SHOULD NOT rely on its content.
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
@@ -1300,6 +1298,13 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         create_roles?: list<scalar|Param|null>,
  *         list_roles?: list<scalar|Param|null>,
  *         revoke_roles?: list<scalar|Param|null>,
+ *         allow_unauthenticated?: bool|Param, // DEV/DEMO only: allow the manage UI without SecurityBundle or login. Never enable in production. // Default: false
+ *     },
+ *     web_ui?: array{ // Manage Web UI look-and-feel (REQ-UI-001). Canonical layout key is web_ui.layout_template; templates.layout is kept as a BC alias.
+ *         enabled?: bool|Param, // Manage Web UI feature flag (default true). Access is still enforced by security.access_roles and the host firewall. // Default: true
+ *         layout_template?: scalar|Param|null, // Twig layout extended by manage pages. Host apps set this to their project layout. // Default: "@NowoYopassBundle/layout.html.twig"
+ *         css_framework?: "bootstrap"|"bootstrap4"|"bootstrap5"|"tailwind"|"foundation"|"custom"|"tabler"|"none"|Param, // Host-chosen CSS stack: bootstrap, bootstrap4, bootstrap5, tailwind, foundation, custom, tabler, none. // Default: "tabler"
+ *         icon_set?: "bootstrap-icons"|"tabler-icons"|"ux_icon"|"svg_inline"|"none"|Param, // Icon set: bootstrap-icons, tabler-icons, ux_icon, svg_inline, none. // Default: "tabler-icons"
  *     },
  *     routes?: array{
  *         manage?: array{
@@ -1344,7 +1349,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         },
  *     },
  *     templates?: array{
- *         layout?: scalar|Param|null, // Default: "@NowoYopassBundle/layout.html.twig"
+ *         layout?: scalar|Param|null, // BC alias for web_ui.layout_template. Prefer web_ui.layout_template going forward. // Default: "@NowoYopassBundle/layout.html.twig"
  *         manage?: scalar|Param|null, // Default: "@NowoYopassBundle/manage/index.html.twig"
  *         created?: scalar|Param|null, // Default: "@NowoYopassBundle/manage/created.html.twig"
  *         public?: scalar|Param|null, // Default: "@NowoYopassBundle/public/reveal.html.twig"

@@ -8,6 +8,12 @@ nowo_yopass:
     user_class: App\Entity\User
     table_prefix: yopass_
 
+    security:
+        access_roles: [ROLE_USER]
+        create_roles: [ROLE_USER]
+        list_roles: [ROLE_USER]
+        revoke_roles: [ROLE_USER]
+
     routes:
         manage:
             path: /tools/yopass

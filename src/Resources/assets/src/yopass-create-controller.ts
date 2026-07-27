@@ -245,15 +245,20 @@ export default class extends Controller {
             .replaceAll('&#64;&#64;LIMIT&#64;&#64;', '@@LIMIT@@');
     }
 
+    /**
+     * Decode a limited set of HTML entities without using innerHTML (REQ-UX-001).
+     *
+     * @param value Possibly entity-encoded counter template from Twig attributes.
+     * @returns Decoded plain text safe for display templates.
+     */
     private decodeHtmlEntities(value: string): string {
         if (!value.includes('&')) {
             return value;
         }
 
-        const textarea = document.createElement('textarea');
-        textarea.innerHTML = value;
+        const doc = new DOMParser().parseFromString(`<body>${value}</body>`, 'text/html');
 
-        return textarea.value;
+        return doc.body.textContent ?? value;
     }
 
     private showError(code: string): void {

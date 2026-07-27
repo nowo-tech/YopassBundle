@@ -8,7 +8,6 @@ use Nowo\YopassBundle\Controller\PublicShareController;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 final class YopassRouteLoaderTest extends TestCase
 {
@@ -39,6 +38,8 @@ final class YopassRouteLoaderTest extends TestCase
             PublicShareController::class . '::consume',
             $collection->get('nowo_yopass_public_consume')->getDefault('_controller'),
         );
+        self::assertSame(['POST'], $collection->get('nowo_yopass_public_consume')->getMethods());
+        self::assertSame(['GET'], $collection->get('nowo_yopass_index')->getMethods());
     }
 
     public function testSupportsOnlyNowoYopassType(): void
@@ -49,18 +50,21 @@ final class YopassRouteLoaderTest extends TestCase
         self::assertFalse($loader->supports('.', 'other'));
     }
 
-    public function testLoadThrowsWhenCalledTwice(): void
+    public function testLoadCanBeCalledTwiceForFrankenPhpWorkerReload(): void
     {
         $loader = $this->loader();
-        $loader->load('.', 'nowo_yopass');
+        $first  = $loader->load('.', 'nowo_yopass');
+        $second = $loader->load('.', 'nowo_yopass');
 
-        $this->expectException(RuntimeException::class);
-        $loader->load('.', 'nowo_yopass');
+        self::assertCount(10, $first->all());
+        self::assertCount(10, $second->all());
+        self::assertSame(array_keys($first->all()), array_keys($second->all()));
+        self::assertSame(
+            $first->get('nowo_yopass_index')->getPath(),
+            $second->get('nowo_yopass_index')->getPath(),
+        );
     }
 
-    /**
-     * @return array<string, array{path: string, name: string}>
-     */
     private function loader(): YopassRouteLoader
     {
         return new YopassRouteLoader([

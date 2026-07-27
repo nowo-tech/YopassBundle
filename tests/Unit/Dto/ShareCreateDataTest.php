@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Tests\Unit\Dto;
 use DateTimeImmutable;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ShareCreateDataTest extends TestCase
@@ -19,9 +20,7 @@ final class ShareCreateDataTest extends TestCase
         return DefaultShareOptions::get()['expiration_options'];
     }
 
-    /**
-     * @dataProvider expiresInProvider
-     */
+    #[DataProvider('expiresInProvider')]
     public function testResolveExpiresAt(string $expiresIn, string $modifier): void
     {
         $data            = new ShareCreateData();

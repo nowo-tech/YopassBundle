@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle;
 
 use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
+use Nowo\YopassBundle\DependencyInjection\Compiler\ManageWebUiSecurityPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\ShareFileHandlerPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\TwigPathsPass;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
@@ -24,6 +25,7 @@ final class YopassBundle extends Bundle
         $container->addCompilerPass(new FileHandlerPass());
         $container->addCompilerPass(new TwigPathsPass());
         $container->addCompilerPass(new ShareFileHandlerPass());
+        $container->addCompilerPass(new ManageWebUiSecurityPass());
     }
 
     public function getContainerExtension(): ExtensionInterface

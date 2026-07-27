@@ -122,6 +122,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Resources/assets/src/logger.ts` | Frontend logger | FR-UI-012 |
 | `Resources/assets/src/share-reveal-controller.ts` | Public reveal Stimulus | FR-PUB-002 |
 | `Resources/assets/src/yopass-create-controller.ts` | Create share Stimulus | FR-SHARE-005 |
+| `Resources/assets/src/yopass-confirm-controller.ts` | Confirm destructive form submits (no inline onclick) | FR-SHARE-005 |
 | `Resources/assets/src/yopass-created-controller.ts` | Post-create Stimulus | FR-SHARE-006 |
 | `Resources/assets/src/yopass-manage-preview-controller.ts` | Manage preview Stimulus | FR-SHARE-007 |
 | `Resources/public/js/yopass.js` | Built frontend asset | FR-BUILD-001 |

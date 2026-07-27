@@ -1,9 +1,15 @@
+# PHPStan for YopassBundle (level 8).
+# FrankenPHP classic + worker rulesets (REQ-CS-005): require-dev only; not a runtime dependency.
+# extension.neon is auto-included by phpstan/extension-installer — do not list it here.
+# Run: make phpstan
+includes:
+    - vendor/nowo-tech/phpstan-frankenphp/ruleset-classic.neon
+    - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker.neon
+    - phpstan-baseline.neon
+
 parameters:
     level: 8
     paths:
         - src
     excludePaths:
         - src/Resources/assets/*
-
-includes:
-    - phpstan-baseline.neon

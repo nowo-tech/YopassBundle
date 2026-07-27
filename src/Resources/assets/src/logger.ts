@@ -33,6 +33,12 @@ function formatArgs(args: unknown[]): unknown[] {
     );
 }
 
+/**
+ * Creates a namespaced console logger for bundle frontend scripts.
+ *
+ * @param name - Logger name shown in the console prefix (e.g. `yopass`).
+ * @param options - Optional build metadata (printed on `scriptLoaded`).
+ */
 export function createBundleLogger(name: string, options: BundleLoggerOptions = {}): BundleLogger {
     const prefix = `[${name}]`;
     const { buildTime } = options;

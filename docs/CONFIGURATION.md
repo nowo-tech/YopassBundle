@@ -223,8 +223,10 @@ security:
             # ...
     access_control:
         - { path: ^/share, roles: PUBLIC_ACCESS }
-        - { path: ^/tools/yopass, roles: ROLE_USER }
+        - { path: ^/tools/yopass, roles: ROLE_ADMIN }
 ```
+
+Replace `ROLE_ADMIN` with the roles you configure under `security.access_roles` (defaults to `ROLE_ADMIN` since 1.3.0).
 
 ### Access checker
 
@@ -241,10 +243,25 @@ Default role configuration:
 | Option | Default | Purpose |
 |--------|---------|---------|
 | `security.admin_roles` | `[ROLE_ADMIN]` | Full access bypass |
-| `security.access_roles` | `[ROLE_USER]` | Open manage UI |
-| `security.create_roles` | `[ROLE_USER]` | Create shares |
-| `security.list_roles` | `[ROLE_USER]` | List own shares |
-| `security.revoke_roles` | `[ROLE_USER]` | Revoke own shares |
+| `security.access_roles` | `[ROLE_ADMIN]` | Open manage UI |
+| `security.create_roles` | `[ROLE_ADMIN]` | Create shares |
+| `security.list_roles` | `[ROLE_ADMIN]` | List own shares |
+| `security.revoke_roles` | `[ROLE_ADMIN]` | Revoke own shares |
+| `security.allow_unauthenticated` | `false` | DEV/DEMO only: skip SecurityBundle requirement (never enable in production) |
+
+When `allow_unauthenticated` is `false` (default), the bundle requires **Symfony SecurityBundle** at compile time. Set it to `true` only in local demos without authentication.
+
+Host firewall example (adjust roles to match your config):
+
+```yaml
+# config/packages/security.yaml (example)
+security:
+    access_control:
+        - { path: ^/share, roles: PUBLIC_ACCESS }
+        - { path: ^/tools/yopass, roles: ROLE_ADMIN }
+```
+
+The Symfony 8 demo keeps `ROLE_USER` in `demo/symfony8/config/packages/nowo_yopass.yaml` so auto-login continues to work with the demo user.
 
 ### Share list and per-share access events
 
@@ -286,6 +303,76 @@ interface YopassAccessCheckerInterface
 }
 ```
 
+## Web UI (manage pages)
+
+Configure look-and-feel and host layout integration (REQ-UI-001):
+
+```yaml
+nowo_yopass:
+    web_ui:
+        enabled: true
+        layout_template: 'base.html.twig'   # your project layout
+        css_framework: bootstrap5           # bootstrap | bootstrap4 | bootstrap5 | tailwind | foundation | custom | tabler | none
+        icon_set: bootstrap-icons           # bootstrap-icons | tabler-icons | ux_icon | svg_inline | none
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `web_ui.enabled` | `true` | Manage Web UI feature flag. Access is still enforced by `security.access_roles` and the host firewall. |
+| `web_ui.layout_template` | `@NowoYopassBundle/layout.html.twig` | Layout extended by manage pages (Twig global `nowo_yopass_layout_template`). |
+| `web_ui.css_framework` | `tabler` | CSS stack for macros and optional CDN in the bundle default layout. |
+| `web_ui.icon_set` | `tabler-icons` | Icon set for row actions when using bundle markup. |
+
+**Canonical key:** `web_ui.layout_template`. The legacy `templates.layout` key remains as a BC alias: if you only customize `templates.layout`, it is used when `web_ui.layout_template` is still the bundle default.
+
+### Host layout integration
+
+Manage pages extend `nowo_yopass_layout_template` and call `{{ parent() }}` in `stylesheets` / `javascripts` so host assets stack with bundle assets.
+
+**Bootstrap 5 host app:**
+
+```yaml
+nowo_yopass:
+    web_ui:
+        layout_template: 'base.html.twig'
+        css_framework: bootstrap5
+        icon_set: bootstrap-icons
+```
+
+**Tailwind host app:**
+
+```yaml
+nowo_yopass:
+    web_ui:
+        layout_template: 'layouts/admin.html.twig'
+        css_framework: tailwind
+        icon_set: svg_inline
+```
+
+**Foundation host app:**
+
+```yaml
+nowo_yopass:
+    web_ui:
+        layout_template: 'admin.html.twig'
+        css_framework: foundation
+        icon_set: none
+```
+
+**Custom design system (`nowo-ui-*` semantic classes only):**
+
+```yaml
+nowo_yopass:
+    web_ui:
+        layout_template: 'base.html.twig'
+        css_framework: custom
+        icon_set: svg_inline
+```
+
+When your project layout uses a different content block name, add a thin bridge template (see `@NowoYopassBundle/layout_integrate_host.html.twig`) and point `layout_template` at it.
+
+The public reveal page (`public/reveal.html.twig`) stays standalone and does not use the manage layout.
+
 ## Templates
 
 Override via `templates/bundles/NowoYopassBundle/` or config:
@@ -293,7 +380,7 @@ Override via `templates/bundles/NowoYopassBundle/` or config:
 ```yaml
 nowo_yopass:
     templates:
-        layout: '@NowoYopassBundle/layout.html.twig'
+        layout: '@NowoYopassBundle/layout.html.twig'   # BC alias for web_ui.layout_template
         manage: '@NowoYopassBundle/manage/index.html.twig'
         public: '@NowoYopassBundle/public/reveal.html.twig'
 ```

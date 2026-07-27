@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Security;
 
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
@@ -19,11 +21,15 @@ final readonly class PublicEndpointRateLimiter
 {
     private const CACHE_KEY_PREFIX = 'nowo_yopass_public_';
 
+    private LoggerInterface $logger;
+
     public function __construct(
         private ?CacheItemPoolInterface $cachePool,
         private int $limit,
         private int $intervalSeconds,
+        ?LoggerInterface $logger = null,
     ) {
+        $this->logger = $logger ?? new NullLogger();
     }
 
     public function consume(Request $request, string $action): void
@@ -32,10 +38,11 @@ final readonly class PublicEndpointRateLimiter
             return;
         }
 
-        $key  = self::CACHE_KEY_PREFIX . hash('sha256', $action . '|' . ($request->getClientIp() ?? 'unknown'));
-        $item = $this->cachePool->getItem($key);
-        $now  = time();
-        $data = $item->isHit() ? $item->get() : null;
+        $clientIp = $request->getClientIp() ?? 'unknown';
+        $key      = self::CACHE_KEY_PREFIX . hash('sha256', $action . '|' . $clientIp);
+        $item     = $this->cachePool->getItem($key);
+        $now      = time();
+        $data     = $item->isHit() ? $item->get() : null;
 
         if ($data === null || !isset($data['s'], $data['c']) || ($now - (int) $data['s']) >= $this->intervalSeconds) {
             $data = ['s' => $now, 'c' => 1];
@@ -44,6 +51,14 @@ final readonly class PublicEndpointRateLimiter
         }
 
         if ($data['c'] > $this->limit) {
+            // REQ-OBS-001: structured context only — never log ciphertext, keys, or payloads.
+            $this->logger->warning('Yopass public endpoint rate limit exceeded', [
+                'action'           => $action,
+                'limit'            => $this->limit,
+                'interval_seconds' => $this->intervalSeconds,
+                'client_ip_hash'   => hash('sha256', $clientIp),
+            ]);
+
             throw new TooManyRequestsHttpException($this->intervalSeconds, sprintf('Too many requests. Limit is %d per %d seconds.', $this->limit, $this->intervalSeconds));
         }
 

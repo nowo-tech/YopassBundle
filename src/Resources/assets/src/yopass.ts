@@ -1,5 +1,6 @@
 import { Application } from '@hotwired/stimulus';
 import { createBundleLogger } from './logger';
+import YopassConfirmController from './yopass-confirm-controller';
 import YopassCreateController from './yopass-create-controller';
 import YopassCreatedController from './yopass-created-controller';
 import YopassManagePreviewController from './yopass-manage-preview-controller';
@@ -13,6 +14,7 @@ const log = createBundleLogger('yopass', {
 log.scriptLoaded();
 
 const application = Application.start();
+application.register('nowo-yopass-confirm', YopassConfirmController);
 application.register('nowo-yopass-create', YopassCreateController);
 application.register('nowo-yopass-created', YopassCreatedController);
 application.register('nowo-yopass-manage-preview', YopassManagePreviewController);

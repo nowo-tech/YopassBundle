@@ -1,7 +1,7 @@
 COMPOSE = /usr/bin/docker compose
 SERVICE_PHP = php
 
-.PHONY: help ensure-env up down build install database database-empty shell test update-bundle fixtures
+.PHONY: help ensure-env up down build install database database-empty shell test update-bundle fixtures update update-deps
 
 help:
 	@echo "Yopass Bundle — Symfony 8.1 Demo"
@@ -15,6 +15,7 @@ help:
 	@echo "  shell          Open shell in PHP container"
 	@echo "  test           Run demo tests"
 	@echo "  update-bundle  Sync bundle autoload and clear cache"
+	@echo "  update-deps    Composer update in this demo (REQ-MAKE-008)"
 
 ensure-env:
 	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example")
@@ -25,9 +26,12 @@ up: ensure-env
 	@rm -f .env.dev
 	@mkdir -p var/yopass-storage
 	@chmod 700 var/yopass-storage 2>/dev/null || true
-	@$(COMPOSE) up -d
+	@$(COMPOSE) up -d --build
 	@echo "Waiting for container to be ready..."
-	@sleep 5
+	@for i in 1 2 3 4 5 6 7 8 9 10 11 12; do \
+		$(COMPOSE) exec -T $(SERVICE_PHP) true >/dev/null 2>&1 && break; \
+		sleep 1; \
+	done
 	@echo "Installing dependencies..."
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer install --no-interaction --no-scripts
 	@$(COMPOSE) exec -T $(SERVICE_PHP) rm -rf var/cache/* 2>/dev/null || true
@@ -73,3 +77,10 @@ update-bundle:
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer dump-autoload
 	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console assets:install public --symlink
 	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console cache:clear --env=dev --no-warmup || true
+
+update:
+	@$(COMPOSE) exec -T $(SERVICE_PHP) composer update --no-interaction
+
+# REQ-MAKE-008: update-deps (REQ-MAKE-008)
+BUNDLE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
+include $(BUNDLE_ROOT)/../.scripts/Makefile.demo-update-deps.mk

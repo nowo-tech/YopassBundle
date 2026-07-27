@@ -42,6 +42,15 @@
 
 Server-side `ShareEncryptionService` exists for **tests only** — not used in production flow.
 
+## Logging and observability (REQ-OBS-001)
+
+| Logged | Not logged |
+|--------|------------|
+| Share access audit (when `access_log.enabled`): share id, creator, client IP, user-agent, timestamp of successful public consume | Plaintext secrets, decryption keys/passwords, ciphertext payloads |
+| Rate-limit warnings: action name, limit/interval, **hashed** client IP | Raw IP in application logs (hash only); never keys or ciphertext |
+
+Disable `access_log` if storing client IP/UA conflicts with your privacy policy. Prefer short share links without `?decrypt_key=` so keys never appear in proxy access logs.
+
 ## Dependencies
 
 - `ext-sodium` (PHP tests)

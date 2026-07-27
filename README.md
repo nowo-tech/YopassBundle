@@ -1,12 +1,16 @@
 # Yopass Bundle
 
-[![CI](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/yopass-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/yopass-bundle.svg)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.4%2B%20%7C%208.0%20%7C%208.1%2B-000000?logo=symfony)](https://symfony.com) [![GitHub stars](https://img.shields.io/github/stars/nowo-tech/YopassBundle.svg?style=social&label=Star)](https://github.com/nowo-tech/YopassBundle) [![Coverage](https://img.shields.io/badge/Coverage-100%25%20PHP%20%7C%20~76%25%20TS-brightgreen)](#tests-and-coverage)
+[![CI](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/yopass-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/yopass-bundle.svg)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.2-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.4%2B%20%7C%208.0%20%7C%208.1%2B-000000?logo=symfony)](https://symfony.com) [![GitHub stars](https://img.shields.io/github/stars/nowo-tech/YopassBundle.svg?style=social&label=Star)](https://github.com/nowo-tech/YopassBundle) [![Coverage](https://img.shields.io/badge/Coverage-100%25%20PHP%20%7C%20~76%25%20TS-brightgreen)](#tests-and-coverage)
 
 > ⭐ **Found this useful?** Give it a **star** on [GitHub](https://github.com/nowo-tech/YopassBundle) so more developers can find it.
 
 Symfony bundle for **Yopass-style E2E encrypted secret sharing**: client-side libsodium encryption, expiration, read limits, and public reveal pages.
 
-**FrankenPHP worker mode:** Supported — stateless controllers and services; tested with the Symfony 8 demo using FrankenPHP (see [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)).
+![FrankenPHP Friendly Worker Mode](docs/images/frankenphp-friendly.png)
+
+This bundle is **FrankenPHP worker mode friendly**.
+
+**FrankenPHP worker mode:** Supported — stateless controllers and services; tested with the Symfony 8 demo using FrankenPHP (see [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)). Requires `nowo-tech/phpstan-frankenphp` in CI (REQ-CS-005).
 
 ## Features
 
@@ -35,10 +39,13 @@ See [Installation](docs/INSTALLATION.md) for Flex recipe, Doctrine schema, route
 nowo_yopass:
     user_class: App\Entity\User
     table_prefix: yopass_
+    web_ui:
+        layout_template: 'base.html.twig'   # optional: host admin layout
     security:
+        # Defaults to ROLE_ADMIN since 1.3.0 — set explicitly if you need ROLE_USER
+        access_roles: [ROLE_ADMIN]
         access_checker: App\Security\CustomYopassAccessChecker  # optional
 ```
-
 Full reference: [Configuration](docs/CONFIGURATION.md).
 
 ## Usage
@@ -81,6 +88,8 @@ make -C demo up-symfony8
 
 ## Tests and Coverage
 
+Current coverage: PHP ~100% (lines).
+
 ```bash
 make test              # PHPUnit
 make test-coverage     # PHP coverage + percentage script
@@ -90,8 +99,8 @@ make release-check     # Full pre-release chain
 
 | Language | Coverage |
 |----------|----------|
-| PHP | **100%** (Lines) — `make test-coverage-100` |
-| TypeScript | **~76%** (Lines) — `make test-ts` (password-mode paths require browser sodium runtime) |
+| PHP | 100% (Lines) — `make test-coverage-100` |
+| TypeScript | ~76% (Lines) — `make test-ts` (password-mode paths require browser sodium runtime) |
 
 ## License
 

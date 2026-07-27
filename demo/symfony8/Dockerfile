@@ -1,4 +1,5 @@
-FROM dunglas/frankenphp:1-php8.4-bookworm
+# REQ-DEMO-010: prefer newest PHP available in official FrankenPHP images (Symfony 8 allows 8.5).
+FROM dunglas/frankenphp:1-php8.5-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*

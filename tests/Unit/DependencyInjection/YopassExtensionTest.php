@@ -6,8 +6,10 @@ namespace Nowo\YopassBundle\Tests\Unit\DependencyInjection;
 
 use Doctrine\Bundle\DoctrineBundle\DependencyInjection\DoctrineExtension;
 use Doctrine\Bundle\MongoDBBundle\DependencyInjection\DoctrineMongoDBExtension;
+use LogicException;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
+use Nowo\YopassBundle\DependencyInjection\Compiler\ManageWebUiSecurityPass;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
@@ -20,6 +22,7 @@ use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
+use Nowo\YopassBundle\Twig\YopassTwigExtension;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension;
@@ -75,6 +78,72 @@ final class YopassExtensionTest extends TestCase
         );
         self::assertTrue($this->container->hasDefinition(ShareManageController::class));
         self::assertTrue($this->container->hasDefinition(PublicEndpointRateLimiter::class));
+        self::assertTrue($this->container->getParameter('nowo_yopass.web_ui.enabled'));
+        self::assertSame('@NowoYopassBundle/layout.html.twig', $this->container->getParameter('nowo_yopass.web_ui.layout_template'));
+        self::assertSame('tabler', $this->container->getParameter('nowo_yopass.web_ui.css_framework'));
+        self::assertSame('tabler-icons', $this->container->getParameter('nowo_yopass.web_ui.icon_set'));
+    }
+
+    public function testLoadRegistersTwigExtensionArguments(): void
+    {
+        $this->extension->load([['user_class' => 'App\\Entity\\User']], $this->container);
+
+        self::assertTrue($this->container->hasDefinition(YopassTwigExtension::class));
+        $definition = $this->container->getDefinition(YopassTwigExtension::class);
+        self::assertSame('%nowo_yopass.web_ui.layout_template%', $definition->getArgument('$layoutTemplate'));
+        self::assertSame('%nowo_yopass.web_ui.css_framework%', $definition->getArgument('$cssFramework'));
+        self::assertSame('%nowo_yopass.web_ui.icon_set%', $definition->getArgument('$iconSet'));
+    }
+
+    public function testLoadPrefersLegacyTemplatesLayoutWhenWebUiLayoutIsDefault(): void
+    {
+        $this->extension->load([[
+            'user_class' => 'App\\Entity\\User',
+            'templates'  => [
+                'layout' => 'admin/base.html.twig',
+            ],
+        ]], $this->container);
+
+        self::assertSame('admin/base.html.twig', $this->container->getParameter('nowo_yopass.web_ui.layout_template'));
+        self::assertSame('admin/base.html.twig', $this->container->getParameter('nowo_yopass.templates')['layout']);
+    }
+
+    public function testLoadUsesWebUiLayoutTemplateOverLegacyTemplatesLayout(): void
+    {
+        $this->extension->load([[
+            'user_class' => 'App\\Entity\\User',
+            'web_ui'     => [
+                'layout_template' => 'platform/layout.html.twig',
+            ],
+            'templates' => [
+                'layout' => 'admin/base.html.twig',
+            ],
+        ]], $this->container);
+
+        self::assertSame('platform/layout.html.twig', $this->container->getParameter('nowo_yopass.web_ui.layout_template'));
+        self::assertSame('platform/layout.html.twig', $this->container->getParameter('nowo_yopass.templates')['layout']);
+    }
+
+    public function testManageWebUiSecurityPassFailsWithoutSecurityBundle(): void
+    {
+        $this->extension->load([['user_class' => 'App\\Entity\\User']], $this->container);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('SecurityBundle');
+
+        (new ManageWebUiSecurityPass())->process($this->container);
+    }
+
+    public function testManageWebUiSecurityPassAllowsDemoModeWithoutSecurityBundle(): void
+    {
+        $this->extension->load([[
+            'user_class' => 'App\\Entity\\User',
+            'security'   => ['allow_unauthenticated' => true],
+        ]], $this->container);
+
+        (new ManageWebUiSecurityPass())->process($this->container);
+
+        self::assertTrue(true);
     }
 
     public function testLoadUsesCustomTablePrefix(): void

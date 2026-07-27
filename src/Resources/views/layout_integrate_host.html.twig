@@ -1,0 +1,20 @@
+{#
+    Bridge template for host layout integration (REQ-UI-001).
+
+    Copy or adapt in your application and set:
+    nowo_yopass.web_ui.layout_template: 'platform/admin/yopass_bridge.html.twig'
+#}
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    {% block nowo_ui_content %}{% endblock %}
+{% endblock %}
+
+{# Map host stylesheets/javascripts if your layout uses different block names. #}
+{% block stylesheets %}
+    {{ parent() }}
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+{% endblock %}

@@ -84,7 +84,9 @@ final class MyShareAccessListener
 
 ## Twig overrides
 
-Place templates under:
+Manage pages extend the configured layout (`nowo_yopass_layout_template`). Set `web_ui.layout_template` to your project layout so bundle pages render inside your admin shell — see [Configuration — Web UI](CONFIGURATION.md#web-ui-manage-pages).
+
+Place template overrides under:
 
 ```
 templates/bundles/NowoYopassBundle/
@@ -94,7 +96,7 @@ templates/bundles/NowoYopassBundle/
 └── layout.html.twig
 ```
 
-Or configure paths in `nowo_yopass.templates.*`.
+Or configure paths in `nowo_yopass.templates.*` / `nowo_yopass.web_ui.layout_template`.
 
 ## Translations
 

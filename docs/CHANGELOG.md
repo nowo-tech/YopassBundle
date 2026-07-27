@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-27
+
+### Added
+
+- **`web_ui` configuration (REQ-UI-001)** — `layout_template`, `css_framework`, `icon_set`, Twig globals via `YopassTwigExtension` (`nowo_yopass_layout_template`, `nowo_yopass_css_framework`, `nowo_yopass_icon_set`), `_ui_macros.html.twig`, and `layout_integrate_host.html.twig` bridge example.
+- **`security.allow_unauthenticated` (REQ-UI-002)** — compile-time SecurityBundle guard for the manage UI (`ManageWebUiSecurityPass`).
+- **REQ-CS-005** — `nowo-tech/phpstan-frankenphp` (require-dev) with classic + worker rulesets; FrankenPHP Friendly banner in README (REQ-DOCS-017).
+- **REQ-MAKE-007** — `make down-dev` (non-destructive alias of `down`).
+- **REQ-MAKE-008** — demo `update-deps` / `update-deps-all` targets aligned with shared monorepo scripts.
+- **REQ-TEST-005** — `make test-with-db` / `test-coverage-with-db` aliases.
+- **REQ-TEST-011** — `make -C demo demo-smoke` alias for the demo HTTP 200 healthcheck.
+- **REQ-OBS-001** — structured rate-limit warnings via `LoggerInterface` (hashed client IP; never secrets/ciphertext).
+- **REQ-SF-004** — `#[AsController]` / `#[Route]` on manage and public controllers; `YopassRouteLoader` imports those attributes and applies configurable path/name overrides (compatible with Symfony Routing 7.4 getters and 8.1 public properties; FrankenPHP-worker safe).
+- **Stimulus `nowo-yopass-confirm`** — confirm destructive manage actions without inline `onclick` (REQ-UX-001).
+- **Demo FrankenPHP boot** — entrypoint waits for Composer `vendor/` before starting worker mode so `make up` can install deps after `compose up`.
+
+### Changed
+
+- **Security defaults (REQ-UI-002)** — `security.access_roles`, `create_roles`, `list_roles`, and `revoke_roles` default to `[ROLE_ADMIN]` instead of `[ROLE_USER]`. Override in config and align `security.access_control` in your app. See [UPGRADING.md](UPGRADING.md).
+- **Manage Twig layout** — pages extend `nowo_yopass_layout_template`; `stylesheets` / `javascripts` blocks with `{{ parent() }}` for host asset stacking; `templates.layout` is a BC alias for `web_ui.layout_template`.
+- **REQ-UI-001** — manage/public templates route buttons and action icons through `_ui_macros.html.twig` (`btn`, `btn_icon`, `action_icon`).
+- **REQ-DEMO-010** — Symfony 8 demo FrankenPHP image bumped to PHP **8.5**.
+- **REQ-UX-001** — Stimulus create controller decodes HTML entities without `innerHTML`.
+- **REQ-TEST-010** — PHPUnit `#[DataProvider]` replaces docblock `@dataProvider`.
+
 ## [1.2.8] - 2026-07-22
 
 ### Changed
@@ -59,10 +84,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Git hooks / audit** — `commit-msg` and `check-no-cursor-coauthor` also strip/detect same-line Cursor co-author trailers.
 - **Dev dependencies** — `friendsofphp/php-cs-fixer` 3.95.14, `rector/rector` 2.5.7 (`composer.lock` only).
-
-### Fixed
-
-- **Git history** — removed accidental `Co-authored-by: Cursor` trailer from v1.2.4 release commit (history rewrite).
 
 ## [1.2.4] - 2026-07-15
 
@@ -185,7 +206,8 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
 [1.2.6]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.5...v1.2.6
