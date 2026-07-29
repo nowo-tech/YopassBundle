@@ -72,7 +72,11 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
             ->getQuery()
             ->execute();
 
-        return is_int($result) ? $result : (int) $result;
+        if (is_int($result)) {
+            return $result;
+        }
+
+        return 0;
     }
 
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array

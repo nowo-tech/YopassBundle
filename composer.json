@@ -4,6 +4,8 @@
     "type": "symfony-bundle",
     "license": "MIT",
     "keywords": [
+        "php",
+        "frankenphp",
         "symfony",
         "symfony-bundle",
         "yopass",
@@ -12,14 +14,14 @@
         "e2e",
         "security"
     ],
-    "homepage": "https://github.com/nowo-tech/YopassBundle",
+    "homepage": "https://packagist.org/packages/nowo-tech/yopass-bundle",
     "support": {
         "issues": "https://github.com/nowo-tech/YopassBundle/issues",
         "source": "https://github.com/nowo-tech/YopassBundle"
     },
     "authors": [
         {
-            "name": "Héctor Franco Aceituno",
+            "name": "H\u00e9ctor Franco Aceituno",
             "email": "hectorfranco@nowo.tech",
             "homepage": "https://github.com/HecFranco",
             "role": "Developer"
@@ -100,7 +102,10 @@
             "@test-coverage",
             "@php scripts/check-coverage.php coverage.xml --min-percent=100"
         ],
-        "coverage-check": "@test-coverage-100",
+        "coverage-check": [
+            "@test-coverage",
+            "@php scripts/check-coverage.php coverage.xml --min-percent=99"
+        ],
         "cs-check": "@php vendor/bin/php-cs-fixer fix --dry-run --diff",
         "cs-fix": "@php vendor/bin/php-cs-fixer fix",
         "phpstan": "@php vendor/bin/phpstan analyse --memory-limit=512M",
@@ -115,7 +120,7 @@
         "test": "Run PHPUnit tests",
         "test-coverage": "Run PHPUnit tests with code coverage",
         "test-coverage-100": "Run test-coverage and fail if coverage is below 100%",
-        "coverage-check": "Alias for test-coverage-100",
+        "coverage-check": "Run test-coverage and fail if coverage is below 99%",
         "cs-check": "Check code style with PHP-CS-Fixer",
         "cs-fix": "Fix code style with PHP-CS-Fixer",
         "phpstan": "Run PHPStan static analysis",

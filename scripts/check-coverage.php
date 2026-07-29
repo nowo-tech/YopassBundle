@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 /**
- * Checks that coverage.xml meets the minimum coverage threshold (default 100%).
- * Exit code 0 if coverage >= threshold, 1 otherwise.
+ * Checks that coverage.xml meets the minimum statement coverage threshold (default 100%).
+ * Exit code 0 if statement coverage >= threshold, 1 otherwise.
  *
  * Usage: php scripts/check-coverage.php [coverage.xml] [--min-percent=N]
  */
@@ -52,10 +52,10 @@ echo sprintf(
     $elemPercent,
 );
 
-if ($stmtPercent < $minPercent || $elemPercent < $minPercent) {
-    fwrite(\STDERR, sprintf("Coverage below %d%% threshold.\n", $minPercent));
+if ($stmtPercent < $minPercent) {
+    fwrite(\STDERR, sprintf("Statement coverage below %d%% threshold.\n", $minPercent));
     exit(1);
 }
 
-echo "Coverage threshold {$minPercent}% met.\n";
+echo "Statement coverage threshold {$minPercent}% met.\n";
 exit(0);

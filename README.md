@@ -1,6 +1,6 @@
 # Yopass Bundle
 
-[![CI](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/yopass-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/yopass-bundle.svg)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.2-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.4%2B%20%7C%208.0%20%7C%208.1%2B-000000?logo=symfony)](https://symfony.com) [![GitHub stars](https://img.shields.io/github/stars/nowo-tech/YopassBundle.svg?style=social&label=Star)](https://github.com/nowo-tech/YopassBundle) [![Coverage](https://img.shields.io/badge/Coverage-100%25%20PHP%20%7C%20~76%25%20TS-brightgreen)](#tests-and-coverage)
+[![CI](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/yopass-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/yopass-bundle.svg)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-%3E%3D8.2-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.4%2B%20%7C%208.0%20%7C%208.1%2B-000000?logo=symfony)](https://symfony.com) [![GitHub stars](https://img.shields.io/github/stars/nowo-tech/YopassBundle.svg?style=social&label=Star)](https://github.com/nowo-tech/YopassBundle) [![Coverage](https://img.shields.io/badge/Coverage-99%25%2B%20PHP%20%7C%20~76%25%20TS-brightgreen)](#tests-and-coverage)
 
 > ⭐ **Found this useful?** Give it a **star** on [GitHub](https://github.com/nowo-tech/YopassBundle) so more developers can find it.
 
@@ -9,8 +9,6 @@ Symfony bundle for **Yopass-style E2E encrypted secret sharing**: client-side li
 ![FrankenPHP Friendly Worker Mode](docs/images/frankenphp-friendly.png)
 
 This bundle is **FrankenPHP worker mode friendly**.
-
-**FrankenPHP worker mode:** Supported — stateless controllers and services; tested with the Symfony 8 demo using FrankenPHP (see [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)). Requires `nowo-tech/phpstan-frankenphp` in CI (REQ-CS-005).
 
 ## Features
 
@@ -88,18 +86,19 @@ make -C demo up-symfony8
 
 ## Tests and Coverage
 
-Current coverage: PHP ~100% (lines); TypeScript ~76% (lines — password-mode paths need browser sodium).
+Current coverage: PHP 99%+ (statements via `make coverage-check`); TypeScript ~76% (lines — password-mode paths need browser sodium).
 
 ```bash
 make test              # PHPUnit
 make test-coverage     # PHP coverage + percentage script
+make coverage-check    # PHP coverage + 99% statements gate
 make test-ts           # Vitest (crypto)
 make release-check     # Full pre-release chain
 ```
 
 | Language | Coverage |
 |----------|----------|
-| PHP | 100% (Lines) — `make test-coverage-100` |
+| PHP | 99%+ (Statements) — `make coverage-check` |
 | TypeScript | ~76% (Lines) — `make test-ts` (password-mode paths require browser sodium runtime) |
 
 ## License

@@ -21,9 +21,12 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 use function array_column;
 use function array_combine;
 use function is_array;
+use function max;
 
 /**
  * Server-side metadata for a client-encrypted share (ciphertext is filled by the browser).
+ *
+ * @extends AbstractType<ShareCreateData>
  */
 final class ShareCreateType extends AbstractType
 {
@@ -41,7 +44,7 @@ final class ShareCreateType extends AbstractType
          *     expiration_options: list<array{id: string, interval: string}>
          * } $shareOptions */
         $shareOptions       = $options['share_options'];
-        $maxCiphertextBytes = (int) $options['max_ciphertext_bytes'];
+        $maxCiphertextBytes = max(1, (int) $options['max_ciphertext_bytes']);
         $expirationIds      = array_column($shareOptions['expiration_options'], 'id');
         $expirationChoices  = array_combine($expirationIds, $expirationIds);
         $maxReadsChoices    = array_combine(
@@ -90,7 +93,7 @@ final class ShareCreateType extends AbstractType
                 return;
             }
 
-            if (!isset($data['ciphertext']) || $data['ciphertext'] === null) {
+            if (!isset($data['ciphertext'])) {
                 $data['ciphertext'] = '';
             }
 

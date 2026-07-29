@@ -38,4 +38,23 @@ final class ShareFileHandlerPassTest extends TestCase
         $this->expectException(InvalidConfigurationException::class);
         (new ShareFileHandlerPass())->process($container);
     }
+
+    public function testNoOpWhenParameterIsMissing(): void
+    {
+        $container = new ContainerBuilder();
+
+        (new ShareFileHandlerPass())->process($container);
+
+        self::assertFalse($container->hasAlias(ShareFileHandlerInterface::class));
+    }
+
+    public function testNoOpWhenConfiguredHandlerIsEmpty(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter('nowo_yopass.file_handler', '');
+
+        (new ShareFileHandlerPass())->process($container);
+
+        self::assertFalse($container->hasAlias(ShareFileHandlerInterface::class));
+    }
 }

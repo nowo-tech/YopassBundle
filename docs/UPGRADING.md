@@ -2,6 +2,18 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.3.2 (2026-07-29)
+
+Maintainer / QA release. **No configuration or schema changes** for typical consumers.
+
+- PHPStan baseline removed; `ignoreErrors: []` with level-8 fixes in controllers, DI, Doctrine metadata, forms, and Mongo count path.
+- `make coverage-check` (99% statements) is part of `release-check`; optional MongoDB ODM repository remains excluded from the PHPUnit source gate.
+- Packagist homepage / keywords and SECURITY 12.4.1 SEC-004 row updated.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.3.1 (2026-07-27)
 
 Maintainer / compliance release. **No configuration or schema changes** for typical consumers.

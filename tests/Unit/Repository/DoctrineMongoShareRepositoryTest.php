@@ -137,4 +137,15 @@ final class DoctrineMongoShareRepositoryTest extends TestCase
         $share = new SecureShare($document->getId(), $user);
         (new DoctrineMongoShareRepository($documentManager))->remove($share);
     }
+
+    public function testRemoveSkipsMissingDocument(): void
+    {
+        $share = new SecureShare('00000000-0000-4000-8000-000000000008', new TestUser());
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->method('find')->willReturn(null);
+        $documentManager->expects(self::never())->method('remove');
+
+        (new DoctrineMongoShareRepository($documentManager))->remove($share);
+    }
 }

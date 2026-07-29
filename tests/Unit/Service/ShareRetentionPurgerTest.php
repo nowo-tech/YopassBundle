@@ -49,4 +49,14 @@ final class ShareRetentionPurgerTest extends TestCase
 
         self::assertSame(0, $removed);
     }
+
+    public function testPurgeAllSkipsWhenRetentionHasNoMaxAge(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('removeOlderThan');
+
+        $removed = (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '']]))->purgeAll();
+
+        self::assertSame(0, $removed);
+    }
 }

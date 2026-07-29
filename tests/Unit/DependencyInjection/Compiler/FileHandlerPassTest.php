@@ -50,4 +50,13 @@ final class FileHandlerPassTest extends TestCase
 
         self::assertFalse($container->hasAlias(ShareFileHandlerInterface::class));
     }
+
+    public function testNoOpWhenFileHandlerParameterIsMissing(): void
+    {
+        $container = new ContainerBuilder();
+
+        (new FileHandlerPass())->process($container);
+
+        self::assertFalse($container->hasAlias(ShareFileHandlerInterface::class));
+    }
 }

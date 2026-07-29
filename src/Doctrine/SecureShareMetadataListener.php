@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Doctrine;
 
 use Doctrine\ORM\Event\LoadClassMetadataEventArgs;
-use Doctrine\ORM\Mapping\AssociationMapping;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use LogicException;
 use Nowo\YopassBundle\Entity\SecureShare;
@@ -49,35 +48,30 @@ final readonly class SecureShareMetadataListener
             return;
         }
 
-        $this->remapCreatorAssociation($metadata);
+        /** @var ClassMetadata<SecureShare> $secureShareMetadata */
+        $secureShareMetadata = $metadata;
+        $this->remapCreatorAssociation($secureShareMetadata);
     }
 
+    /**
+     * @param ClassMetadata<SecureShare> $metadata
+     */
     private function remapCreatorAssociation(ClassMetadata $metadata): void
     {
         $mapping      = $metadata->associationMappings['creator'];
         $targetEntity = ltrim($this->userClass, '\\');
+        $newMapping   = array_replace_recursive(
+            $mapping->toArray(),
+            ['targetEntity' => $targetEntity],
+        );
+        $newMapping['fieldName'] = $mapping->fieldName;
 
-        if ($mapping instanceof AssociationMapping) {
-            $newMapping = array_replace_recursive(
-                $mapping->toArray(),
-                ['targetEntity' => $targetEntity],
-            );
-            $newMapping['fieldName'] = $mapping->fieldName;
+        unset($metadata->associationMappings['creator']);
 
-            unset($metadata->associationMappings['creator']);
-
-            match ($mapping->type()) {
-                ClassMetadata::MANY_TO_ONE => $metadata->mapManyToOne($newMapping),
-                ClassMetadata::ONE_TO_ONE  => $metadata->mapOneToOne($newMapping),
-                default                    => throw new LogicException(sprintf('Unsupported association type for creator: %d', $mapping->type())),
-            };
-
-            return;
-        }
-
-        /** @var array<string, mixed> $legacyMapping */
-        $legacyMapping                            = $mapping;
-        $legacyMapping['targetEntity']            = $targetEntity;
-        $metadata->associationMappings['creator'] = $legacyMapping;
+        match ($mapping->type()) {
+            ClassMetadata::MANY_TO_ONE => $metadata->mapManyToOne($newMapping),
+            ClassMetadata::ONE_TO_ONE  => $metadata->mapOneToOne($newMapping),
+            default                    => throw new LogicException(sprintf('Unsupported association type for creator: %d', $mapping->type())),
+        };
     }
 }

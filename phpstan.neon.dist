@@ -5,7 +5,6 @@
 includes:
     - vendor/nowo-tech/phpstan-frankenphp/ruleset-classic.neon
     - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker.neon
-    - phpstan-baseline.neon
 
 parameters:
     level: 8
@@ -13,3 +12,4 @@ parameters:
         - src
     excludePaths:
         - src/Resources/assets/*
+    ignoreErrors: []

@@ -77,7 +77,10 @@ See [.github/SECURITY.md](../.github/SECURITY.md) for coordinated disclosure.
 
 ## Release security checklist (12.4.1)
 
-- [ ] No secrets in repo or demo `.env` committed
-- [ ] `composer audit` clean
-- [ ] Public routes documented in INSTALLATION
-- [ ] Access checker and share events documented for integrators
+| Check | Status |
+| ----- | ------ |
+| No secrets in repo or demo `.env` committed | Maintainer sign-off before tag |
+| `composer audit` clean | Maintainer sign-off before tag |
+| Public routes documented in INSTALLATION | Maintainer sign-off before tag |
+| Access checker and share events documented for integrators | Maintainer sign-off before tag |
+| **AI security audit (REQ-SEC-004)** | Pass (conditional) — see section above; recorded in monorepo `BUNDLES_SECURITY_ANALYSIS.md` (Medium residual: key-in-URL convenience links; host must enable `cache.app` and keep `allow_unauthenticated: false` in prod) |

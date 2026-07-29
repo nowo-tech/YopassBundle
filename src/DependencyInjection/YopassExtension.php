@@ -196,6 +196,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
     /**
      * @param array<string, mixed> $database
+     * @param array<string, mixed> $config
      */
     private function registerShareRepository(
         ContainerBuilder $container,
@@ -228,7 +229,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         if ($driver === DatabaseDriver::DOCTRINE_MONGODB) {
             $container->setParameter('nowo_yopass.access_log_enabled', false);
             $this->registerNullAccessLogRepository($container);
-            $documentManagerName = (string) $database['document_manager'];
+            $documentManagerName = (string) ($database['document_manager'] ?? 'default');
             $container->setDefinition(DoctrineMongoShareRepository::class, (new Definition(DoctrineMongoShareRepository::class))
                 ->setAutowired(false)
                 ->setArgument('$documentManager', new Reference(sprintf('doctrine_mongodb.odm.%s_document_manager', $documentManagerName))));

@@ -1,8 +1,10 @@
 # Yopass Bundle - Development
-.PHONY: help up down down-dev build shell install test test-coverage test-with-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor check-open-prs strip-cursor-coauthor-from-history
+.PHONY: help up down down-dev build shell install test test-coverage test-coverage-100 coverage-check test-with-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor check-open-prs strip-cursor-coauthor-from-history
 
 COMPOSE_FILE ?= docker-compose.yml
-COMPOSE     ?= /usr/bin/docker compose -f $(COMPOSE_FILE)
+# Prefer Compose V2 plugin (GitHub Actions / modern Docker Desktop); fall back to docker-compose V1 (REQ-MAKE-010).
+COMPOSE_BIN ?= $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+COMPOSE     ?= $(COMPOSE_BIN) -f $(COMPOSE_FILE)
 SERVICE_PHP ?= php
 
 help:
@@ -21,6 +23,7 @@ help:
 	@echo "  assets-test     Alias of test-ts"
 	@echo "  test            Run PHPUnit tests"
 	@echo "  test-coverage   Run tests with code coverage"
+	@echo "  coverage-check  Enforce PHP coverage threshold"
 	@echo "  cs-check / cs-fix  Code style"
 	@echo "  rector / rector-dry  Rector"
 	@echo "  phpstan         Static analysis"
@@ -98,6 +101,9 @@ test-coverage-100: ensure-up
 	$(COMPOSE) exec $(SERVICE_PHP) composer test-coverage-100 | tee coverage-php.txt
 	sh .scripts/php-coverage-percent.sh coverage-php.txt
 
+coverage-check: test-coverage
+	$(COMPOSE) exec -T $(SERVICE_PHP) php scripts/check-coverage.php coverage.xml --min-percent=99
+
 # REQ-TEST-005: integration suite uses Doctrine (SQLite in container); aliases keep the standard target names.
 test-with-db: test
 
@@ -128,7 +134,7 @@ composer-sync: ensure-up
 	$(COMPOSE) exec -T $(SERVICE_PHP) composer validate --strict
 	$(COMPOSE) exec -T $(SERVICE_PHP) composer update --no-install
 
-release-check: check-no-cursor-coauthor check-open-prs ensure-up composer-sync cs-fix cs-check rector-dry phpstan validate-translations test-coverage release-check-demos test-ts
+release-check: check-no-cursor-coauthor check-open-prs ensure-up composer-sync cs-fix cs-check rector-dry phpstan validate-translations coverage-check release-check-demos test-ts
 
 release-check-demos:
 	@$(MAKE) -C demo release-check
@@ -151,7 +157,8 @@ scaffold-s3-examples:
 
 # REQ-MAKE-008: update-deps (REQ-MAKE-008)
 BUNDLE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-include $(BUNDLE_ROOT)/../.scripts/Makefile.update-deps.mk
+# Optional: monorepo helper absent on standalone GitHub Actions checkout (REQ-MAKE-009).
+-include $(BUNDLE_ROOT)/../.scripts/Makefile.update-deps.mk
 check-no-cursor-coauthor:
 	@chmod +x .scripts/check-no-cursor-coauthor.sh
 	@./.scripts/check-no-cursor-coauthor.sh HEAD

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-07-29
+
+### Added
+
+- **REQ-SEC-002** — 12.4.1 release checklist row for REQ-SEC-004 Pass (conditional).
+- **REQ-DOCS-018** — GitHub About homepage Packagist + topic `frankenphp`; composer `homepage` / keywords (`php`, `frankenphp`).
+
+### Changed
+
+- **REQ-CS-006** — removed the PHPStan baseline, set `ignoreErrors: []`, and fixed the remaining level-8 findings in controllers, DI, Doctrine metadata remapping, form typing, and the Mongo repository count path.
+- **Coverage gate** — `make coverage-check` is now wired into `release-check` and enforces a 99% PHP statements threshold through `scripts/check-coverage.php`; README coverage wording/badge were aligned. The optional MongoDB ODM repository is excluded from the PHPUnit source gate because final ODM query internals are impractical to isolate with the current unit-only test setup.
+- **Tests** — expanded unit coverage for Doctrine ORM repositories, access-log repositories, route loading, compiler passes, events, form pre-submit handling, retention purging, metadata listeners, and share retrieve/extend flows.
+
 ## [1.3.1] - 2026-07-27
 
 ### Added

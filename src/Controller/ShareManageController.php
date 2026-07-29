@@ -198,7 +198,7 @@ final class ShareManageController extends AbstractController
 
         $result = $this->shareRetriever->preview($id);
 
-        if (($result['status'] ?? '') !== 'ok') {
+        if ($result['status'] !== 'ok') {
             throw $this->createNotFoundException();
         }
 
@@ -361,6 +361,9 @@ final class ShareManageController extends AbstractController
         return $user;
     }
 
+    /**
+     * @return FormInterface<ShareCreateData>
+     */
     private function buildShareCreateForm(): FormInterface
     {
         $data            = new ShareCreateData();

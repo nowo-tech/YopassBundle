@@ -85,6 +85,50 @@ final class ShareExtenderTest extends TestCase
         (new ShareExtender($this->repositoryWithShare($share), DefaultShareOptions::get()))->extend($share, null, null);
     }
 
+    public function testExtendRejectsUnknownExpirationOption(): void
+    {
+        $share = $this->share();
+
+        $this->expectException(ShareExtendException::class);
+        $this->expectExceptionMessage('invalid_expiration');
+
+        (new ShareExtender($this->repositoryWithShare($share), DefaultShareOptions::get()))->extend($share, '30d', null);
+    }
+
+    public function testExtendRejectsExpirationThatDoesNotMoveForward(): void
+    {
+        $share = $this->share();
+
+        $this->expectException(ShareExtendException::class);
+        $this->expectExceptionMessage('expiration_not_extended');
+
+        (new ShareExtender($this->repositoryWithShare($share), [
+            'expiration_options' => [['id' => 'noop', 'interval' => '0 seconds']],
+            'max_reads_options'  => [1, 3, 10],
+        ]))->extend($share, 'noop', null);
+    }
+
+    public function testExtendRejectsInvalidMaxReadsOption(): void
+    {
+        $share = $this->share();
+
+        $this->expectException(ShareExtendException::class);
+        $this->expectExceptionMessage('invalid_max_reads');
+
+        (new ShareExtender($this->repositoryWithShare($share), DefaultShareOptions::get()))->extend($share, null, 99);
+    }
+
+    public function testExtendRejectsNonIncreasingMaxReads(): void
+    {
+        $share = $this->share();
+        $share->setMaxReads(3);
+
+        $this->expectException(ShareExtendException::class);
+        $this->expectExceptionMessage('max_reads_not_increased');
+
+        (new ShareExtender($this->repositoryWithShare($share), DefaultShareOptions::get()))->extend($share, null, 3);
+    }
+
     private function share(): SecureShare
     {
         $share = new SecureShare('00000000-0000-4000-8000-000000000030', new TestUser());

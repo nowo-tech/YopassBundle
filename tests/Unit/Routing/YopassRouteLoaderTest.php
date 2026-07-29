@@ -8,6 +8,10 @@ use Nowo\YopassBundle\Controller\PublicShareController;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
+use RuntimeException;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\RouteCollection;
 
 final class YopassRouteLoaderTest extends TestCase
 {
@@ -65,6 +69,48 @@ final class YopassRouteLoaderTest extends TestCase
         );
     }
 
+    public function testPrivateLoaderAddsDefaultGetWhenAttributeHasNoMethods(): void
+    {
+        $loader = new YopassRouteLoader([
+            'manage' => ['path' => '/tools/yopass', 'name' => 'app_manage'],
+        ], '/admin');
+        $collection = new RouteCollection();
+
+        $this->invokeAddRoutesFromController($loader, $collection, LoaderTestController::class);
+
+        self::assertSame(['GET'], $collection->get('app_manage')->getMethods());
+        self::assertSame('/admin/tools/yopass', $collection->get('app_manage')->getPath());
+    }
+
+    public function testPrivateLoaderFailsWhenConfigRouteIsMissing(): void
+    {
+        $loader = new YopassRouteLoader([], '/admin');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Missing nowo_yopass.routes.manage');
+
+        $this->invokeAddRoutesFromController($loader, new RouteCollection(), LoaderTestController::class);
+    }
+
+    public function testPrivateLoaderFailsWhenAttributeNameIsUnknown(): void
+    {
+        $loader = $this->loader();
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('must declare a known name');
+
+        $this->invokeAddRoutesFromController($loader, new RouteCollection(), InvalidNamedLoaderTestController::class);
+    }
+
+    public function testNormalizeStringListReturnsEmptyListForEmptyString(): void
+    {
+        $loader = $this->loader();
+        $method = new ReflectionMethod(YopassRouteLoader::class, 'normalizeStringList');
+        $method->setAccessible(true);
+
+        self::assertSame([], $method->invoke($loader, ''));
+    }
+
     private function loader(): YopassRouteLoader
     {
         return new YopassRouteLoader([
@@ -79,5 +125,31 @@ final class YopassRouteLoaderTest extends TestCase
             'public_show'    => ['path' => '/share/{id}', 'name' => 'nowo_yopass_public_share'],
             'public_consume' => ['path' => '/share/{id}/consume', 'name' => 'nowo_yopass_public_consume'],
         ], '/admin');
+    }
+
+    private function invokeAddRoutesFromController(
+        YopassRouteLoader $loader,
+        RouteCollection $collection,
+        string $controllerClass,
+    ): void {
+        $method = new ReflectionMethod(YopassRouteLoader::class, 'addRoutesFromController');
+        $method->setAccessible(true);
+        $method->invoke($loader, $collection, $controllerClass);
+    }
+}
+
+final class LoaderTestController
+{
+    #[Route('/tools/yopass', name: 'nowo_yopass_index')]
+    public function index(): void
+    {
+    }
+}
+
+final class InvalidNamedLoaderTestController
+{
+    #[Route('/broken', name: 'broken_name')]
+    public function index(): void
+    {
     }
 }

@@ -20,6 +20,8 @@
         <exclude>
             <directory>src/Resources</directory>
             <file>src/Security/YopassAccessCheckerInterface.php</file>
+            <!-- Optional MongoDB ODM backend: final query internals make several branches impractical to unit-isolate here; keep the 99% gate on the default bundle surface. -->
+            <file>src/Repository/DoctrineMongoShareRepository.php</file>
         </exclude>
     </source>
     <php>

@@ -206,6 +206,26 @@ final class YopassExtensionTest extends TestCase
         self::assertTrue($this->container->hasDefinition(DoctrineOrmShareRepository::class));
     }
 
+    public function testLoadDisablesAccessLogForCustomNonRelationalRepository(): void
+    {
+        $this->container->setDefinition('app.yopass.repository', new Definition(stdClass::class));
+
+        $this->extension->load([[
+            'user_class' => 'App\\Entity\\User',
+            'database'   => [
+                'driver'     => 'custom',
+                'platform'   => 'mongodb',
+                'repository' => 'app.yopass.repository',
+            ],
+        ]], $this->container);
+
+        self::assertFalse($this->container->getParameter('nowo_yopass.access_log_enabled'));
+        self::assertSame(
+            NullShareAccessLogRepository::class,
+            (string) $this->container->getAlias(ShareAccessLogRepositoryInterface::class),
+        );
+    }
+
     public function testLoadFailsWhenCustomDriverHasNoRepository(): void
     {
         $this->expectException(InvalidConfigurationException::class);
