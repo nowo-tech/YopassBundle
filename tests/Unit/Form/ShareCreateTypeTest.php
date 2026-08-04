@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Tests\Unit\Form;
 
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Form\ShareCreateType;
+use Nowo\YopassBundle\Tests\Support\FormKitTestSupport;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Form\Extension\Validator\ValidatorExtension;
 use Symfony\Component\Form\Forms;
@@ -20,7 +21,7 @@ final class ShareCreateTypeTest extends TestCase
         $translator = $this->createMock(TranslatorInterface::class);
         $translator->method('trans')->willReturnArgument(0);
 
-        $formType = new ShareCreateType($translator);
+        $formType = FormKitTestSupport::withMerger(new ShareCreateType($translator));
         $form     = Forms::createFormFactoryBuilder()
             ->addExtensions([new PreloadedExtension([$formType], [])])
             ->addExtension(new ValidatorExtension(Validation::createValidator()))

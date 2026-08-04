@@ -73,3 +73,9 @@ services:
             $layoutTemplate: '%nowo_yopass.web_ui.layout_template%'
             $cssFramework: '%nowo_yopass.web_ui.css_framework%'
             $iconSet: '%nowo_yopass.web_ui.icon_set%'
+
+    # Form Kit injects FormOptionsMerger into tagged form types (FormOptionsMergerInjectorCompilerPass).
+    Nowo\YopassBundle\Form\:
+        resource: '../../Form/'
+        exclude: '../../Form/DataTransformer/'
+        tags: ['form.type']

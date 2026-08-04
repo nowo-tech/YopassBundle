@@ -1,5 +1,5 @@
 {# Public reveal page — standalone HTML; macros still honor css_framework (REQ-UI-001). #}
-{% import '@NowoYopassBundle/_ui_macros.html.twig' as nowo_ui %}
+{% import '@NowoUiKitBundle/macros/ui.html.twig' as ui %}
 <!DOCTYPE html>
 <html lang="{{ app.request.locale|default('en') }}">
 <head>
@@ -12,7 +12,7 @@
 <body class="layout-fluid">
 <div class="page page-center">
     <div class="container container-tight py-4">
-        <div class="{{ nowo_ui.card() }} card-md shadow-sm">
+        <div class="{{ ui.card(nowo_yopass_css_framework|default('tabler')) }} card-md shadow-sm">
             <div class="card-body"
                  data-controller="nowo-share-reveal"
                  data-nowo-share-reveal-consume-url-value="{{ path(routes.public_consume.name, { id: share.id }) }}"
@@ -29,7 +29,7 @@
                 <h1 class="h2 mb-3">{{ 'yopass.public.title'|trans({}, 'NowoYopassBundle') }}</h1>
 
                 {% if not share.isAvailable %}
-                    <div class="{{ nowo_ui.alert('warning') }} mb-0">{{ 'yopass.public.unavailable'|trans({}, 'NowoYopassBundle') }}</div>
+                    <div class="{{ ui.flash('warning', nowo_yopass_css_framework|default('tabler')) }} mb-0">{{ 'yopass.public.unavailable'|trans({}, 'NowoYopassBundle') }}</div>
                 {% else %}
                     <p class="text-secondary">{{ 'yopass.public.intro'|trans({}, 'NowoYopassBundle') }}</p>
                     <p class="text-secondary small">{{ 'yopass.public.e2e_notice'|trans({}, 'NowoYopassBundle') }}</p>
@@ -53,13 +53,13 @@
                         </div>
                     {% endif %}
 
-                    <button type="button" class="{{ nowo_ui.btn('primary') }}" data-action="nowo-share-reveal#reveal" data-nowo-share-reveal-target="revealButton">
+                    <button type="button" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-share-reveal#reveal" data-nowo-share-reveal-target="revealButton">
                         {{ 'yopass.public.reveal'|trans({}, 'NowoYopassBundle') }}
                     </button>
 
-                    <pre class="{{ nowo_ui.alert('success') }} mt-3 mb-0 d-none text-wrap" data-nowo-share-reveal-target="output"></pre>
-                    <a href="#" class="{{ nowo_ui.btn('outline-primary', null, ' mt-3 d-none') }}" download data-nowo-share-reveal-target="downloadLink"></a>
-                    <div class="{{ nowo_ui.alert('danger') }} mt-3 d-none" data-nowo-share-reveal-target="error"></div>
+                    <pre class="{{ ui.flash('success', nowo_yopass_css_framework|default('tabler')) }} mt-3 mb-0 d-none text-wrap" data-nowo-share-reveal-target="output"></pre>
+                    <a href="#" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }} mt-3 d-none" download data-nowo-share-reveal-target="downloadLink"></a>
+                    <div class="{{ ui.flash('danger', nowo_yopass_css_framework|default('tabler')) }} mt-3 d-none" data-nowo-share-reveal-target="error"></div>
                 {% endif %}
             </div>
         </div>

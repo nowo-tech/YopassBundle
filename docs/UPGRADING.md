@@ -2,6 +2,38 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.4.0 (2026-08-04)
+
+From **1.3.x** — FormKit ^2, UiKit ^1.4, Twig Extra (REQ-TWIG-004), and Twig-CS-Fixer.
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console cache:clear
+php bin/console assets:install
+```
+
+### UiKit composition (REQ-UI-001-kit)
+
+Manage/public Twig imports `@NowoUiKitBundle/macros/ui.html.twig` (local `_ui_macros.html.twig` removed; domain icons in `_action_icons.html.twig`). Requires `nowo-tech/ui-kit-bundle` `^1.4`. Extension seeds `nowo_ui_kit` from `web_ui` when the host has not configured UiKit.
+
+### FormKitBundle (admin forms)
+
+Ensure `nowo-tech/form-kit-bundle` ^2.0 is installed (pulled transitively) and `Nowo\FormKitBundle\NowoFormKitBundle` is registered. Form types use profile `yopass` via `#[FormKitConfig]`; the bundle prepends that profile when the host has not defined it.
+
+### Twig Extra Bundle (REQ-TWIG-004)
+
+Hosts that render this bundle's Twig templates must install:
+
+```bash
+composer require twig/extra-bundle twig/string-extra
+```
+
+and enable `Twig\Extra\TwigExtraBundle\TwigExtraBundle`. Flex recipes usually register it automatically.
+
+### Twig-CS-Fixer (maintainers)
+
+Package maintainers: `composer twig:lint` / `composer twig:fix` use `.twig-cs-fixer.php` over `src/` (and `templates/` when present).
+
 ## 1.3.2 (2026-07-29)
 
 Maintainer / QA release. **No configuration or schema changes** for typical consumers.
@@ -286,7 +318,3 @@ One-click links use the query parameter **`decrypt_key`**:
 ```
 
 Short links omit the parameter; recipients paste the key in the reveal page. Legacy `#fragment` and `?key=` URLs are still read by the browser bundle but are no longer generated.
-
-## Unreleased / 1.x
-
-Breaking or notable changes in future 1.x releases will be documented here.

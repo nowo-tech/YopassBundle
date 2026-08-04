@@ -1,5 +1,6 @@
 {% extends nowo_yopass_layout_template %}
-{% import '@NowoYopassBundle/_ui_macros.html.twig' as nowo_ui %}
+{% import '@NowoUiKitBundle/macros/ui.html.twig' as ui %}
+{% import '@NowoYopassBundle/_action_icons.html.twig' as yopass_icons %}
 
 {% block title %}{{ 'yopass.title'|trans({}, 'NowoYopassBundle') }}{% endblock %}
 
@@ -13,7 +14,7 @@
 {% endblock %}
 
 {% block body %}
-    <div class="{{ nowo_ui.page_header() }}">
+    <div class="{{ ui.page_header(nowo_yopass_css_framework|default('tabler')) }}">
         <div class="row align-items-center">
             <div class="col">
                 <h1 class="page-title">{{ 'yopass.title'|trans({}, 'NowoYopassBundle') }}</h1>
@@ -22,7 +23,7 @@
             </div>
             {% if dashboard_route %}
                 <div class="col-auto">
-                    <a href="{{ path(dashboard_route) }}" class="{{ nowo_ui.btn('outline-secondary') }}">{{ 'yopass.back'|trans({}, 'NowoYopassBundle') }}</a>
+                    <a href="{{ path(dashboard_route) }}" class="{{ ui.btn('secondary', null, nowo_yopass_css_framework|default('tabler')) }}">{{ 'yopass.back'|trans({}, 'NowoYopassBundle') }}</a>
                 </div>
             {% endif %}
         </div>
@@ -30,14 +31,14 @@
 
     {% for label, messages in app.flashes %}
         {% for message in messages %}
-            <div class="alert {{ nowo_ui.alert(label == 'success' ? 'success' : 'danger') }}">{{ message }}</div>
+            <div class="{{ ui.flash(label == 'success' ? 'success' : 'danger', nowo_yopass_css_framework|default('tabler')) }}">{{ message }}</div>
         {% endfor %}
     {% endfor %}
 
     <div class="row row-cards">
         {% if can_create and create_form %}
             <div class="col-12 col-lg-5">
-                <div class="{{ nowo_ui.card() }}">
+                <div class="{{ ui.card(nowo_yopass_css_framework|default('tabler')) }}">
                     <div class="card-header">
                         <h2 class="card-title">{{ 'yopass.create.title'|trans({}, 'NowoYopassBundle') }}</h2>
                     </div>
@@ -139,7 +140,7 @@
 
                         <div class="alert alert-danger d-none" data-nowo-yopass-create-target="error"></div>
 
-                        <button type="submit" class="{{ nowo_ui.btn('primary', null, ' w-100') }}" data-nowo-yopass-create-target="submit">
+                        <button type="submit" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }} w-100" data-nowo-yopass-create-target="submit">
                             {{ 'yopass.create.submit'|trans({}, 'NowoYopassBundle') }}
                         </button>
 
@@ -150,7 +151,7 @@
         {% endif %}
 
         <div class="col-12 {% if can_create and create_form %}col-lg-7{% endif %}">
-            <div class="{{ nowo_ui.card() }}"
+            <div class="{{ ui.card(nowo_yopass_css_framework|default('tabler')) }}"
                  data-controller="nowo-yopass-manage-preview"
                  data-nowo-yopass-manage-preview-preview-path-template-value="{{ path(routes.preview.name, { id: '{id}' }) }}"
                  {% if can_extend %}
@@ -194,10 +195,10 @@
                               data-action="submit->nowo-yopass-confirm#confirm">
                             <input type="hidden" name="_token" value="{{ csrf_token('yopass_delete_all') }}">
                             <button type="submit"
-                                    class="{{ nowo_ui.btn('outline-danger', 'sm') }}"
+                                    class="{{ ui.btn('danger', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
                                     title="{{ delete_all_label }}"
                                     aria-label="{{ delete_all_label }}">
-                                {{ nowo_ui.action_icon('delete_all', ' me-1') }}{{ delete_all_label }}
+                                {{ yopass_icons.action_icon('delete_all', ' me-1') }}{{ delete_all_label }}
                             </button>
                         </form>
                     {% endif %}
@@ -207,7 +208,7 @@
                         <p class="text-secondary p-4 mb-0">{{ 'yopass.list.empty'|trans({}, 'NowoYopassBundle') }}</p>
                     {% else %}
                         <div class="table-responsive">
-                            <table class="{{ nowo_ui.table() }}">
+                            <table class="{{ ui.table(nowo_yopass_css_framework|default('tabler')) }}">
                                 <thead>
                                     <tr>
                                         <th>{{ 'yopass.list.type'|trans({}, 'NowoYopassBundle') }}</th>
@@ -235,25 +236,25 @@
                                                 {% endif %}
                                             </td>
                                             <td class="text-end text-nowrap">
-                                                <div class="{{ nowo_ui.toolbar() }}">
+                                                <div class="{{ ui.toolbar(nowo_yopass_css_framework|default('tabler')) }}">
                                                     {% set view_label = 'yopass.view'|trans({}, 'NowoYopassBundle') %}
                                                     <button type="button"
-                                                            class="{{ nowo_ui.btn_icon('outline-primary') }}"
+                                                            class="{{ ui.btn('primary', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
                                                             title="{{ view_label }}"
                                                             aria-label="{{ view_label }}"
                                                             data-action="nowo-yopass-manage-preview#open"
                                                             data-share-id="{{ share.id }}">
-                                                        {{ nowo_ui.action_icon('view') }}
+                                                        {{ yopass_icons.action_icon('view') }}
                                                     </button>
                                                     {% if can_extend and share.revokedAt is null %}
                                                         {% set extend_label = 'yopass.extend.action'|trans({}, 'NowoYopassBundle') %}
                                                         <button type="button"
-                                                                class="{{ nowo_ui.btn_icon('outline-secondary') }}"
+                                                                class="{{ ui.btn('secondary', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
                                                                 title="{{ extend_label }}"
                                                                 aria-label="{{ extend_label }}"
                                                                 data-action="nowo-yopass-manage-preview#openExtend"
                                                                 data-share-id="{{ share.id }}">
-                                                            {{ nowo_ui.action_icon('extend') }}
+                                                            {{ yopass_icons.action_icon('extend') }}
                                                         </button>
                                                     {% endif %}
                                                     {% if can_revoke and share.revokedAt is null %}
@@ -266,10 +267,10 @@
                                                               data-action="submit->nowo-yopass-confirm#confirm">
                                                             <input type="hidden" name="_token" value="{{ csrf_token('revoke-share-' ~ share.id) }}">
                                                             <button type="submit"
-                                                                    class="{{ nowo_ui.btn_icon('outline-warning') }}"
+                                                                    class="{{ ui.btn('secondary', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
                                                                     title="{{ revoke_label }}"
                                                                     aria-label="{{ revoke_label }}">
-                                                                {{ nowo_ui.action_icon('revoke') }}
+                                                                {{ yopass_icons.action_icon('revoke') }}
                                                             </button>
                                                         </form>
                                                     {% endif %}
@@ -283,10 +284,10 @@
                                                               data-action="submit->nowo-yopass-confirm#confirm">
                                                             <input type="hidden" name="_token" value="{{ csrf_token('delete-share-' ~ share.id) }}">
                                                             <button type="submit"
-                                                                    class="{{ nowo_ui.btn_icon('outline-danger') }}"
+                                                                    class="{{ ui.btn('danger', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
                                                                     title="{{ delete_label }}"
                                                                     aria-label="{{ delete_label }}">
-                                                                {{ nowo_ui.action_icon('delete') }}
+                                                                {{ yopass_icons.action_icon('delete') }}
                                                             </button>
                                                         </form>
                                                     {% endif %}
@@ -351,17 +352,17 @@
                                     <p class="text-secondary small mt-1 mb-0">{{ 'yopass.preview.key_help'|trans({}, 'NowoYopassBundle') }}</p>
                                 </div>
 
-                                <button type="button" class="{{ nowo_ui.btn('primary', null, ' mb-3') }}" data-action="nowo-yopass-manage-preview#decryptFromForm" data-nowo-yopass-manage-preview-target="decryptButton">
+                                <button type="button" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }} mb-3" data-action="nowo-yopass-manage-preview#decryptFromForm" data-nowo-yopass-manage-preview-target="decryptButton">
                                     {{ 'yopass.preview.decrypt'|trans({}, 'NowoYopassBundle') }}
                                 </button>
 
                                 <pre class="alert alert-success mb-3 d-none text-wrap" data-nowo-yopass-manage-preview-target="output"></pre>
-                                <a href="#" class="{{ nowo_ui.btn('outline-primary', null, ' mb-3 d-none') }}" download data-nowo-yopass-manage-preview-target="downloadLink"></a>
+                                <a href="#" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }} mb-3 d-none" download data-nowo-yopass-manage-preview-target="downloadLink"></a>
 
                                 <label class="form-label" for="yopass-preview-public-link">{{ 'yopass.preview.public_link'|trans({}, 'NowoYopassBundle') }}</label>
                                 <div class="input-group mb-3">
                                     <input type="text" id="yopass-preview-public-link" class="form-control" readonly data-nowo-yopass-manage-preview-target="publicLink">
-                                    <button type="button" class="{{ nowo_ui.btn('outline-secondary') }}" data-action="nowo-yopass-manage-preview#copyPublicLink">
+                                    <button type="button" class="{{ ui.btn('secondary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-yopass-manage-preview#copyPublicLink">
                                         {{ 'yopass.link.copy'|trans({}, 'NowoYopassBundle') }}
                                     </button>
                                 </div>
@@ -421,7 +422,7 @@
                                             </div>
                                         </div>
 
-                                        <button type="button" class="{{ nowo_ui.btn('outline-primary') }}" data-action="nowo-yopass-manage-preview#submitExtend">
+                                        <button type="button" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-yopass-manage-preview#submitExtend">
                                             {{ 'yopass.extend.submit'|trans({}, 'NowoYopassBundle') }}
                                         </button>
                                         <div class="alert alert-success mt-3 d-none" data-nowo-yopass-manage-preview-target="extendSuccess"></div>
@@ -429,7 +430,7 @@
                                 {% endif %}
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="{{ nowo_ui.btn('secondary') }}" data-action="nowo-yopass-manage-preview#close">
+                                <button type="button" class="{{ ui.btn('secondary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-yopass-manage-preview#close">
                                     {{ 'yopass.preview.close'|trans({}, 'NowoYopassBundle') }}
                                 </button>
                             </div>

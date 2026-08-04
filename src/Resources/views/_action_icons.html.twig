@@ -1,0 +1,28 @@
+{#
+    Domain action icons for Yopass manage UI (view / extend / revoke / delete).
+    Generic class helpers live in UiKit (@NowoUiKitBundle/macros/ui.html.twig).
+#}
+{% macro action_icon(action, extra_class) %}
+    {% set icons = nowo_yopass_icon_set|default('tabler-icons') %}
+    {% set tabler = {
+        'view': 'eye',
+        'extend': 'clock-plus',
+        'revoke': 'ban',
+        'delete': 'trash',
+        'delete_all': 'trash-x',
+    } %}
+    {% set bootstrap = {
+        'view': 'eye',
+        'extend': 'clock-history',
+        'revoke': 'slash-circle',
+        'delete': 'trash',
+        'delete_all': 'trash2',
+    } %}
+    {% set spacer = extra_class|default('') %}
+    {% if icons == 'none' %}
+    {% elseif icons == 'bootstrap-icons' %}
+        <i class="bi bi-{{ bootstrap[action]|default(action) }}{{ spacer }}" aria-hidden="true"></i>
+    {% else %}
+        <i class="ti ti-{{ tabler[action]|default(action) }}{{ spacer }}" aria-hidden="true"></i>
+    {% endif %}
+{% endmacro %}

@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Form;
 
+use Nowo\FormKitBundle\Attribute\FormKitConfig;
+use Nowo\FormKitBundle\Form\FormOptionsTrait;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\YopassBundle;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\CallbackTransformer;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormEvent;
@@ -28,8 +29,11 @@ use function max;
  *
  * @extends AbstractType<ShareCreateData>
  */
+#[FormKitConfig('yopass')]
 final class ShareCreateType extends AbstractType
 {
+    use FormOptionsTrait;
+
     public function __construct(
         private readonly TranslatorInterface $translator,
     ) {
@@ -52,20 +56,26 @@ final class ShareCreateType extends AbstractType
             $shareOptions['max_reads_options'],
         );
 
-        $builder
-            ->add('ciphertext', HiddenType::class, [
+        $this->withBuilder($builder, function () use ($expirationChoices, $maxReadsChoices, $maxCiphertextBytes): void {
+            $this->addTypedField('ciphertext', HiddenType::class, [
                 'required'    => false,
                 'empty_data'  => '',
+                'label'       => false,
+                'placeholder' => false,
+                'help'        => false,
                 'constraints' => [
                     new NotBlank(message: 'yopass.error.invalid_ciphertext'),
                     new Length(max: $maxCiphertextBytes, maxMessage: 'yopass.error.invalid_ciphertext'),
                 ],
-            ])
-            ->add('payloadKind', HiddenType::class, [
-                'required'   => false,
-                'empty_data' => 'text',
-            ])
-            ->add('expiresIn', ChoiceType::class, [
+            ]);
+            $this->addTypedField('payloadKind', HiddenType::class, [
+                'required'    => false,
+                'empty_data'  => 'text',
+                'label'       => false,
+                'placeholder' => false,
+                'help'        => false,
+            ]);
+            $this->addChoiceField('expiresIn', [
                 'label'        => 'yopass.expires.field',
                 'choices'      => $expirationChoices,
                 'choice_label' => fn (string $value): string => $this->translator->trans(
@@ -73,13 +83,12 @@ final class ShareCreateType extends AbstractType
                     [],
                     YopassBundle::TRANSLATION_DOMAIN,
                 ),
-                'attr' => ['class' => 'form-select'],
-            ])
-            ->add('maxReads', ChoiceType::class, [
+            ]);
+            $this->addChoiceField('maxReads', [
                 'label'   => 'yopass.reads.field',
                 'choices' => $maxReadsChoices,
-                'attr'    => ['class' => 'form-select'],
             ]);
+        });
 
         $builder->get('ciphertext')->addModelTransformer(new CallbackTransformer(
             static fn (string $value): string => $value,
