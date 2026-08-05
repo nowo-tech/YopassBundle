@@ -48,7 +48,7 @@ final class ConfigurationTest extends TestCase
         self::assertSame('1 month', $config['shares']['retention']['max_age']);
         self::assertSame('auto', $config['sharing']['default_encryption']);
         self::assertTrue($config['sharing']['allow_custom_password']);
-        self::assertTrue($config['sharing']['default_embed_in_url']);
+        self::assertFalse($config['sharing']['default_embed_in_url']);
     }
 
     public function testCustomShareOptions(): void

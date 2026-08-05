@@ -24,7 +24,7 @@
 | Threat | Risk | Mitigation |
 |--------|------|------------|
 | **Plaintext on server** | Secret stored or logged in clear. | Encryption in browser; server persists ciphertext only. |
-| **Key in URL query string** | `?decrypt_key=` is sent in the HTTP request (proxy logs, Referer, browser history). | Prefer **short links** (`/share/{id}`) and deliver the key on a separate channel. One-click links are convenience-only; JS strips the param after load but the first request may already be logged. Legacy `#fragment` keys are not sent to the server. |
+| **Key in URL query string** | `?decrypt_key=` is sent in the HTTP request (proxy logs, Referer, browser history). | Prefer **short links** (`/share/{id}`) and deliver the key on a separate channel. **`sharing.default_embed_in_url` defaults to `false`** so one-click links are opt-in. JS strips the param after load but the first request may already be logged. Legacy `#fragment` keys are not sent to the server. |
 | **Key in URL fragment** | Fragment `#key` may leak via Referer on subresource requests. | Prefer query param or separate delivery; document trade-offs in [USAGE.md](USAGE.md). |
 | **Public endpoint abuse** | Anonymous consume/show enables enumeration and DoS. | `public_rate_limit` per client IP (requires Symfony `cache.app`); HTTPS in production. |
 | **Unauthorized share creation** | Anonymous users create shares. | Firewall + `YopassAccessCheckerInterface` on manage routes. |
@@ -83,4 +83,4 @@ See [.github/SECURITY.md](../.github/SECURITY.md) for coordinated disclosure.
 | `composer audit` clean | Maintainer sign-off before tag |
 | Public routes documented in INSTALLATION | Maintainer sign-off before tag |
 | Access checker and share events documented for integrators | Maintainer sign-off before tag |
-| **AI security audit (REQ-SEC-004)** | Pass (conditional) — see section above; recorded in monorepo `BUNDLES_SECURITY_ANALYSIS.md` (Medium residual: key-in-URL convenience links; host must enable `cache.app` and keep `allow_unauthenticated: false` in prod) |
+| **AI security audit (REQ-SEC-004)** | Pass (conditional) — see section above; recorded in monorepo `BUNDLES_SECURITY_ANALYSIS.md` (Medium residual: key-in-URL still available when users opt in; default embed is false; host must enable `cache.app` and keep `allow_unauthenticated: false` in prod) |

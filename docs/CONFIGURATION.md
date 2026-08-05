@@ -153,7 +153,7 @@ nowo_yopass:
     sharing:
         default_encryption: auto       # auto | password
         allow_custom_password: true
-        default_embed_in_url: true     # one-click link includes ?decrypt_key=
+        default_embed_in_url: false    # one-click link includes ?decrypt_key= (opt-in; safer default is false)
         allow_embed_in_url: true
         show_remember_notice: true
 ```
@@ -162,7 +162,7 @@ nowo_yopass:
 |--------|---------|-------------|
 | `sharing.default_encryption` | `auto` | Default mode in create form. |
 | `sharing.allow_custom_password` | `true` | Show password encryption option. |
-| `sharing.default_embed_in_url` | `true` | Documented default for one-click links. |
+| `sharing.default_embed_in_url` | `false` | When true, create form pre-checks one-click links with `?decrypt_key=`. Default false prefers short links. |
 | `sharing.allow_embed_in_url` | `true` | When false, only short links are offered. |
 | `sharing.show_remember_notice` | `true` | Post-create security reminder. |
 

@@ -78,6 +78,12 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.public_rate_limit.enabled', $publicRateLimit['enabled']);
         $container->setParameter('nowo_yopass.public_rate_limit.limit', $publicRateLimit['enabled'] ? (int) $publicRateLimit['limit'] : 0);
         $container->setParameter('nowo_yopass.public_rate_limit.interval_seconds', $publicRateLimit['enabled'] ? (int) $publicRateLimit['interval_seconds'] : 0);
+        if ($publicRateLimit['enabled'] && !$container->has('cache.app')) {
+            trigger_error(
+                'nowo_yopass.public_rate_limit is enabled but the "cache.app" service is missing; public rate limiting will be skipped. Enable framework cache or set public_rate_limit.enabled: false.',
+                E_USER_WARNING,
+            );
+        }
         $container->register(PublicEndpointRateLimiter::class)
             ->setAutowired(false)
             ->setArguments([

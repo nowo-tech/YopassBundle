@@ -13,6 +13,10 @@ nowo_yopass:
 
     # file_handler: App\Yopass\LocalShareFileHandler  # optional file shares
 
+    # Prefer short links by default (no ?decrypt_key= in URL). Set true only if you accept key-in-URL risk.
+    sharing:
+        default_embed_in_url: false
+
     # public_rate_limit:  # optional; enabled by default (requires cache.app)
     #     enabled: true
     #     limit: 60
