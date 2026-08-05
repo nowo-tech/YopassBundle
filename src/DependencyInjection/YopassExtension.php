@@ -34,6 +34,8 @@ use function is_string;
 use function rtrim;
 use function sprintf;
 
+use const E_USER_WARNING;
+
 /**
  * Loads bundle configuration and registers services.
  */
