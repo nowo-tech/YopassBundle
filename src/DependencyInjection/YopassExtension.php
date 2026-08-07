@@ -282,9 +282,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $hostHasCssFramework = false;
         $hostHasIconSet      = false;
         foreach ($container->getExtensionConfig('nowo_ui_kit') as $cfg) {
-            if (!is_array($cfg)) {
-                continue;
-            }
+            /** @var array<string, mixed> $cfg */
             if (array_key_exists('css_framework', $cfg)) {
                 $hostHasCssFramework = true;
             }
@@ -309,9 +307,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             $defaults['icon_set'] = (string) ($webUi['icon_set'] ?? 'tabler-icons');
         }
 
-        if ($defaults !== []) {
-            $container->prependExtensionConfig('nowo_ui_kit', $defaults);
-        }
+        // After the early-return above, at least one of css_framework / icon_set is always seeded.
+        $container->prependExtensionConfig('nowo_ui_kit', $defaults);
     }
 
     /**

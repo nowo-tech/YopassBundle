@@ -2,6 +2,14 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.4.1 (2026-08-07)
+
+From **1.4.0** — CI FormKit test wiring + PHPStan cleanup. No host migration.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.4.0 (2026-08-04)
 
 From **1.3.x** — FormKit ^2, UiKit ^1.4, Twig Extra (REQ-TWIG-004), and Twig-CS-Fixer.

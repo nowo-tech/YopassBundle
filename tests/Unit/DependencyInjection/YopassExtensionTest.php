@@ -29,6 +29,7 @@ use Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 
 final class YopassExtensionTest extends TestCase
 {
@@ -341,5 +342,137 @@ final class YopassExtensionTest extends TestCase
     {
         $this->extension->prepend($this->container);
         self::assertSame([], $this->container->getExtensions());
+    }
+
+    public function testPrependSeedsFormKitYopassProfileWhenHostUnset(): void
+    {
+        $this->registerStubExtension($this->container, 'nowo_form_kit');
+        $this->container->registerExtension($this->extension);
+
+        $this->extension->prepend($this->container);
+
+        $found = false;
+        foreach ($this->container->getExtensionConfig('nowo_form_kit') as $cfg) {
+            if (($cfg['css_framework'] ?? null) === 'bootstrap'
+                && isset($cfg['profiles']['yopass']['alias'])
+                && $cfg['profiles']['yopass']['alias'] === 'yopass'
+            ) {
+                $found = true;
+                self::assertSame('NowoYopassBundle', $cfg['profiles']['yopass']['translation_domain']);
+                break;
+            }
+        }
+        self::assertTrue($found);
+    }
+
+    public function testPrependDoesNotOverrideExplicitFormKitHostConfig(): void
+    {
+        $this->registerStubExtension($this->container, 'nowo_form_kit');
+        $this->container->prependExtensionConfig('nowo_form_kit', [
+            'css_framework' => 'none',
+            'profiles'      => [
+                'yopass' => [
+                    'alias'              => 'yopass',
+                    'translation_domain' => 'HostDomain',
+                ],
+            ],
+        ]);
+        $this->container->registerExtension($this->extension);
+
+        $this->extension->prepend($this->container);
+
+        $bootstrapSeed = false;
+        $yopassReseed  = false;
+        foreach ($this->container->getExtensionConfig('nowo_form_kit') as $cfg) {
+            if (($cfg['css_framework'] ?? null) === 'bootstrap') {
+                $bootstrapSeed = true;
+            }
+            if (($cfg['profiles']['yopass']['translation_domain'] ?? null) === 'NowoYopassBundle') {
+                $yopassReseed = true;
+            }
+        }
+        self::assertFalse($bootstrapSeed);
+        self::assertFalse($yopassReseed);
+    }
+
+    public function testPrependSeedsUiKitFromWebUiWhenHostUnset(): void
+    {
+        $this->registerStubExtension($this->container, 'nowo_ui_kit');
+        $this->container->registerExtension($this->extension);
+        $this->container->prependExtensionConfig('nowo_yopass', [
+            'user_class' => 'App\\Entity\\User',
+            'web_ui'     => [
+                'css_framework' => 'bootstrap',
+                'icon_set'      => 'bootstrap-icons',
+            ],
+        ]);
+
+        $this->extension->prepend($this->container);
+
+        $found = false;
+        foreach ($this->container->getExtensionConfig('nowo_ui_kit') as $cfg) {
+            if (($cfg['css_framework'] ?? null) === 'bootstrap5'
+                && ($cfg['icon_set'] ?? null) === 'bootstrap-icons'
+            ) {
+                $found = true;
+                break;
+            }
+        }
+        self::assertTrue($found);
+    }
+
+    public function testPrependDoesNotOverrideExplicitUiKitHostConfig(): void
+    {
+        $this->registerStubExtension($this->container, 'nowo_ui_kit');
+        $this->container->prependExtensionConfig('nowo_ui_kit', [
+            'css_framework' => 'bootstrap5',
+            'icon_set'      => 'none',
+        ]);
+        $this->container->registerExtension($this->extension);
+        $this->container->prependExtensionConfig('nowo_yopass', [
+            'user_class' => 'App\\Entity\\User',
+            'web_ui'     => [
+                'css_framework' => 'tabler',
+                'icon_set'      => 'tabler-icons',
+            ],
+        ]);
+
+        $this->extension->prepend($this->container);
+
+        $reseeds = 0;
+        foreach ($this->container->getExtensionConfig('nowo_ui_kit') as $cfg) {
+            if (($cfg['css_framework'] ?? null) === 'tabler' || ($cfg['icon_set'] ?? null) === 'tabler-icons') {
+                ++$reseeds;
+            }
+        }
+        self::assertSame(0, $reseeds);
+    }
+
+    private function registerStubExtension(ContainerBuilder $container, string $alias): void
+    {
+        $container->registerExtension(new class($alias) implements ExtensionInterface {
+            public function __construct(private readonly string $extensionAlias)
+            {
+            }
+
+            public function load(array $configs, ContainerBuilder $container): void
+            {
+            }
+
+            public function getNamespace(): string
+            {
+                return '';
+            }
+
+            public function getXsdValidationBasePath(): string|false
+            {
+                return false;
+            }
+
+            public function getAlias(): string
+            {
+                return $this->extensionAlias;
+            }
+        });
     }
 }

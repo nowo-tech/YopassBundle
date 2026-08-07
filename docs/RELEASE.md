@@ -1,3 +1,5 @@
+Current stable target: **v1.4.1**.
+
 # Release checklist
 
 Use this checklist when cutting a new version. The workflow [.github/workflows/release.yml](../.github/workflows/release.yml) runs on push of a tag `v*` and creates the GitHub Release with body from the tag message and the matching changelog section.

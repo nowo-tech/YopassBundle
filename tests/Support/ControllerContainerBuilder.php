@@ -52,7 +52,9 @@ final class ControllerContainerBuilder
             ->addExtension(new HttpFoundationExtension())
             ->addExtension(new CsrfExtension($csrfManager))
             ->addExtension(new ValidatorExtension(Validation::createValidatorBuilder()->getValidator()))
-            ->addExtension(new PreloadedExtension([new ShareCreateType(self::translator())], []))
+            ->addExtension(new PreloadedExtension([
+                FormKitTestSupport::withMerger(new ShareCreateType(self::translator())),
+            ], []))
             ->getFormFactory();
 
         $container = new Container();

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-08-07
+
+### Fixed
+
+- **CI / FormKit:** `ControllerContainerBuilder` injects `FormOptionsMerger` via `FormKitTestSupport::withMerger()` for `ShareCreateType` (fixes uninitialized `$formOptionsMerger` in controller unit tests).
+- **PHPStan:** simplify `prependUiKitDefaults` (remove always-true `is_array` / empty-defaults guards).
+
+### Tests
+
+- Cover FormKit / UiKit prepend seed and host-override paths in `YopassExtensionTest`.
+
+[1.4.1]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.4.1
+
 ## [1.4.0] - 2026-08-04
 
 ### Changed
