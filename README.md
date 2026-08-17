@@ -14,7 +14,7 @@ This bundle is **FrankenPHP worker mode friendly**.
 
 - Browser-side encryption (`libsodium` secretbox); server stores ciphertext only
 - Text and file payloads (max 512 KB files; file tab requires `file_handler` service)
-- Configurable expiration options, max-read limits, list pagination, and retention purge
+- Configurable expiration options, max-read limits, list pagination, and retention purge (`nowo:yopass:purge-old-shares`)
 - Auto-generated decryption key or custom password mode
 - One-click links via `?decrypt_key=` query parameter; short links with manual key entry
 - Authenticated manage UI + anonymous public reveal/consume routes
