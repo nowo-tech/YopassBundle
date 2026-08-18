@@ -6,6 +6,7 @@ use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
 use Doctrine\Bundle\FixturesBundle\DoctrineFixturesBundle;
 use Doctrine\Bundle\MigrationsBundle\DoctrineMigrationsBundle;
 use Nowo\FormKitBundle\NowoFormKitBundle;
+use Nowo\HotReloadBundle\NowoHotReloadBundle;
 use Nowo\TwigInspectorBundle\NowoTwigInspectorBundle;
 use Nowo\UiKitBundle\NowoUiKitBundle;
 use Nowo\YopassBundle\YopassBundle;
@@ -24,6 +25,7 @@ return [
     SecurityBundle::class           => ['all' => true],
     TwigBundle::class               => ['all' => true],
     YopassBundle::class             => ['all' => true],
+    NowoHotReloadBundle::class  => ['dev' => true, 'test' => true],
     NowoTwigInspectorBundle::class  => ['dev' => true, 'test' => true],
     WebProfilerBundle::class        => ['dev' => true, 'test' => true],
     DebugBundle::class              => ['dev' => true],
