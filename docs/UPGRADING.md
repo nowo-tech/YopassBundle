@@ -2,6 +2,10 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.4.2 (Symfony 8 demos / Hot Reload 1.4)
+
+- No application upgrade steps. **Demos only:** Hot Reload Bundle `^1.4` (FrankenPHP Mercure/`hot_reload`, `dev`/`test`).
+
 ## 1.4.1 (2026-08-07)
 
 From **1.4.0** — CI FormKit test wiring + PHPStan cleanup. No host migration.
