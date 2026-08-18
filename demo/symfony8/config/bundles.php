@@ -25,7 +25,7 @@ return [
     SecurityBundle::class           => ['all' => true],
     TwigBundle::class               => ['all' => true],
     YopassBundle::class             => ['all' => true],
-    NowoHotReloadBundle::class  => ['dev' => true, 'test' => true],
+    NowoHotReloadBundle::class      => ['dev' => true, 'test' => true],
     NowoTwigInspectorBundle::class  => ['dev' => true, 'test' => true],
     WebProfilerBundle::class        => ['dev' => true, 'test' => true],
     DebugBundle::class              => ['dev' => true],
