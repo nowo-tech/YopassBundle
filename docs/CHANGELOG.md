@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-08-19
+
+### Changed
+
+- Code style only (PHP CS Fixer). **No application upgrade steps.**
+
+[1.4.3]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.4.3
+
 ## [1.4.2] - 2026-08-18
 
 ### Changed

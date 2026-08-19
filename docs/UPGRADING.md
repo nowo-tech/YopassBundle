@@ -2,6 +2,14 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.4.3 (2026-08-19)
+
+No application upgrade steps.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.4.2 (Symfony 8 demos / Hot Reload 1.4)
 
 - No application upgrade steps. **Demos only:** Hot Reload Bundle `^1.4` (FrankenPHP Mercure/`hot_reload`, `dev`/`test`).
