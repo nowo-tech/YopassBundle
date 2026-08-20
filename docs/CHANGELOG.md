@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-08-20
+
+### Security
+
+- **Flex recipe:** ship `security_nowo_yopass.yaml` (`/share` public, `/tools/yopass` `ROLE_ADMIN`); `when@prod` keeps `default_embed_in_url: false`. REQ-SEC-004 **Pass (good)**. Prefer **`^1.4.4`**.
+
 ## [1.4.3] - 2026-08-19
 
 ### Changed

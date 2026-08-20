@@ -69,7 +69,7 @@ Static / AI review posture for this package (re-audited 2026-07-27 after public 
 | Public consume/show rate limits (`public_rate_limit` + hashed IP logs) | Pass |
 | No secrets in committed demo env examples | Pass |
 
-**Grade:** good (conditional on hosts keeping `allow_unauthenticated: false` in production and enabling `cache.app` for rate limits).
+**Grade:** **Pass (good)** / **Low** (re-audit **2026-08-20**). Residual: users may still opt into `?decrypt_key=` (default and Flex `when@prod` keep embed off); host must keep `allow_unauthenticated: false` and `cache.app` for public rate limits.
 
 ## Reporting
 
@@ -83,4 +83,5 @@ See [.github/SECURITY.md](../.github/SECURITY.md) for coordinated disclosure.
 | `composer audit` clean | Maintainer sign-off before tag |
 | Public routes documented in INSTALLATION | Maintainer sign-off before tag |
 | Access checker and share events documented for integrators | Maintainer sign-off before tag |
-| **AI security audit (REQ-SEC-004)** | Pass (conditional) — see section above; recorded in monorepo `BUNDLES_SECURITY_ANALYSIS.md` (Medium residual: key-in-URL still available when users opt in; default embed is false; host must enable `cache.app` and keep `allow_unauthenticated: false` in prod) |
+| **AI security audit (REQ-SEC-004)** | **Pass (good)** — see section above; residual Low: key-in-URL opt-in only; Flex ships `security_nowo_yopass.yaml` + `when@prod` embed off |
+

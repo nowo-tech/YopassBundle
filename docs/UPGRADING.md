@@ -2,6 +2,14 @@
 
 This document describes how to upgrade between versions of Yopass Bundle.
 
+## 1.4.4 (2026-08-20)
+
+Review Flex `security_nowo_yopass.yaml` (`ROLE_ADMIN` on manage) and keep `sharing.default_embed_in_url: false` in production.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
 ## 1.4.3 (2026-08-19)
 
 No application upgrade steps.

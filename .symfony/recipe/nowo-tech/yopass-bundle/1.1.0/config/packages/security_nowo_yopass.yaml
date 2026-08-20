@@ -1,0 +1,6 @@
+# Merged into security.access_control by Symfony (REQ-SEC-004).
+# Public consume/show must stay public; manage UI requires ROLE_ADMIN (bundle default).
+security:
+    access_control:
+        - { path: ^/share, roles: PUBLIC_ACCESS }
+        - { path: ^/tools/yopass, roles: ROLE_ADMIN }

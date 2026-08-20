@@ -17,6 +17,10 @@ nowo_yopass:
     sharing:
         default_embed_in_url: false
 
+    security:
+        access_roles: [ROLE_ADMIN]
+        allow_unauthenticated: false
+
     # public_rate_limit:  # optional; enabled by default (requires cache.app)
     #     enabled: true
     #     limit: 60
@@ -53,3 +57,11 @@ nowo_yopass:
         public_consume:
             path: /share/{id}/consume
             name: nowo_yopass_public_consume
+
+when@prod:
+    nowo_yopass:
+        sharing:
+            default_embed_in_url: false
+        security:
+            allow_unauthenticated: false
+            access_roles: [ROLE_ADMIN]
