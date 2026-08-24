@@ -1,5 +1,27 @@
 # Upgrading
 
+## Table of contents
+
+- [From 1.4.4 to 1.4.5](#from-144-to-145)
+
+## From 1.4.4 to 1.4.5
+
+No breaking changes. **No application upgrade steps.**
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
+## From 1.4.4 to 1.4.5
+
+No breaking changes. **No application upgrade steps.**
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
+# Upgrading
+
 This document describes how to upgrade between versions of Yopass Bundle.
 
 ## 1.4.4 (2026-08-20)
