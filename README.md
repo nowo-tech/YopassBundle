@@ -82,6 +82,7 @@ make -C demo up-symfony8
 - [GitHub Actions CI requirements](docs/GITHUB_CI.md)
 - [Share list and access events](docs/examples/AccessControl.md)
 - [Demo with FrankenPHP](docs/DEMO-FRANKENPHP.md)
+- [FrankenPHP worker audit](docs/FRANKENPHP-WORKER-AUDIT.md)
 - [Local file storage (demo default)](docs/examples/LocalStorage.md)
 - [AWS S3 file shares example (local, gitignored)](docs/examples/S3.md)
 

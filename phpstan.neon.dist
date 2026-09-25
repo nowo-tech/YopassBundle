@@ -1,10 +1,11 @@
 # PHPStan for YopassBundle (level 8).
-# FrankenPHP classic + worker rulesets (REQ-CS-005): require-dev only; not a runtime dependency.
+# FrankenPHP classic + worker + no-kernel-reset rulesets (REQ-CS-005): require-dev only; not a runtime dependency.
 # extension.neon is auto-included by phpstan/extension-installer — do not list it here.
 # Run: make phpstan
 includes:
     - vendor/nowo-tech/phpstan-frankenphp/ruleset-classic.neon
-    - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker.neon
+    # Includes ruleset-worker.neon + NoMissingResetInterface (FRANKENPHP_RESET_KERNEL unset/false).
+    - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker-no-kernel-reset.neon
 
 parameters:
     level: 8
@@ -12,4 +13,12 @@ parameters:
         - src
     excludePaths:
         - src/Resources/assets/*
-    ignoreErrors: []
+    ignoreErrors:
+        # ODM documents are request entities (like ORM Entity/); not container services.
+        -
+            identifier: frankenphp.worker.noMissingResetInterface
+            path: src/Document/*
+        # Symfony Bundle::getContainerExtension() memoizes $extension at compile time only.
+        -
+            identifier: frankenphp.worker.noMissingResetInterface
+            path: src/YopassBundle.php

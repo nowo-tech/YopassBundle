@@ -9,10 +9,13 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
+use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ObjectManager;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 final class DoctrineOrmShareRepositoryTest extends TestCase
 {
@@ -37,11 +40,8 @@ final class DoctrineOrmShareRepositoryTest extends TestCase
         $user  = new TestUser();
         $share = new SecureShare('00000000-0000-4000-8000-000000000004', $user);
 
-        $repository = $this->createMock(EntityRepository::class);
-        $repository->method('find')->willReturn($share);
-
         $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->method('getRepository')->willReturn($repository);
+        $entityManager->method('createQueryBuilder')->willReturn($this->createFindQueryBuilder($share));
         $entityManager->expects(self::once())->method('persist')->with($share);
         $entityManager->expects(self::once())->method('flush');
 
@@ -115,7 +115,7 @@ final class DoctrineOrmShareRepositoryTest extends TestCase
         self::assertNull((new DoctrineOrmShareRepository($entityManager))->consumeReadIfAvailable('missing'));
     }
 
-    public function testConsumeReadIfAvailableClearsEntityManagerAndReloadsShare(): void
+    public function testConsumeReadIfAvailableReloadsShareWithoutClearingEntityManager(): void
     {
         $user  = new TestUser();
         $share = new SecureShare('00000000-0000-4000-8000-000000000009', $user);
@@ -125,13 +125,12 @@ final class DoctrineOrmShareRepositoryTest extends TestCase
             ->setMaxReads(3);
         $share->consumeRead();
 
-        $repository = $this->createMock(EntityRepository::class);
-        $repository->expects(self::once())->method('find')->with($share->getId())->willReturn($share);
-
         $entityManager = $this->createMock(EntityManagerInterface::class);
-        $entityManager->method('getRepository')->willReturn($repository);
-        $entityManager->expects(self::once())->method('clear');
-        $this->mockQueryBuilderExecution($entityManager, 1);
+        $entityManager->expects(self::never())->method('clear');
+        $entityManager->method('createQueryBuilder')->willReturnOnConsecutiveCalls(
+            $this->createExecuteQueryBuilder(1),
+            $this->createFindQueryBuilder($share),
+        );
 
         $result = (new DoctrineOrmShareRepository($entityManager))->consumeReadIfAvailable($share->getId());
 
@@ -168,7 +167,101 @@ final class DoctrineOrmShareRepositoryTest extends TestCase
         self::assertSame(5, $removed);
     }
 
+    public function testFindRefreshesManagedShareOnEveryCall(): void
+    {
+        $share = new SecureShare('00000000-0000-4000-8000-000000000010', new TestUser());
+
+        $query = $this->getMockBuilder(Query::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['setHint', 'getOneOrNullResult'])
+            ->getMock();
+        $query->expects(self::exactly(2))->method('setHint')->with(Query::HINT_REFRESH, true)->willReturnSelf();
+        $query->expects(self::exactly(2))->method('getOneOrNullResult')->willReturnOnConsecutiveCalls($share, null);
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->method('createQueryBuilder')->willReturn($this->createSelectQueryBuilder($query));
+
+        $repository = new DoctrineOrmShareRepository($entityManager);
+
+        // Request 1: share exists.
+        self::assertSame($share, $repository->find($share->getId()));
+        // Request 2 (same repository, no reset): deleted by another worker; the stale instance is not returned.
+        self::assertNull($repository->find($share->getId()));
+    }
+
+    public function testClosedEntityManagerIsResetOnNextRequestWithoutKernelReset(): void
+    {
+        $share = new SecureShare('00000000-0000-4000-8000-000000000011', new TestUser());
+
+        $closed = $this->createMock(EntityManagerInterface::class);
+        $closed->method('isOpen')->willReturnOnConsecutiveCalls(true, false);
+        $closed->expects(self::once())->method('flush')->willThrowException(new RuntimeException('connection lost'));
+        $closed->expects(self::never())->method('persist');
+
+        $fresh = $this->createMock(EntityManagerInterface::class);
+        $fresh->method('isOpen')->willReturn(true);
+        $fresh->expects(self::once())->method('persist')->with($share);
+
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManager')->with('yopass')->willReturn($closed);
+        $registry->expects(self::once())->method('resetManager')->with('yopass')->willReturn($fresh);
+
+        $repository = new DoctrineOrmShareRepository($closed, null, $registry, 'yopass');
+
+        try {
+            $repository->flush();
+            self::fail('Expected flush failure.');
+        } catch (RuntimeException $e) {
+            self::assertSame('connection lost', $e->getMessage());
+        }
+
+        $repository->persist($share);
+    }
+
+    public function testFallsBackToInjectedEntityManagerWhenRegistryReturnsAnotherManagerType(): void
+    {
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('flush');
+
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManager')->willReturn($this->createMock(ObjectManager::class));
+
+        (new DoctrineOrmShareRepository($entityManager, null, $registry, 'default'))->flush();
+    }
+
+    private function createFindQueryBuilder(?SecureShare $result): QueryBuilder
+    {
+        $query = $this->getMockBuilder(Query::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['setHint', 'getOneOrNullResult'])
+            ->getMock();
+        $query->expects(self::once())->method('setHint')->with(Query::HINT_REFRESH, true)->willReturnSelf();
+        $query->expects(self::once())->method('getOneOrNullResult')->willReturn($result);
+
+        return $this->createSelectQueryBuilder($query);
+    }
+
+    private function createSelectQueryBuilder(Query $query): QueryBuilder
+    {
+        $queryBuilder = $this->getMockBuilder(QueryBuilder::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['select', 'from', 'where', 'setParameter', 'getQuery'])
+            ->getMock();
+        $queryBuilder->method('select')->willReturnSelf();
+        $queryBuilder->method('from')->willReturnSelf();
+        $queryBuilder->method('where')->willReturnSelf();
+        $queryBuilder->method('setParameter')->willReturnSelf();
+        $queryBuilder->method('getQuery')->willReturn($query);
+
+        return $queryBuilder;
+    }
+
     private function mockQueryBuilderExecution(EntityManagerInterface $entityManager, int $result): void
+    {
+        $entityManager->method('createQueryBuilder')->willReturn($this->createExecuteQueryBuilder($result));
+    }
+
+    private function createExecuteQueryBuilder(int $result): QueryBuilder
     {
         $query = $this->getMockBuilder(Query::class)
             ->disableOriginalConstructor()
@@ -188,6 +281,6 @@ final class DoctrineOrmShareRepositoryTest extends TestCase
         $queryBuilder->method('setParameter')->willReturnSelf();
         $queryBuilder->method('getQuery')->willReturn($query);
 
-        $entityManager->method('createQueryBuilder')->willReturn($queryBuilder);
+        return $queryBuilder;
     }
 }

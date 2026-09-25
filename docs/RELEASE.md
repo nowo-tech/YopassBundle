@@ -1,4 +1,4 @@
-Current stable target: **v1.4.1**.
+Current stable target: **v1.4.6**.
 
 # Release checklist
 
@@ -35,6 +35,19 @@ git push origin vX.Y.Z
 - Tag format must be **`vX.Y.Z`** (e.g. `v1.0.0`) so the workflow and Packagist recognize it.
 - After the push, GitHub Actions creates the release and appends the changelog entry for that version to the release body.
 - Packagist will pick up the new tag automatically.
+
+### Example for v1.4.6
+
+After running `make release-check` and committing all changes:
+
+```bash
+git checkout main
+git pull origin main
+make check-no-cursor-coauthor
+git tag -a v1.4.6 -m "Release v1.4.6"
+git push origin main
+git push origin v1.4.6
+```
 
 ### Example for v1.3.2
 

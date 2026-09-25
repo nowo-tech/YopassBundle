@@ -349,7 +349,9 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             $documentManagerName = (string) ($database['document_manager'] ?? 'default');
             $container->setDefinition(DoctrineMongoShareRepository::class, (new Definition(DoctrineMongoShareRepository::class))
                 ->setAutowired(false)
-                ->setArgument('$documentManager', new Reference(sprintf('doctrine_mongodb.odm.%s_document_manager', $documentManagerName))));
+                ->setArgument('$documentManager', new Reference(sprintf('doctrine_mongodb.odm.%s_document_manager', $documentManagerName)))
+                ->setArgument('$registry', new Reference('doctrine_mongodb'))
+                ->setArgument('$managerName', $documentManagerName));
 
             $container->setDefinition(SecureShareDocumentMetadataListener::class, (new Definition(SecureShareDocumentMetadataListener::class))
                 ->setArgument('$collectionName', $collection)
@@ -382,7 +384,9 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
         $container->setDefinition(DoctrineOrmShareRepository::class, (new Definition(DoctrineOrmShareRepository::class))
             ->setAutowired(false)
-            ->setArgument('$entityManager', new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManagerName))));
+            ->setArgument('$entityManager', new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManagerName)))
+            ->setArgument('$registry', new Reference('doctrine'))
+            ->setArgument('$managerName', $entityManagerName));
 
         $container->setDefinition(SecureShareMetadataListener::class, (new Definition(SecureShareMetadataListener::class))
             ->setArgument('$tableName', $storageName)
@@ -393,7 +397,9 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         if ($accessLogEnabled) {
             $container->setDefinition(DoctrineOrmShareAccessLogRepository::class, (new Definition(DoctrineOrmShareAccessLogRepository::class))
                 ->setAutowired(false)
-                ->setArgument('$entityManager', new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManagerName))));
+                ->setArgument('$entityManager', new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManagerName)))
+                ->setArgument('$registry', new Reference('doctrine'))
+                ->setArgument('$managerName', $entityManagerName));
             $container->setAlias(ShareAccessLogRepositoryInterface::class, DoctrineOrmShareAccessLogRepository::class);
         } else {
             $this->registerNullAccessLogRepository($container);

@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Tests\Unit\Repository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
@@ -45,6 +46,28 @@ final class DoctrineOrmShareAccessLogRepositoryTest extends TestCase
         $entityManager->expects(self::once())->method('flush');
 
         $repository = new DoctrineOrmShareAccessLogRepository($entityManager);
+        $repository->persist($log);
+        $repository->flush();
+    }
+
+    public function testFlushUsesReopenedManagerAfterPreviousFailureWithoutKernelReset(): void
+    {
+        $log = new ShareAccessLog('00000000-0000-4000-8000-000000000073', $this->createShare(), 1);
+
+        $closed = $this->createMock(EntityManagerInterface::class);
+        $closed->method('isOpen')->willReturn(false);
+        $closed->expects(self::never())->method('persist');
+
+        $fresh = $this->createMock(EntityManagerInterface::class);
+        $fresh->method('isOpen')->willReturn(true);
+        $fresh->expects(self::once())->method('persist')->with($log);
+        $fresh->expects(self::once())->method('flush');
+
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManager')->willReturnOnConsecutiveCalls($closed, $fresh);
+        $registry->expects(self::once())->method('resetManager')->with('default')->willReturn($fresh);
+
+        $repository = new DoctrineOrmShareAccessLogRepository($closed, $registry, 'default');
         $repository->persist($log);
         $repository->flush();
     }

@@ -106,7 +106,6 @@ final class YopassRouteLoaderTest extends TestCase
     {
         $loader = $this->loader();
         $method = new ReflectionMethod(YopassRouteLoader::class, 'normalizeStringList');
-        $method->setAccessible(true);
 
         self::assertSame([], $method->invoke($loader, ''));
     }
@@ -133,7 +132,6 @@ final class YopassRouteLoaderTest extends TestCase
         string $controllerClass,
     ): void {
         $method = new ReflectionMethod(YopassRouteLoader::class, 'addRoutesFromController');
-        $method->setAccessible(true);
         $method->invoke($loader, $collection, $controllerClass);
     }
 }

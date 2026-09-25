@@ -102,9 +102,7 @@ final class ShareCreateType extends AbstractType
                 return;
             }
 
-            if (!isset($data['ciphertext'])) {
-                $data['ciphertext'] = '';
-            }
+            $data['ciphertext'] ??= '';
 
             $event->setData($data);
         });

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.6] - 2026-09-25
+
+### Fixed
+
+- **FrankenPHP worker (`FRANKENPHP_RESET_KERNEL` unset/false):** ORM repositories resolve the EntityManager from `ManagerRegistry` per call and reset it when a previous flush closed it, so one failed write no longer breaks later requests in the same worker (W-01).
+- **FrankenPHP worker:** MongoDB share repository likewise resolves/reopens the DocumentManager via `doctrine_mongodb` registry when closed.
+- **FrankenPHP worker:** `ShareRepositoryInterface::find()` always reads from the database (`Query::HINT_REFRESH` for ORM, `DocumentManager::refresh()` for MongoDB), so a share revoked, extended, consumed or deleted by another worker is never served from a stale identity map (W-01).
+- **Doctrine ORM:** `DoctrineOrmShareRepository::consumeReadIfAvailable()` no longer calls `EntityManager::clear()` (which detached host application entities); the consumed share is re-read with a refresh instead (W-03).
+
+### Added
+
+- **`docs/FRANKENPHP-WORKER-AUDIT.md`** — full worker audit for kernel reuse without reset (scenario B / `FRANKENPHP_RESET_KERNEL` unset/false).
+- **PHPStan** — enable `ruleset-worker-no-kernel-reset.neon` (missing `ResetInterface` detection for shared mutable services).
 
 ## [1.4.5] - 2026-08-24
 

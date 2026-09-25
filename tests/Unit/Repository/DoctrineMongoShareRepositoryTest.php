@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Tests\Unit\Repository;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ODM\MongoDB\Repository\DocumentRepository;
+use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
@@ -15,6 +16,56 @@ use PHPUnit\Framework\TestCase;
 
 final class DoctrineMongoShareRepositoryTest extends TestCase
 {
+    public function testFindRefreshesManagedDocumentSoOtherWorkerChangesAreSeen(): void
+    {
+        $document = new SecureShareDocument('00000000-0000-4000-8000-000000000002', new TestUser());
+        $document
+            ->setCiphertext('cipher')
+            ->setExpiresAt(new DateTimeImmutable('+1 hour'))
+            ->setMaxReads(2);
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->method('find')->willReturn($document);
+        $refreshes = 0;
+        $documentManager->expects(self::exactly(2))->method('refresh')->with($document)
+            ->willReturnCallback(static function (SecureShareDocument $managed) use (&$refreshes): void {
+                // Simulates another worker revoking the share between request 1 and request 2.
+                if (++$refreshes === 2) {
+                    $managed->revoke();
+                }
+            });
+
+        $repository = new DoctrineMongoShareRepository($documentManager);
+
+        self::assertNull($repository->find($document->getId())?->getRevokedAt());
+        self::assertNotNull($repository->find($document->getId())?->getRevokedAt());
+    }
+
+    public function testClosedDocumentManagerIsResetOnNextRequestWithoutKernelReset(): void
+    {
+        $document = new SecureShareDocument('00000000-0000-4000-8000-000000000003', new TestUser());
+        $document
+            ->setCiphertext('cipher')
+            ->setExpiresAt(new DateTimeImmutable('+1 hour'))
+            ->setMaxReads(1);
+
+        $closed = $this->createMock(DocumentManager::class);
+        $closed->method('isOpen')->willReturn(false);
+
+        $open = $this->createMock(DocumentManager::class);
+        $open->method('isOpen')->willReturn(true);
+        $open->method('find')->willReturn($document);
+        $open->expects(self::once())->method('refresh')->with($document);
+
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->expects(self::once())->method('getManager')->with('default')->willReturn($closed);
+        $registry->expects(self::once())->method('resetManager')->with('default')->willReturn($open);
+
+        $repository = new DoctrineMongoShareRepository($closed, null, $registry, 'default');
+
+        self::assertSame('cipher', $repository->find($document->getId())?->getCiphertext());
+    }
+
     public function testFindReturnsMappedEntity(): void
     {
         $user     = new TestUser();

@@ -2,7 +2,22 @@
 
 ## Table of contents
 
+- [From 1.4.5 to 1.4.6](#from-145-to-146)
 - [From 1.4.4 to 1.4.5](#from-144-to-145)
+
+## From 1.4.5 to 1.4.6
+
+No breaking configuration keys. Behaviour notes (FrankenPHP worker hardening for `FRANKENPHP_RESET_KERNEL` unset/false):
+
+- `DoctrineOrmShareRepository` and `DoctrineOrmShareAccessLogRepository` accept new optional constructor arguments (`?ManagerRegistry $registry`, `?string $managerName`); the bundle wires them automatically from `doctrine`.
+- `DoctrineMongoShareRepository` accepts the same optional registry args wired from `doctrine_mongodb`.
+- `DoctrineOrmShareRepository::consumeReadIfAvailable()` no longer clears the whole EntityManager. If your code relied on that side effect after opening a public share, clear or refresh your own entities explicitly.
+- `find()` always hits the database (one query per call). Custom `ShareRepositoryInterface` implementations should also avoid serving shares from a per-process cache.
+- See [`FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md) for the full worker audit (forms/model transformers stay request-scoped; FormKit `withBuilder()` restores state in `finally`).
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ## From 1.4.4 to 1.4.5
 

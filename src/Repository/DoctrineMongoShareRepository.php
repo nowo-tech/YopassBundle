@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Repository;
 
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
+use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Psr\Clock\ClockInterface;
@@ -18,20 +19,33 @@ use function is_int;
  */
 final readonly class DoctrineMongoShareRepository implements ShareRepositoryInterface
 {
+    use ResolvesDocumentManagerTrait;
+
     private ClockInterface $clock;
 
     public function __construct(
         private DocumentManager $documentManager,
         ?ClockInterface $clock = null,
+        private ?ManagerRegistry $registry = null,
+        private ?string $managerName = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
 
+    /**
+     * Refreshes an already managed document, so a share changed by another worker is never mapped from a stale identity map.
+     */
     public function find(string $id): ?SecureShare
     {
-        $document = $this->documentManager->find(SecureShareDocument::class, $id);
+        $dm       = $this->dm();
+        $document = $dm->find(SecureShareDocument::class, $id);
+        if (!$document instanceof SecureShareDocument) {
+            return null;
+        }
 
-        return $document instanceof SecureShareDocument ? $this->toEntity($document) : null;
+        $dm->refresh($document);
+
+        return $this->toEntity($document);
     }
 
     public function consumeReadIfAvailable(string $id): ?SecureShare
@@ -39,7 +53,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         $now = $this->now();
 
         /** @var SecureShareDocument|null $document */
-        $document = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
+        $document = $this->dm()->createQueryBuilder(SecureShareDocument::class)
             ->findAndUpdate()
             ->returnNew(true)
             ->field('_id')->equals($id)
@@ -56,7 +70,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     public function findByCreator(object $creator): array
     {
         /** @var list<SecureShareDocument> $documents */
-        $documents = $this->documentManager->getRepository(SecureShareDocument::class)->findBy(
+        $documents = $this->dm()->getRepository(SecureShareDocument::class)->findBy(
             ['creator' => $creator],
             ['createdAt' => 'DESC'],
         );
@@ -66,7 +80,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
 
     public function countByCreator(object $creator): int
     {
-        $result = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
+        $result = $this->dm()->createQueryBuilder(SecureShareDocument::class)
             ->field('creator')->equals($creator)
             ->count()
             ->getQuery()
@@ -82,7 +96,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array
     {
         /** @var list<SecureShareDocument> $documents */
-        $documents = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
+        $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
             ->field('creator')->equals($creator)
             ->sort('createdAt', 'desc')
             ->limit($limit)
@@ -96,7 +110,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int
     {
         /** @var iterable<SecureShareDocument> $documents */
-        $documents = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
+        $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
             ->field('creator')->equals($creator)
             ->field('createdAt')->lt($before)
             ->getQuery()
@@ -108,7 +122,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     public function removeAllByCreator(object $creator): int
     {
         /** @var iterable<SecureShareDocument> $documents */
-        $documents = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
+        $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
             ->field('creator')->equals($creator)
             ->getQuery()
             ->execute();
@@ -119,7 +133,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     public function removeOlderThan(DateTimeImmutable $before): int
     {
         /** @var iterable<SecureShareDocument> $documents */
-        $documents = $this->documentManager->createQueryBuilder(SecureShareDocument::class)
+        $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
             ->field('createdAt')->lt($before)
             ->getQuery()
             ->execute();
@@ -129,26 +143,26 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
 
     public function persist(SecureShare $share): void
     {
-        $existing = $this->documentManager->find(SecureShareDocument::class, $share->getId());
+        $existing = $this->dm()->find(SecureShareDocument::class, $share->getId());
         $document = $existing instanceof SecureShareDocument
             ? $this->syncDocument($existing, $share)
             : $this->fromEntity($share);
 
-        $this->documentManager->persist($document);
+        $this->dm()->persist($document);
     }
 
     public function remove(SecureShare $share): void
     {
-        $document = $this->documentManager->find(SecureShareDocument::class, $share->getId());
+        $document = $this->dm()->find(SecureShareDocument::class, $share->getId());
 
         if ($document instanceof SecureShareDocument) {
-            $this->documentManager->remove($document);
+            $this->dm()->remove($document);
         }
     }
 
     public function flush(): void
     {
-        $this->documentManager->flush();
+        $this->dm()->flush();
     }
 
     private function fromEntity(SecureShare $share): SecureShareDocument
@@ -206,7 +220,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         $count = 0;
 
         foreach ($documents as $document) {
-            $this->documentManager->remove($document);
+            $this->dm()->remove($document);
             ++$count;
         }
 

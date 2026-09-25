@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Repository;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
 
@@ -13,15 +14,19 @@ use Nowo\YopassBundle\Entity\ShareAccessLog;
  */
 final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessLogRepositoryInterface
 {
+    use ResolvesEntityManagerTrait;
+
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private ?ManagerRegistry $registry = null,
+        private ?string $managerName = null,
     ) {
     }
 
     public function findByShare(SecureShare $share, int $limit = 50): array
     {
         /** @var list<ShareAccessLog> $logs */
-        $logs = $this->entityManager->getRepository(ShareAccessLog::class)->findBy(
+        $logs = $this->em()->getRepository(ShareAccessLog::class)->findBy(
             ['share' => $share],
             ['accessedAt' => 'DESC'],
             $limit,
@@ -32,11 +37,11 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
 
     public function persist(ShareAccessLog $log): void
     {
-        $this->entityManager->persist($log);
+        $this->em()->persist($log);
     }
 
     public function flush(): void
     {
-        $this->entityManager->flush();
+        $this->em()->flush();
     }
 }

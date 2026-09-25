@@ -42,7 +42,7 @@ APP_ENV=prod APP_DEBUG=0 docker-compose up -d --build
 
 Or set `APP_ENV=prod` in `.env` and rebuild. The entrypoint keeps the production `Caddyfile` when `APP_ENV` is not `dev`.
 
-**Yopass Bundle** is stateless (form rendering + validator + client script) and does not rely on per-request global state incompatible with FrankenPHP workers.
+**Yopass Bundle** is stateless for FrankenPHP worker with `FRANKENPHP_RESET_KERNEL` unset/false (kernel reused): form rendering + validators + client script do not keep request data in shared services. ORM/Mongo repositories reopen closed managers and refresh shares on every `find()`. Full matrix: [`FRANKENPHP-WORKER-AUDIT.md`](FRANKENPHP-WORKER-AUDIT.md).
 
 ## Demo pages
 
