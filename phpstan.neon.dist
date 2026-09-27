@@ -4,8 +4,7 @@
 # Run: make phpstan
 includes:
     - vendor/nowo-tech/phpstan-frankenphp/ruleset-classic.neon
-    # Includes ruleset-worker.neon + NoMissingResetInterface (FRANKENPHP_RESET_KERNEL unset/false).
-    - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker-no-kernel-reset.neon
+    - vendor/nowo-tech/phpstan-frankenphp/ruleset-worker.neon
 
 parameters:
     level: 8
@@ -13,12 +12,3 @@ parameters:
         - src
     excludePaths:
         - src/Resources/assets/*
-    ignoreErrors:
-        # ODM documents are request entities (like ORM Entity/); not container services.
-        -
-            identifier: frankenphp.worker.noMissingResetInterface
-            path: src/Document/*
-        # Symfony Bundle::getContainerExtension() memoizes $extension at compile time only.
-        -
-            identifier: frankenphp.worker.noMissingResetInterface
-            path: src/YopassBundle.php
