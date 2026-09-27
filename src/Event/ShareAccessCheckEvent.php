@@ -46,11 +46,13 @@ final class ShareAccessCheckEvent extends Event
 
     public function grant(): void
     {
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->granted = true;
     }
 
     public function deny(): void
     {
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->granted = false;
     }
 }

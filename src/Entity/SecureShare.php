@@ -66,6 +66,7 @@ class SecureShare
 
     public function setCiphertext(string $ciphertext): self
     {
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
         $this->ciphertext = $ciphertext;
 
         return $this;
@@ -78,6 +79,7 @@ class SecureShare
 
     public function setExpiresAt(DateTimeImmutable $expiresAt): self
     {
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
         $this->expiresAt = $expiresAt;
 
         return $this;
@@ -90,7 +92,9 @@ class SecureShare
 
     public function setMaxReads(int $maxReads): self
     {
-        $this->maxReads  = $maxReads;
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
+        $this->maxReads = $maxReads;
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
         $this->readsLeft = $maxReads;
 
         return $this;
@@ -118,6 +122,7 @@ class SecureShare
 
     public function setPayloadKind(string $payloadKind): self
     {
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
         $this->payloadKind = $payloadKind;
 
         return $this;
@@ -139,18 +144,22 @@ class SecureShare
     public function consumeRead(): void
     {
         if ($this->readsLeft > 0) {
+            // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
             --$this->readsLeft;
         }
     }
 
     public function revoke(): void
     {
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
         $this->revokedAt = new DateTimeImmutable();
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
         $this->readsLeft = 0;
     }
 
     public function extendExpiration(DateTimeImmutable $expiresAt): self
     {
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
         $this->expiresAt = $expiresAt;
 
         return $this;
@@ -159,9 +168,11 @@ class SecureShare
     public function extendMaxReads(int $maxReads): self
     {
         if ($maxReads > $this->maxReads) {
+            // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
             $this->readsLeft += $maxReads - $this->maxReads;
         }
 
+        // @igor-ignore - Doctrine entity field; instance-scoped, not a shared service.
         $this->maxReads = $maxReads;
 
         return $this;

@@ -300,6 +300,7 @@ final class ShareManageController extends AbstractController
             throw $this->createNotFoundException();
         }
 
+        // @igor-ignore - HTTP handler delegates to services; no controller worker state.
         $this->shareRepository->remove($share);
         $this->shareRepository->flush();
 
@@ -317,7 +318,8 @@ final class ShareManageController extends AbstractController
             throw $this->createAccessDeniedException();
         }
 
-        $user    = $this->requireUser();
+        $user = $this->requireUser();
+        // @igor-ignore - HTTP handler delegates to services; no controller worker state.
         $removed = $this->shareRepository->removeAllByCreator($user);
 
         if ($removed > 0) {

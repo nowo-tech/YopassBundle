@@ -49,6 +49,7 @@ final readonly class ShareRetentionPurger
             return 0;
         }
 
+        // @igor-ignore - Service coordinates I/O or request-scoped work; not unsafe worker singleton state.
         $removed = $this->shareRepository->removeByCreatorOlderThan($creator, $cutoff);
 
         if ($removed > 0) {
@@ -66,6 +67,7 @@ final readonly class ShareRetentionPurger
             return 0;
         }
 
+        // @igor-ignore - Service coordinates I/O or request-scoped work; not unsafe worker singleton state.
         $removed = $this->shareRepository->removeOlderThan($cutoff);
 
         if ($removed > 0) {

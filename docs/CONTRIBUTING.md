@@ -37,7 +37,7 @@ If CI fails because trailers are already on the remote, see [GITHUB_CI.md](GITHU
 | Command | Scope |
 |---------|--------|
 | `make qa` | PHP-CS-Fixer + PHPUnit |
-| `make phpstan` | Static analysis (level 8) |
+| `make phpstan`, `make igor` | Static analysis (level 8) |
 | `make test-ts` | Vitest (crypto / TypeScript) |
 | `make release-check` | Full pre-release pipeline (composer sync, cs, rector-dry, phpstan, coverage, demos, Vitest) |
 

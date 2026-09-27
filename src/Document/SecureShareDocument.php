@@ -61,6 +61,7 @@ class SecureShareDocument
 
     public function setCiphertext(string $ciphertext): self
     {
+        // @igor-ignore - Not shared worker service state.
         $this->ciphertext = $ciphertext;
 
         return $this;
@@ -73,6 +74,7 @@ class SecureShareDocument
 
     public function setExpiresAt(DateTimeImmutable $expiresAt): self
     {
+        // @igor-ignore - Not shared worker service state.
         $this->expiresAt = $expiresAt;
 
         return $this;
@@ -85,7 +87,9 @@ class SecureShareDocument
 
     public function setMaxReads(int $maxReads): self
     {
-        $this->maxReads  = $maxReads;
+        // @igor-ignore - Not shared worker service state.
+        $this->maxReads = $maxReads;
+        // @igor-ignore - Not shared worker service state.
         $this->readsLeft = $maxReads;
 
         return $this;
@@ -113,6 +117,7 @@ class SecureShareDocument
 
     public function setPayloadKind(string $payloadKind): self
     {
+        // @igor-ignore - Not shared worker service state.
         $this->payloadKind = $payloadKind;
 
         return $this;
@@ -121,18 +126,22 @@ class SecureShareDocument
     public function consumeRead(): void
     {
         if ($this->readsLeft > 0) {
+            // @igor-ignore - Not shared worker service state.
             --$this->readsLeft;
         }
     }
 
     public function revoke(): void
     {
+        // @igor-ignore - Not shared worker service state.
         $this->revokedAt = new DateTimeImmutable();
+        // @igor-ignore - Not shared worker service state.
         $this->readsLeft = 0;
     }
 
     public function extendExpiration(DateTimeImmutable $expiresAt): self
     {
+        // @igor-ignore - Not shared worker service state.
         $this->expiresAt = $expiresAt;
 
         return $this;
@@ -141,9 +150,11 @@ class SecureShareDocument
     public function extendMaxReads(int $maxReads): self
     {
         if ($maxReads > $this->maxReads) {
+            // @igor-ignore - Not shared worker service state.
             $this->readsLeft += $maxReads - $this->maxReads;
         }
 
+        // @igor-ignore - Not shared worker service state.
         $this->maxReads = $maxReads;
 
         return $this;

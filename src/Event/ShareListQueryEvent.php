@@ -43,6 +43,7 @@ final class ShareListQueryEvent extends Event
 
     public function setListSubject(object $listSubject): void
     {
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->listSubject = $listSubject;
     }
 
@@ -71,7 +72,9 @@ final class ShareListQueryEvent extends Event
      */
     public function overrideList(array $shares, int $total): void
     {
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->overrideShares = $shares;
-        $this->overrideTotal  = $total;
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
+        $this->overrideTotal = $total;
     }
 }

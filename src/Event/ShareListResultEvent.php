@@ -44,6 +44,7 @@ final class ShareListResultEvent extends Event
      */
     public function setShares(array $shares): void
     {
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->shares = $shares;
     }
 
@@ -54,6 +55,7 @@ final class ShareListResultEvent extends Event
 
     public function setTotal(int $total): void
     {
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->total = $total;
     }
 }
