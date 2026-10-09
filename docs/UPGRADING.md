@@ -3,6 +3,18 @@
 
 ## Unreleased
 
+## To 1.4.8
+
+From **1.4.7** — public share rate limiting fix and dependency refresh. No breaking changes.
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console cache:clear
+```
+
+- `public_rate_limit` (enabled by default: 60 requests / 60 s per client IP on `/share/*` show and consume) is now **effectively enforced** when `cache.app` exists. Previously the limiter never received the cache pool and skipped limiting. If legitimate traffic from a shared IP exceeds the limit, raise `public_rate_limit.limit` / `interval_seconds` or set `public_rate_limit.enabled: false`.
+- The "cache.app is missing" warning now only fires when the application really has no `cache.app` service.
+
 ## To 1.4.7
 
 From **1.4.6** — REQ-CS-008 Igor FrankenPHP worker audit (igor-php require-dev, igor.json, make igor).
@@ -16,6 +28,8 @@ php bin/console cache:clear
 
 ## Table of contents
 
+- [To 1.4.8](#to-148)
+- [To 1.4.7](#to-147)
 - [From 1.4.5 to 1.4.6](#from-145-to-146)
 - [From 1.4.4 to 1.4.5](#from-144-to-145)
 

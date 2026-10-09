@@ -289,7 +289,7 @@ nowo_yopass:
         interval_seconds: 60   # window length
 ```
 
-Requires Symfony **`cache.app`** (FrameworkBundle cache). When cache is unavailable or `enabled: false`, limiting is skipped. See [Security](SECURITY.md).
+Requires Symfony **`cache.app`** (FrameworkBundle cache), injected as an optional reference. When cache is unavailable (a compile-time warning is emitted) or `enabled: false`, limiting is skipped. See [Security](SECURITY.md).
 
 ### Custom access checker interface
 

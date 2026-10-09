@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.8] - 2026-10-09
+
+### Security
+
+- **Public share rate limiting actually enabled:** `YopassExtension` checked `has('cache.app')` / `has('logger')` inside `load()`, where the isolated extension container never sees framework services, so `PublicEndpointRateLimiter` always received a `null` cache pool (rate limiting on `/share/*` silently skipped) and a user warning fired on every container compile. The limiter now gets `cache.app` and `logger` as optional references resolved on the merged container; the "cache.app missing" warning moved to the new `PublicRateLimitCachePass`.
+
+### Changed
+
+- PHPStan: use the published `ruleset-worker.neon` only (drop the local no-kernel-reset ignores).
+- Dependencies (Dependabot + lock refresh): `doctrine/orm` 3.7.4, FormKitBundle 2.6.1, UiKitBundle 1.9.2; dev Vite 8.3.2, PHPStan 2.3.1 (+ phpunit/symfony extensions 2.1), PHPUnit 10.5.66, PHP-CS-Fixer 3.95.27, Rector 2.7.0, `igor-php/igor-php` 0.10.1, `nowo-tech/phpstan-frankenphp` 1.2.3, `mongodb/mongodb` 2.5.0.
+- Demo (Symfony 8): `doctrine/orm` 3.7.4, `doctrine/dbal` 4.5.0, FormKitBundle 2.6.1, UiKitBundle 1.9.2, Twig 3.30.0, HotReloadBundle 1.5.5, TwigInspectorBundle 1.1.7; regenerated `config/reference.php`.
+
+[1.4.8]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.4.8
+
 ## [1.4.7] - 2026-09-27
 
 ### Added
