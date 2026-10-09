@@ -11,6 +11,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
 | `DependencyInjection/Compiler/FileHandlerPass.php` | Compiler pass | FR-DI-002 |
+| `DependencyInjection/Compiler/PublicRateLimitCachePass.php` | Compiler pass | FR-SEC-002 |
 | `DependencyInjection/Compiler/ShareFileHandlerPass.php` | Compiler pass | FR-DI-002 |
 | `DependencyInjection/Compiler/TwigPathsPass.php` | Compiler pass | FR-DI-002 |
 | `DependencyInjection/Configuration.php` | Config tree | FR-CFG-001 |

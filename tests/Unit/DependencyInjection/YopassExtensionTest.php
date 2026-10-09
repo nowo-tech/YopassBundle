@@ -28,8 +28,10 @@ use stdClass;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
+use Symfony\Component\DependencyInjection\Reference;
 
 final class YopassExtensionTest extends TestCase
 {
@@ -46,6 +48,20 @@ final class YopassExtensionTest extends TestCase
     public function testGetAlias(): void
     {
         self::assertSame('nowo_yopass', $this->extension->getAlias());
+    }
+
+    public function testPublicRateLimiterUsesOptionalCacheAndLoggerReferences(): void
+    {
+        $this->extension->load([['user_class' => 'App\\Entity\\User']], $this->container);
+
+        $arguments = $this->container->getDefinition(PublicEndpointRateLimiter::class)->getArguments();
+
+        self::assertInstanceOf(Reference::class, $arguments[0]);
+        self::assertSame('cache.app', (string) $arguments[0]);
+        self::assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $arguments[0]->getInvalidBehavior());
+        self::assertInstanceOf(Reference::class, $arguments[3]);
+        self::assertSame('logger', (string) $arguments[3]);
+        self::assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $arguments[3]->getInvalidBehavior());
     }
 
     public function testLoadSetsParametersAndDefaultAccessChecker(): void

@@ -21,6 +21,7 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
@@ -33,8 +34,6 @@ use function is_array;
 use function is_string;
 use function rtrim;
 use function sprintf;
-
-use const E_USER_WARNING;
 
 /**
  * Loads bundle configuration and registers services.
@@ -80,19 +79,16 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.public_rate_limit.enabled', $publicRateLimit['enabled']);
         $container->setParameter('nowo_yopass.public_rate_limit.limit', $publicRateLimit['enabled'] ? (int) $publicRateLimit['limit'] : 0);
         $container->setParameter('nowo_yopass.public_rate_limit.interval_seconds', $publicRateLimit['enabled'] ? (int) $publicRateLimit['interval_seconds'] : 0);
-        if ($publicRateLimit['enabled'] && !$container->has('cache.app')) {
-            trigger_error(
-                'nowo_yopass.public_rate_limit is enabled but the "cache.app" service is missing; public rate limiting will be skipped. Enable framework cache or set public_rate_limit.enabled: false.',
-                E_USER_WARNING,
-            );
-        }
+        // Extensions load into an isolated container (framework services are not visible here), so
+        // cache.app / logger are optional references resolved at compile time; PublicRateLimitCachePass
+        // warns when rate limiting is enabled but cache.app is missing.
         $container->register(PublicEndpointRateLimiter::class)
             ->setAutowired(false)
             ->setArguments([
-                $container->has('cache.app') ? new Reference('cache.app') : null,
+                new Reference('cache.app', ContainerInterface::NULL_ON_INVALID_REFERENCE),
                 '%nowo_yopass.public_rate_limit.limit%',
                 '%nowo_yopass.public_rate_limit.interval_seconds%',
-                $container->has('logger') ? new Reference('logger') : null,
+                new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
             ]);
 
         $this->registerShareRepository($container, $driver, $database, $storageName, $collection, $config);

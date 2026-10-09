@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Tests\Unit;
 
+use Nowo\YopassBundle\DependencyInjection\Compiler\PublicRateLimitCachePass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\TwigPathsPass;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
 use Nowo\YopassBundle\YopassBundle;
@@ -27,6 +28,10 @@ final class YopassBundleTest extends TestCase
         self::assertNotEmpty(array_filter(
             $passes,
             static fn (CompilerPassInterface $pass): bool => $pass instanceof TwigPathsPass,
+        ));
+        self::assertNotEmpty(array_filter(
+            $passes,
+            static fn (CompilerPassInterface $pass): bool => $pass instanceof PublicRateLimitCachePass,
         ));
     }
 

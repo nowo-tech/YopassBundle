@@ -32,7 +32,7 @@ Per SDD US-01–US-04: create share with `#key`, public reveal, owner revoke/ext
 
 - **FR-SHARE-001–008**: Create, retrieve, list, extend shares; Stimulus controllers for create/reveal/manage flows; share URL/key helpers.
 - **FR-CRYPT-002**: Browser `yopass-crypto.ts` E2E encrypt/decrypt (server stores ciphertext only).
-- **FR-SEC-001 / FR-SEC-002**: Access checker and public endpoint rate limiter.
+- **FR-SEC-001 / FR-SEC-002**: Access checker and public endpoint rate limiter. The limiter MUST receive `cache.app` (and `logger`) as optional references resolved on the merged container, never via `has()` inside the extension (isolated container); `PublicRateLimitCachePass` MUST warn when `public_rate_limit.enabled` is true and `cache.app` is missing.
 - **FR-AUDIT-001**: Access logging via `ShareAccessLogger`.
 - **FR-RET-001**: `ShareRetentionPurger` + `PurgeOldSharesCommand`.
 - **FR-FILE-001**: Pluggable `ShareFileHandlerInterface` with default handler and compiler passes.
