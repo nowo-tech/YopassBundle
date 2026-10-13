@@ -31,6 +31,7 @@
 | **IDOR on manage actions** | User previews/revokes another user's share. | Creator check via `ShareAccessGuard` (default); extend with `ShareAccessCheckEvent` listeners. |
 | **Concurrent consume** | Two parallel consumes might exceed read limits. | Atomic `consumeReadIfAvailable()` in repositories (ORM DQL update / MongoDB find-and-update). |
 | **Oversized ciphertext** | DoS via huge payloads. | `max_ciphertext_bytes` limit (default 700 KB). |
+| **Tampered payload kind** | A forged `payloadKind` stores shares the reveal page cannot handle, or bypasses the file-share switch. | `ShareCreateType` only accepts `text` / `file` (`Choice` constraint, since 1.5.0); `file` is rejected unless a `file_handler` is configured. |
 | **XSS on reveal page** | Decrypted secret injected unsafely. | Output in `<pre>` via `textContent` in Stimulus controller. |
 | **Third-party CDN CSS** | Tabler loaded from jsDelivr. | Pin version; use `crossorigin="anonymous"`; self-host in high-security deployments. |
 

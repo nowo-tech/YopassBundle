@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Dev:** Vitest 4 (`vitest` / `@vitest/coverage-v8` `^4.1.11`).
+- Docs: `docs/SECURITY.md` threat model lists the `payloadKind` validation added in 1.5.0.
 
 ## [1.5.0] - 2026-10-13
 
