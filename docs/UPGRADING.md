@@ -1,5 +1,54 @@
 # Upgrading
 
+## Table of contents
+
+- [Unreleased](#unreleased)
+- [To 1.5.0](#to-150)
+- [To 1.4.9](#to-149)
+- [To 1.4.8](#to-148)
+- [To 1.4.7](#to-147)
+- [From 1.4.5 to 1.4.6](#from-145-to-146)
+- [From 1.4.4 to 1.4.5](#from-144-to-145)
+- [From 1.4.4 to 1.4.5](#from-144-to-145-1)
+- [1.4.4 (2026-08-20)](#144-2026-08-20)
+- [1.4.3 (2026-08-19)](#143-2026-08-19)
+- [1.4.2 (Symfony 8 demos / Hot Reload 1.4)](#142-symfony-8-demos--hot-reload-14)
+- [1.4.1 (2026-08-07)](#141-2026-08-07)
+- [1.4.0 (2026-08-04)](#140-2026-08-04)
+  - [UiKit composition (REQ-UI-001-kit)](#uikit-composition-req-ui-001-kit)
+  - [FormKitBundle (admin forms)](#formkitbundle-admin-forms)
+  - [Twig Extra Bundle (REQ-TWIG-004)](#twig-extra-bundle-req-twig-004)
+  - [Twig-CS-Fixer (maintainers)](#twig-cs-fixer-maintainers)
+- [1.3.2 (2026-07-29)](#132-2026-07-29)
+- [1.3.1 (2026-07-27)](#131-2026-07-27)
+- [1.3.0 (2026-07-27)](#130-2026-07-27)
+  - [Web UI contract (REQ-UI-001) and security defaults (REQ-UI-002)](#web-ui-contract-req-ui-001-and-security-defaults-req-ui-002)
+- [1.2.8 (2026-07-22)](#128-2026-07-22)
+- [1.2.7 (2026-07-22)](#127-2026-07-22)
+- [1.2.6 (2026-07-16)](#126-2026-07-16)
+- [1.2.5 (2026-07-15)](#125-2026-07-15)
+- [1.2.4 (2026-07-15)](#124-2026-07-15)
+- [1.2.3 (2026-07-13)](#123-2026-07-13)
+- [1.2.2 (2026-07-08)](#122-2026-07-08)
+- [1.2.1 (2026-07-07)](#121-2026-07-07)
+  - [Fixes included](#fixes-included)
+  - [Upgrade steps](#upgrade-steps)
+- [1.2.0 (2026-07-05)](#120-2026-07-05)
+  - [Public rate limiting](#public-rate-limiting)
+  - [Custom `ShareRepositoryInterface`](#custom-sharerepositoryinterface)
+  - [Translations](#translations)
+  - [Upgrade steps](#upgrade-steps-1)
+- [1.1.0 (2026-07-04)](#110-2026-07-04)
+  - [Share list and per-share access events](#share-list-and-per-share-access-events)
+  - [Upgrade steps](#upgrade-steps-2)
+- [1.0.1 (2026-07-04)](#101-2026-07-04)
+  - [Symfony 8 + Doctrine](#symfony-8--doctrine)
+  - [Assets](#assets)
+- [1.0.0 (2026-07-04)](#100-2026-07-04)
+  - [Requirements](#requirements)
+  - [Install](#install)
+  - [Public links](#public-links)
+
 ## Unreleased
 
 ## To 1.5.0
@@ -45,15 +94,6 @@ php bin/console cache:clear
 ```
 
 - No application upgrade steps for require-dev Igor tooling (REQ-CS-008). Consumers do not pull `igor-php/igor-php` transitively.
-
-## Table of contents
-
-- [To 1.5.0](#to-150)
-- [To 1.4.9](#to-149)
-- [To 1.4.8](#to-148)
-- [To 1.4.7](#to-147)
-- [From 1.4.5 to 1.4.6](#from-145-to-146)
-- [From 1.4.4 to 1.4.5](#from-144-to-145)
 
 ## From 1.4.5 to 1.4.6
 
