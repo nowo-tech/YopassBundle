@@ -15,6 +15,7 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Validator\Constraints\Choice;
 use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -33,6 +34,9 @@ use function max;
 final class ShareCreateType extends AbstractType
 {
     use FormOptionsTrait;
+
+    /** Payload kinds the browser can submit; anything else is rejected by validation. */
+    public const PAYLOAD_KINDS = ['text', 'file'];
 
     public function __construct(
         private readonly TranslatorInterface $translator,
@@ -74,6 +78,9 @@ final class ShareCreateType extends AbstractType
                 'label'       => false,
                 'placeholder' => false,
                 'help'        => false,
+                'constraints' => [
+                    new Choice(choices: self::PAYLOAD_KINDS, message: 'yopass.error.create'),
+                ],
             ]);
             $this->addChoiceField('expiresIn', [
                 'label'        => 'yopass.expires.field',

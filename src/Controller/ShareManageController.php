@@ -172,8 +172,7 @@ final class ShareManageController extends AbstractController
             throw $this->createNotFoundException();
         }
 
-        $publicPath = $this->routes['public_show']['path'];
-        $publicPath = str_replace('{id}', $share->getId(), $publicPath);
+        $publicPath = $this->publicSharePath($share);
 
         return $this->render($this->templates['created'], [
             'share'           => $share,
@@ -202,10 +201,7 @@ final class ShareManageController extends AbstractController
             throw $this->createNotFoundException();
         }
 
-        $publicPath = $this->routes['public_show']['path'];
-        $publicPath = str_replace('{id}', $share->getId(), $publicPath);
-
-        $result['publicPath'] = $publicPath;
+        $result['publicPath'] = $this->publicSharePath($share);
 
         if ($this->accessLogger->isEnabled()) {
             $result['accessLog'] = $this->accessLogger->listForShare($share);
@@ -332,6 +328,15 @@ final class ShareManageController extends AbstractController
         );
 
         return $this->redirectToRoute($this->routes['manage']['name']);
+    }
+
+    /**
+     * Public share path generated through the router, so `route_prefix`, extra route placeholders
+     * (e.g. `{_locale}`) and the request base path are honoured. The browser prepends its origin.
+     */
+    private function publicSharePath(SecureShare $share): string
+    {
+        return $this->generateUrl($this->routes['public_show']['name'], ['id' => $share->getId()]);
     }
 
     private function denyUnlessFeature(string $feature): void

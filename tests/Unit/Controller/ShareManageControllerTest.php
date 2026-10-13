@@ -28,6 +28,10 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Generator\UrlGenerator;
+use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -217,11 +221,10 @@ final class ShareManageControllerTest extends TestCase
         self::assertTrue($controller->create($request)->isRedirect('/generated/nowo_yopass_created'));
     }
 
-    public function testCreateAcceptsCustomPayloadKind(): void
+    public function testCreateRejectsUnknownPayloadKind(): void
     {
         $shareRepository = $this->createMock(ShareRepositoryInterface::class);
-        $shareRepository->method('persist');
-        $shareRepository->method('flush');
+        $shareRepository->expects(self::never())->method('persist');
 
         $controller = $this->controller(shareRepository: $shareRepository);
         $container  = ControllerContainerBuilder::bind($controller, new TestUser());
@@ -231,7 +234,7 @@ final class ShareManageControllerTest extends TestCase
             'payloadKind' => 'unsupported',
         ]);
 
-        self::assertTrue($controller->create($request)->isRedirect('/generated/nowo_yopass_created'));
+        self::assertTrue($controller->create($request)->isRedirect('/generated/nowo_yopass_index'));
     }
 
     public function testPreviewReturnsCiphertextForOwner(): void
@@ -246,7 +249,7 @@ final class ShareManageControllerTest extends TestCase
         $shareRetriever = new ShareRetriever($shareRepository);
 
         $controller = $this->controller(shareRepository: $shareRepository, shareRetriever: $shareRetriever);
-        ControllerContainerBuilder::bind($controller, $user);
+        ControllerContainerBuilder::bind($controller, $user, ['router' => $this->prefixedRouter()]);
 
         $response = $controller->preview($share->getId());
 
@@ -254,7 +257,54 @@ final class ShareManageControllerTest extends TestCase
         /** @var array<string, mixed> $payload */
         $payload = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
         self::assertSame('active', $payload['availability']);
-        self::assertSame('/share/' . $share->getId(), $payload['publicPath']);
+        // route_prefix ("/app") and the request base path ("/sub") come from the router, not the raw config path.
+        self::assertSame('/sub/app/share/' . $share->getId(), $payload['publicPath']);
+    }
+
+    public function testCreatedPublicPathUsesRouterWithPrefixAndPlaceholders(): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-000000000020', $user);
+        $share->setCiphertext('x')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+
+        $routes = new RouteCollection();
+        $routes->add('nowo_yopass_public_share', new Route('/{_locale}/share/{id}'));
+        $context = new RequestContext('/sub');
+        $context->setParameter('_locale', 'es');
+
+        $twig = new class {
+            /** @var array<string, mixed> */
+            public array $captured = [];
+
+            /** @param array<string, mixed> $context */
+            public function render(string $name, array $context = []): string
+            {
+                $this->captured = $context;
+
+                return $name;
+            }
+        };
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        ControllerContainerBuilder::bind($controller, $user, [
+            'router' => new UrlGenerator($routes, $context),
+            'twig'   => $twig,
+        ]);
+
+        $controller->created($share->getId());
+
+        self::assertSame('/sub/es/share/' . $share->getId(), $twig->captured['public_path']);
+    }
+
+    private function prefixedRouter(): UrlGenerator
+    {
+        $routes = new RouteCollection();
+        $routes->add('nowo_yopass_public_share', new Route('/app/share/{id}'));
+
+        return new UrlGenerator($routes, new RequestContext('/sub'));
     }
 
     public function testPreviewThrowsNotFoundForForeignShare(): void

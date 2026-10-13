@@ -112,7 +112,7 @@ nowo_yopass:
     file_handler: Nowo\YopassBundle\Service\DefaultShareFileHandler
 ```
 
-Without `file_handler`, the manage UI shows text shares only and the create API rejects `payloadKind: file`.
+Without `file_handler`, the manage UI shows text shares only and the create API rejects `payloadKind: file`. Any `payloadKind` other than `text` or `file` fails form validation.
 
 The Symfony 8 demo enables local file storage by default ([Local storage example](examples/LocalStorage.md)). For AWS S3, see [S3 example](examples/S3.md).
 
