@@ -7,9 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.9] - 2026-10-13
+
 ### Changed
 
 - Development: `composer.json` pins `config.platform.php` to 8.2.0 so the committed lock stays installable on the minimum PHP; CI overrides the platform per matrix cell.
+- Repository: `.twig-cs-fixer.cache` is now git-ignored.
+
+### Dependencies
+
+- `vite` 8.3.2 → 8.3.4 (frontend tooling; #66).
+- `doctrine/orm` 3.7.4 → 3.7.5 (development lock; #67).
+- `nowo-tech/form-kit-bundle` 2.6.1 → 2.7.1 (development lock; #68).
+- `nowo-tech/ui-kit-bundle` 1.9.2 → 1.11.0 (development lock; #69).
+
+[1.4.9]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.4.9
 
 ## [1.4.8] - 2026-10-09
 

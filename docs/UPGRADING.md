@@ -1,7 +1,16 @@
 # Upgrading
 
-
 ## Unreleased
+
+## To 1.4.9
+
+From **1.4.8** — dependency refresh and repository maintenance.
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
+- No breaking changes. No application upgrade steps.
 
 ## To 1.4.8
 
@@ -28,6 +37,7 @@ php bin/console cache:clear
 
 ## Table of contents
 
+- [To 1.4.9](#to-149)
 - [To 1.4.8](#to-148)
 - [To 1.4.7](#to-147)
 - [From 1.4.5 to 1.4.6](#from-145-to-146)
