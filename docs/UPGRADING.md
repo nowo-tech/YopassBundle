@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.5.1](#to-151)
 - [To 1.5.0](#to-150)
 - [To 1.4.9](#to-149)
 - [To 1.4.8](#to-148)
@@ -50,6 +51,16 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.5.1
+
+From **1.5.0** — Vitest 4 (dev); threat model documents payloadKind validation
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
+- No breaking changes. No application upgrade steps.
 
 ## To 1.5.0
 

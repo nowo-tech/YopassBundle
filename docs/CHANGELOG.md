@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.5.1] - 2026-10-13](#151---2026-10-13)
 - [[1.5.0] - 2026-10-13](#150---2026-10-13)
 - [[1.4.9] - 2026-10-13](#149---2026-10-13)
 - [[1.4.8] - 2026-10-09](#148---2026-10-09)
@@ -37,10 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-10-13
+
 ### Changed
 
 - **Dev:** Vitest 4 (`vitest` / `@vitest/coverage-v8` `^4.1.11`).
 - Docs: `docs/SECURITY.md` threat model lists the `payloadKind` validation added in 1.5.0.
+
+[1.5.1]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.5.1
 
 ## [1.5.0] - 2026-10-13
 
