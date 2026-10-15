@@ -64,3 +64,7 @@ Run `make release-check` before tagging a release.
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+## AI co-author trailers
+
+Do **not** add AI co-author trailers to commit messages: neither `Co-authored-by: Cursor` / `cursoragent@cursor.com` nor `Co-Authored-By: Claude …` / `noreply@anthropic.com` (REQ-GIT-001). Run `make setup-hooks` so the `commit-msg` hook strips them.
