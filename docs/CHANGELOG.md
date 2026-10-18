@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.5.2] - 2026-10-18](#152---2026-10-18)
 - [[1.5.1] - 2026-10-13](#151---2026-10-13)
 - [[1.5.0] - 2026-10-13](#150---2026-10-13)
 - [[1.4.9] - 2026-10-13](#149---2026-10-13)
@@ -38,9 +39,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-10-18
+
+Allows nowo-tech/ui-kit-bundle 2.x (^1.4 || ^2.2) so hosts can move to UiKit 2.2. See [UPGRADING](UPGRADING.md#to-152).
+
 ### Changed
 
 - Allows nowo-tech/ui-kit-bundle 2.x (`^1.4 || ^2.2`); the dev lock and the demo lock use 2.2.0. Templates are unchanged (compatibility release).
+
+[1.5.2]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.5.2
 
 ## [1.5.1] - 2026-10-13
 
@@ -413,7 +420,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.5.2...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
