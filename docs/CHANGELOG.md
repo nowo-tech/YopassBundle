@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.5.3] - 2026-10-20](#153---2026-10-20)
 - [[1.5.2] - 2026-10-18](#152---2026-10-18)
 - [[1.5.1] - 2026-10-13](#151---2026-10-13)
 - [[1.5.0] - 2026-10-13](#150---2026-10-13)
@@ -39,11 +40,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-10-20
+
+Dependency refresh (bundle and demos), php-cs-fixer ParallelConfig(2). See [UPGRADING](UPGRADING.md#to-153).
+
 ### Changed
 
 - Dependencies refreshed (Composer and pnpm/npm lock files of the bundle and its demos, campaign 2026-10-19); shipped assets rebuilt.
 - `.php-cs-fixer.dist.php`: `new ParallelConfig(2)` (REQ-CS-001).
 - Documentation: wave-1 REQ compliance — README standard badges (PHP 8.2+, Symfony 7.4 | 8.0 | 8.1+, stars image, Coverage) and documentation list order, CONTRIBUTING Cursor Agent settings, canonical bug-report template, demo `.env.test` comment, SPEC-DRIVEN-DEVELOPMENT functional scope / non-goals / see also, doc TOCs, Spec Kit inventory refresh (77/77).
+
+[1.5.3]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.5.3
 
 ## [1.5.2] - 2026-10-18
 
@@ -426,7 +433,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.5.2...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.5.3...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
