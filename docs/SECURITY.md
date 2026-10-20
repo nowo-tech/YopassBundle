@@ -5,7 +5,9 @@
 - [Attack surface](#attack-surface)
 - [Threats and mitigations](#threats-and-mitigations)
 - [E2E encryption model](#e2e-encryption-model)
+- [Logging and observability (REQ-OBS-001)](#logging-and-observability-req-obs-001)
 - [Dependencies](#dependencies)
+- [AI security audit (REQ-SEC-004)](#ai-security-audit-req-sec-004)
 - [Reporting](#reporting)
 - [Release security checklist (12.4.1)](#release-security-checklist-1241)
 

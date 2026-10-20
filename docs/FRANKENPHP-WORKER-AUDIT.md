@@ -9,6 +9,18 @@
 | **Verdict** | ✅ **Viable under scenario B** (after remediation) — the bundle's own services are stateless; share reads always hit the database; a closed EntityManager / DocumentManager is replaced on the next call. Clearing the identity map between requests (memory) remains the application's responsibility |
 | Remediation (2026-09-23 / 2026-09-25) | W-01 resolved (ORM + MongoDB registry reopen), W-02 accepted (host cache configuration), W-03 `clear()` note resolved. Form `ShareCreateType` model transformers / PRE_SUBMIT are request-scoped closures; FormKit `withBuilder()` restores bound builder in `finally` (no SearchForm-style sticky model setters on the shared form type). Regression tests simulate consecutive requests on the same repository instances without `reset()` |
 
+## Table of contents
+
+- [Execution model assumed](#execution-model-assumed)
+- [Summary](#summary)
+- [Services reviewed](#services-reviewed)
+- [Findings](#findings)
+  - [W-01 — Correctness depends on Doctrine resetting the managers (Medium)](#w-01--correctness-depends-on-doctrine-resetting-the-managers-medium)
+  - [W-02 — Rate limiter effectiveness depends on the `cache.app` adapter (Low)](#w-02--rate-limiter-effectiveness-depends-on-the-cacheapp-adapter-low)
+  - [W-03 — Notes (Info)](#w-03--notes-info)
+- [Usage recommendations in worker mode](#usage-recommendations-in-worker-mode)
+- [Re-audit triggers](#re-audit-triggers)
+
 ## Execution model assumed
 
 FrankenPHP worker mode boots the Symfony kernel once per worker and serves many requests with the same container. This audit assumes the **strict** variant: the kernel is **not** rebooted between requests, so every shared service, static property and PHP global survives from one request to the next. Two scenarios are evaluated:

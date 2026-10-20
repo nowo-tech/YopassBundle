@@ -1,5 +1,16 @@
 # Usage
 
+## Table of contents
+
+- [Manage shares](#manage-shares)
+- [Public reveal](#public-reveal)
+- [Console](#console)
+- [Custom access control](#custom-access-control)
+  - [Route-level checker](#route-level-checker)
+  - [Share events (teams, grants, roles)](#share-events-teams-grants-roles)
+- [Twig overrides](#twig-overrides)
+- [Translations](#translations)
+
 ## Manage shares
 
 Authenticated users open the manage UI (default `/tools/yopass`):

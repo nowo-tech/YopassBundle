@@ -42,12 +42,14 @@ Per SDD US-01–US-04: create share with `#key`, public reveal, owner revoke/ext
 - **FR-ENTITY-001**: ORM `SecureShare`, `ShareAccessLog`; optional Mongo `SecureShareDocument`.
 - **FR-REPO-001 / FR-REPO-002**: Share and access-log repositories (ORM + Mongo + null log impl).
 - **FR-DB-001**: Metadata listeners for table prefix / Mongo mapping.
+- **FR-WORKER-001**: Repositories resolve the EntityManager / DocumentManager per call and replace one closed by an earlier failed flush (`ResolvesEntityManagerTrait`, `ResolvesDocumentManagerTrait`), so a long-running worker without kernel reset keeps working.
 - **FR-EVT-001**: Access and list query/result events for ACL extension.
 
 ### HTTP & UI
 
 - **FR-PUB-001 / FR-PUB-002**: Public reveal controller and Stimulus reveal flow.
 - **FR-UI-001**: Manage controller and templates (index, created, reveal).
+- **FR-UI-002**: Manage Web UI chrome (REQ-UI-001): `YopassTwigExtension` exposes the layout / CSS framework / icon set globals (`Ui\CssFramework`, `Ui\IconSet` enums), `layout_integrate_host.html.twig` bridges the host layout and `_action_icons.html.twig` renders the view / extend / revoke / delete actions; `ManageWebUiSecurityPass` fails the build when the manage UI requires authentication but SecurityBundle is missing.
 - **FR-FORM-001**: Share create form.
 - **FR-ROUTE-001**: Configurable `YopassRouteLoader`.
 - **FR-UI-010 / FR-BUILD-001**: Bundled JS assets.
@@ -56,7 +58,7 @@ Per SDD US-01–US-04: create share with `#key`, public reveal, owner revoke/ext
 
 ## Success Criteria
 
-- **SC-001**: 100% of production files in `src/` appear in [`code-inventory.md`](code-inventory.md) with requirement IDs (67/67 mapped).
+- **SC-001**: 100% of production files in `src/` appear in [`code-inventory.md`](code-inventory.md) with requirement IDs (77/77 mapped; the co-located Vitest file `yopass-crypto.test.ts` is excluded).
 - **SC-002**: Configuration keys in `docs/CONFIGURATION.md` match `Configuration.php`.
 - **SC-003**: `composer qa` / `make release-check` pass in CI (PHPUnit, PHPStan, Vitest where applicable).
 - **SC-004**: No Packagist-visible behavior change without spec, inventory, and test updates.

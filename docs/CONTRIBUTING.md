@@ -3,6 +3,19 @@
 Thank you for contributing to Yopass Bundle.
 
 
+## Table of contents
+
+- [Code of Conduct](#code-of-conduct)
+- [Development setup](#development-setup)
+  - [Git commit hygiene (REQ-GIT-001)](#git-commit-hygiene-req-git-001)
+- [Quality checks](#quality-checks)
+- [Pull requests](#pull-requests)
+- [Documentation](#documentation)
+- [Code style](#code-style)
+- [License](#license)
+- [AI co-author trailers](#ai-co-author-trailers)
+- [Cursor Agent](#cursor-agent)
+
 ## Code of Conduct
 
 This project follows the [Contributor Covenant Code of Conduct](../CODE_OF_CONDUCT.md). By participating, you are expected to uphold it. Please report unacceptable behavior to **hectorfranco@nowo.tech**.
@@ -68,3 +81,19 @@ By contributing, you agree that your contributions will be licensed under the MI
 ## AI co-author trailers
 
 Do **not** add AI co-author trailers to commit messages: neither `Co-authored-by: Cursor` / `cursoragent@cursor.com` nor `Co-Authored-By: Claude …` / `noreply@anthropic.com` (REQ-GIT-001). Run `make setup-hooks` so the `commit-msg` hook strips them.
+
+## Cursor Agent
+
+Contributors using Cursor Agent on this repository should enable these user-level settings (REQ-IDE-006):
+
+1. **Submit with Ctrl + Enter** (macOS: **⌘ + Enter**) — Cursor Settings → Agents / Chat. Enter inserts a newline; Ctrl/⌘+Enter submits.
+2. **Queue follow-ups** in user `settings.json`:
+
+```json
+{
+  "cursor.composer.queueMessageDefaultBehavior": "queue"
+}
+```
+
+Do not use `"steer"` as the default: it interrupts a running agent turn.
+

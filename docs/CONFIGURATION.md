@@ -2,6 +2,32 @@
 
 All options live under the `nowo_yopass` root key in `config/packages/nowo_yopass.yaml`.
 
+## Table of contents
+
+- [Required](#required)
+- [Database](#database)
+  - [PostgreSQL / MySQL / MariaDB / SQLite / SQL Server / Oracle](#postgresql--mysql--mariadb--sqlite--sql-server--oracle)
+  - [MongoDB](#mongodb)
+  - [Custom backends (Redis, Couchbase, etc.)](#custom-backends-redis-couchbase-etc)
+- [File shares (optional)](#file-shares-optional)
+- [Share options](#share-options)
+- [Sharing (encryption & links)](#sharing-encryption--links)
+  - [Public link formats](#public-link-formats)
+- [Access log](#access-log)
+- [Routes](#routes)
+- [Security](#security)
+  - [Firewall](#firewall)
+  - [Access checker](#access-checker)
+  - [Share list and per-share access events](#share-list-and-per-share-access-events)
+  - [Public rate limiting](#public-rate-limiting)
+  - [Custom access checker interface](#custom-access-checker-interface)
+- [Web UI (manage pages)](#web-ui-manage-pages)
+  - [Host layout integration](#host-layout-integration)
+- [Templates](#templates)
+- [Other options](#other-options)
+- [Assets](#assets)
+- [DevKit integration (future)](#devkit-integration-future)
+
 ## Required
 
 | Option | Description |

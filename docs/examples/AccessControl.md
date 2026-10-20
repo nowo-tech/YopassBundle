@@ -4,6 +4,17 @@ The bundle stores **who created each share** (`creator`) but does **not** implem
 
 Route-level features (`create`, `list`, `revoke`) still go through `YopassAccessCheckerInterface`. Events control **which shares appear** in the manage list and **who may open/preview/extend/revoke/delete** a given share.
 
+## Table of contents
+
+- [Events](#events)
+  - [ShareListQueryEvent](#sharelistqueryevent)
+  - [ShareListResultEvent](#sharelistresultevent)
+  - [ShareAccessCheckEvent](#shareaccesscheckevent)
+- [Example implementations](#example-implementations)
+- [Layering with YopassAccessCheckerInterface](#layering-with-yopassaccesscheckerinterface)
+- [Pagination note](#pagination-note)
+- [Related](#related)
+
 ## Events
 
 | Event | Constant | When | Use case |

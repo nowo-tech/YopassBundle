@@ -10,9 +10,39 @@ There is no separate executable spec language (for example Gherkin); Spec Kit sp
 
 ---
 
+## Table of contents
+
+- [Product vision](#product-vision)
+- [Bundle functional scope](#bundle-functional-scope)
+- [User stories](#user-stories)
+- [REQ traceability](#req-traceability)
+- [Validation](#validation)
+- [Engram](#engram)
+- [Suggested workflow for contributors](#suggested-workflow-for-contributors)
+- [GitHub Spec Kit (summary)](#github-spec-kit-summary)
+- [See also](#see-also)
+
 ## Product vision
 
 One-time encrypted secret sharing (Yopass-style) for Symfony apps: E2E encryption, expiration, read limits, revoke.
+
+## Bundle functional scope
+
+**Goal:** one-time encrypted secret sharing inside a Symfony application: the browser encrypts, the server stores ciphertext with expiration and read limits, and recipients reveal or consume the secret through public routes.
+
+**In scope**
+
+- Browser-side encryption (libsodium secretbox) with an auto-generated key or a custom password; text and file payloads (file tab only when a `file_handler` service exists).
+- Share lifecycle: expiration options, max-read limits, revoke, list pagination, retention purge (`nowo:yopass:purge-old-shares`).
+- Authenticated manage UI, anonymous public reveal/consume routes with per-IP rate limiting, configurable routes, table prefix and templates.
+- Pluggable access control and share events for list queries and per-share access.
+
+**Explicit non-goals**
+
+- Server-side decryption or key escrow: the server never receives the decryption key.
+- A built-in team / grant ACL: hosts implement it through share events and the access checker.
+- A file storage backend: the host provides the `file_handler` service ([local](examples/LocalStorage.md) and [S3](examples/S3.md) examples are documentation only).
+- `demo/` trees: illustrative only, not part of the Packagist contract.
 
 ## User stories
 
@@ -78,5 +108,9 @@ specify integration list   # Cursor → installed (default)
 
 In Cursor Agent, start a new feature with `/speckit-specify <description>`. For day-to-day tooling details, skills reference, folder layout, and troubleshooting, read **[`SPEC-KIT.md`](SPEC-KIT.md)**.
 
----
+## See also
 
+- [GitHub Spec Kit manual](SPEC-KIT.md) and [baseline spec](../specs/001-baseline/spec.md)
+- [Usage](USAGE.md), [Configuration](CONFIGURATION.md), [Installation](INSTALLATION.md)
+- [Contributing](CONTRIBUTING.md), [Release](RELEASE.md)
+- [Engram](ENGRAM.md)

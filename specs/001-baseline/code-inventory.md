@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/yopass-bundle`  
-**Last audited**: 2026-07-07
+**Last audited**: 2026-10-20 (manage UI chrome, worker-safe repositories; audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 77)
 
 This file proves that **every production source artifact** under `src/` is referenced by the baseline specification. Test-only files under `tests/` and `*.test.ts` under `src/` are out of Packagist scope. Built assets under `Resources/public/` are documented as Vite/build outputs.
 
@@ -17,6 +17,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | `DependencyInjection/Configuration.php` | Config tree | FR-CFG-001 |
 | `DependencyInjection/YopassExtension.php` | DI extension | FR-CFG-002 |
 | `YopassBundle.php` | Bundle entry | FR-BUNDLE-001 |
+| `DependencyInjection/Compiler/ManageWebUiSecurityPass.php` | Manage UI SecurityBundle guard | FR-UI-002 |
 
 ## CLI
 
@@ -44,6 +45,8 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Repository/NullShareAccessLogRepository.php` | Repository implementation | FR-REPO-002 |
 | `Repository/ShareAccessLogRepositoryInterface.php` | Repository contract | FR-REPO-001 |
 | `Repository/ShareRepositoryInterface.php` | Repository contract | FR-REPO-001 |
+| `Repository/ResolvesDocumentManagerTrait.php` | Per-call DocumentManager (closed-manager reset) | FR-WORKER-001, FR-REPO-001 |
+| `Repository/ResolvesEntityManagerTrait.php` | Per-call EntityManager (closed-manager reset) | FR-WORKER-001, FR-REPO-001 |
 
 ## Forms
 
@@ -56,6 +59,8 @@ This file proves that **every production source artifact** under `src/` is refer
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
 | `Dto/ShareCreateData.php` | Transfer object | FR-DTO-001 |
+| `Ui/CssFramework.php` | CSS stack enum | FR-UI-002 |
+| `Ui/IconSet.php` | Icon set enum | FR-UI-002 |
 
 ## Application services
 
@@ -154,27 +159,30 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Resources/views/manage/created.html.twig` | Manage UI template | FR-VIEW-005 |
 | `Resources/views/manage/index.html.twig` | Manage UI template | FR-VIEW-005 |
 | `Resources/views/public/reveal.html.twig` | Public reveal template | FR-VIEW-006 |
+| `Twig/YopassTwigExtension.php` | Manage UI Twig globals | FR-UI-002 |
+| `Resources/views/_action_icons.html.twig` | Action icons partial | FR-UI-002 |
+| `Resources/views/layout_integrate_host.html.twig` | Host layout bridge | FR-UI-002 |
 
 ## Coverage summary
 
 | Category | Files | Mapped |
 | --- | ---: | ---: |
-| Bundle & DI | 6 | 6 |
+| Bundle & DI | 8 | 8 |
 | CLI | 1 | 1 |
 | Controllers | 2 | 2 |
-| Persistence | 9 | 9 |
+| Persistence | 11 | 11 |
 | Forms | 1 | 1 |
-| Domain models | 1 | 1 |
+| Domain models | 3 | 3 |
 | Application services | 17 | 17 |
 | Security | 5 | 5 |
 | Routing | 1 | 1 |
 | Persistence integration | 3 | 3 |
 | Support utilities | 2 | 2 |
 | Exceptions | 1 | 1 |
-| Frontend TypeScript | 6 | 6 |
+| Frontend TypeScript | 7 | 7 |
 | Symfony config | 1 | 1 |
 | Translations | 7 | 7 |
-| Twig views | 4 | 4 |
-| **Total production sources** | **67** | **67** |
+| Twig views | 7 | 7 |
+| **Total production sources** | **77** | **77** |
 
 Audit: `find src -type f ! -path '*/assets/dist/*' ! -name '*.test.ts' | wc -l`

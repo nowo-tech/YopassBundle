@@ -2,6 +2,13 @@
 
 The Symfony 8 demo ships with **local file shares** enabled out of the box. File ciphertext is stored under `var/yopass-storage/` (gitignored, outside the web root). Text shares stay in the database.
 
+## Table of contents
+
+- [Configuration](#configuration)
+- [Wiring](#wiring)
+- [Optional: AWS S3](#optional-aws-s3)
+- [Production](#production)
+
 ## Configuration
 
 Set in `demo/symfony8/.env` (see `.env.example`):
