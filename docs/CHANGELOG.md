@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dependencies refreshed (Composer and pnpm/npm lock files of the bundle and its demos, campaign 2026-10-19); shipped assets rebuilt.
+- `.php-cs-fixer.dist.php`: `new ParallelConfig(2)` (REQ-CS-001).
 - Documentation: wave-1 REQ compliance — README standard badges (PHP 8.2+, Symfony 7.4 | 8.0 | 8.1+, stars image, Coverage) and documentation list order, CONTRIBUTING Cursor Agent settings, canonical bug-report template, demo `.env.test` comment, SPEC-DRIVEN-DEVELOPMENT functional scope / non-goals / see also, doc TOCs, Spec Kit inventory refresh (77/77).
 
 ## [1.5.2] - 2026-10-18
