@@ -84,6 +84,8 @@ final class ShareCreateType extends AbstractType
             ]);
             $this->addChoiceField('expiresIn', [
                 'label'        => 'yopass.expires.field',
+                'row_attr'     => ['class' => 'mb-3'],
+                'label_attr'   => ['class' => 'form-label'],
                 'choices'      => $expirationChoices,
                 'choice_label' => fn (string $value): string => $this->translator->trans(
                     'yopass.expires.' . $value,
@@ -93,6 +95,8 @@ final class ShareCreateType extends AbstractType
             ]);
             $this->addChoiceField('maxReads', [
                 'label'   => 'yopass.reads.field',
+                'row_attr'   => ['class' => 'mb-3'],
+                'label_attr' => ['class' => 'form-label'],
                 'choices' => $maxReadsChoices,
             ]);
         });

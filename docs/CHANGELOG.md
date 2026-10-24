@@ -40,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Views: `manage/index.html.twig` keeps the Stimulus-targeted hidden `ciphertext` / `payloadKind` widgets (rule 3)
+  and renders the remaining create-form children (expiry, max reads, CSRF token) through the child loop
+  (`{% for child in form %}` + `not child.rendered` + `form_row(child)`), closing with `form_end(create_form)`, per
+  REQ-TWIG-003. The `mb-3` row and `form-label` label classes of `expiresIn` / `maxReads` moved into
+  `ShareCreateType` (`row_attr` / `label_attr`).
+
 ## [1.5.3] - 2026-10-20
 
 Dependency refresh (bundle and demos), php-cs-fixer ParallelConfig(2). See [UPGRADING](UPGRADING.md#to-153).

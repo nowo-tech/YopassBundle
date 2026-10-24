@@ -99,17 +99,12 @@
                             </div>
                         {% endif %}
 
-                        <div class="mb-3">
-                            {{ form_label(create_form.expiresIn, null, { label_attr: { class: 'form-label' } }) }}
-                            {{ form_widget(create_form.expiresIn) }}
-                            {{ form_errors(create_form.expiresIn) }}
-                        </div>
-
-                        <div class="mb-3">
-                            {{ form_label(create_form.maxReads, null, { label_attr: { class: 'form-label' } }) }}
-                            {{ form_widget(create_form.maxReads) }}
-                            {{ form_errors(create_form.maxReads) }}
-                        </div>
+                        {# REQ-TWIG-003 rule 3: ciphertext / payloadKind carry Stimulus targets above; the loop renders the remaining children (expiry, max reads, CSRF). #}
+                        {% for child in create_form %}
+                            {% if not child.rendered %}
+                                {{ form_row(child) }}
+                            {% endif %}
+                        {% endfor %}
 
                         <div class="mb-3">
                             <span class="form-label d-block">{{ 'yopass.key.mode_field'|trans({}, 'NowoYopassBundle') }}</span>
@@ -144,7 +139,7 @@
                             {{ 'yopass.create.submit'|trans({}, 'NowoYopassBundle') }}
                         </button>
 
-                        {{ form_end(create_form, { render_rest: true }) }}
+                        {{ form_end(create_form) }}
                     </div>
                 </div>
             </div>
