@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.5.4] - 2026-10-24](#154---2026-10-24)
 - [[1.5.3] - 2026-10-20](#153---2026-10-20)
 - [[1.5.2] - 2026-10-18](#152---2026-10-18)
 - [[1.5.1] - 2026-10-13](#151---2026-10-13)
@@ -40,6 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.4] - 2026-10-24
+
+Bundle views render form bodies through the child loop (REQ-TWIG-003). See [UPGRADING](UPGRADING.md#to-154).
+
 ### Changed
 
 - Views: `manage/index.html.twig` keeps the Stimulus-targeted hidden `ciphertext` / `payloadKind` widgets (rule 3)
@@ -47,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`{% for child in form %}` + `not child.rendered` + `form_row(child)`), closing with `form_end(create_form)`, per
   REQ-TWIG-003. The `mb-3` row and `form-label` label classes of `expiresIn` / `maxReads` moved into
   `ShareCreateType` (`row_attr` / `label_attr`).
+
+[1.5.4]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.5.4
 
 ## [1.5.3] - 2026-10-20
 
@@ -441,7 +448,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.5.3...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.5.4...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
