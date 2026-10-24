@@ -94,10 +94,10 @@ final class ShareCreateType extends AbstractType
                 ),
             ]);
             $this->addChoiceField('maxReads', [
-                'label'   => 'yopass.reads.field',
+                'label'      => 'yopass.reads.field',
                 'row_attr'   => ['class' => 'mb-3'],
                 'label_attr' => ['class' => 'form-label'],
-                'choices' => $maxReadsChoices,
+                'choices'    => $maxReadsChoices,
             ]);
         });
 
