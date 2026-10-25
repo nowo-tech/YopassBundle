@@ -1,0 +1,84 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Nowo\YopassBundle\Form;
+
+use Nowo\FormKitBundle\Attribute\FormKitConfig;
+use Nowo\FormKitBundle\Form\FormOptionsTrait;
+use Nowo\YopassBundle\YopassBundle;
+use Override;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\PasswordType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
+use Symfony\Component\OptionsResolver\OptionsResolver;
+
+/**
+ * Public reveal page decryption input (REQ-TWIG-005).
+ *
+ * Browser-only: the {@code nowo-share-reveal} Stimulus controller reads the password (password mode) or the key
+ * (key mode) and decrypts in the browser; the form is never submitted and the child has a fixed id and no name.
+ *
+ * @extends AbstractType<mixed>
+ */
+#[FormKitConfig('yopass')]
+final class ShareRevealType extends AbstractType
+{
+    use ClientOnlyFieldsTrait;
+    use FormOptionsTrait;
+
+    public function buildForm(FormBuilderInterface $builder, array $options): void
+    {
+        if ($options['decryption_mode'] === 'password') {
+            $builder->add('password', PasswordType::class, [
+                'mapped'     => false,
+                'required'   => false,
+                'label'      => 'yopass.public.password_field',
+                'label_attr' => ['class' => 'form-label'],
+                'row_attr'   => ['class' => 'mb-3', 'data-nowo-share-reveal-target' => 'passwordPanel'],
+                'attr'       => ['class' => 'form-control', 'data-nowo-share-reveal-target' => 'password', 'autocomplete' => 'off'],
+            ]);
+
+            return;
+        }
+
+        $builder->add('key', TextType::class, [
+            'mapped'     => false,
+            'required'   => false,
+            'label'      => 'yopass.public.key_field',
+            'label_attr' => ['class' => 'form-label'],
+            'help'       => 'yopass.public.key_help',
+            'help_attr'  => ['class' => 'text-secondary small mt-1 mb-0'],
+            'row_attr'   => ['class' => 'mb-3 d-none', 'data-nowo-share-reveal-target' => 'keyPanel'],
+            'attr'       => ['class' => 'form-control', 'data-nowo-share-reveal-target' => 'key', 'autocomplete' => 'off'],
+        ]);
+    }
+
+    public function finishView(FormView $view, FormInterface $form, array $options): void
+    {
+        $this->detachClientOnlyChildren($view, [
+            'password' => 'share-password',
+            'key'      => 'share-key',
+        ]);
+    }
+
+    public function configureOptions(OptionsResolver $resolver): void
+    {
+        $resolver->setDefaults([
+            'method'             => 'GET',
+            'csrf_protection'    => false,
+            'translation_domain' => YopassBundle::TRANSLATION_DOMAIN,
+            'decryption_mode'    => 'key',
+        ]);
+        $resolver->setAllowedTypes('decryption_mode', 'string');
+    }
+
+    #[Override]
+    public function getBlockPrefix(): string
+    {
+        return 'yopass_reveal';
+    }
+}

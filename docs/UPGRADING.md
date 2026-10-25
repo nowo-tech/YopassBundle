@@ -56,6 +56,20 @@
 
 ## Unreleased
 
+### Forms rendered through Form Types (REQ-TWIG-005)
+
+The controllers always pass these new variables; **if you override a template**, replace its raw controls with `form_start` / the child loop / `form_end` on them (see [USAGE — Forms in templates](USAGE.md#forms-in-templates-req-twig-005)):
+
+| Template | New variable(s) | Replaces |
+| -------- | --------------- | -------- |
+| `manage/index.html.twig` | `create_form.secret`, `create_form.file`, `create_form.encryptionMode`, `create_form.customPassword` | raw `<textarea id="yopass-secret">`, `<input type="file" id="yopass-file">`, `yopass-encryption-mode` radios, `<input id="yopass-custom-password">` |
+| `manage/index.html.twig` | `revoke_forms[share.id]`, `delete_forms[share.id]`, `delete_all_form` | hand-rolled `<form>` + `_token` |
+| `manage/index.html.twig` | `preview_form` | preview password / key / public link inputs and the extend selects |
+| `manage/created.html.twig` | `links_form` | read-only one-click link / short link / key inputs |
+| `public/reveal.html.twig` | `reveal_form` | `share-password` / `share-key` inputs |
+
+Ids, `data-nowo-yopass-*` targets and posted field names are unchanged, so the bundled JavaScript works with old and new markup. Because `create_form` now has extra children, an override that renders `create_form` with the child loop but without the browser-only controls would render them twice — render them explicitly (as the shipped template does) before the loop. `ShareCreateType` has two new options, `allow_custom_password` (default `true`) and `default_encryption` (default `auto`), passed by `ShareManageController` from `nowo_yopass.sharing`.
+
 ## To 1.5.5
 
 From **1.5.4**:

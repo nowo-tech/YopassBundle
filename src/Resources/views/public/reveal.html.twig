@@ -38,20 +38,20 @@
                         <p class="text-secondary small d-none mb-3" data-nowo-share-reveal-target="passwordFromLinkHint">
                             {{ 'yopass.public.password_from_link'|trans({}, 'NowoYopassBundle') }}
                         </p>
-                        <div class="mb-3" data-nowo-share-reveal-target="passwordPanel">
-                            <label class="form-label" for="share-password">{{ 'yopass.public.password_field'|trans({}, 'NowoYopassBundle') }}</label>
-                            <input type="password" id="share-password" class="form-control" data-nowo-share-reveal-target="password" autocomplete="off">
-                        </div>
                     {% else %}
                         <p class="text-secondary small d-none mb-3" data-nowo-share-reveal-target="keyFromLinkHint">
                             {{ 'yopass.public.key_from_link'|trans({}, 'NowoYopassBundle') }}
                         </p>
-                        <div class="mb-3 d-none" data-nowo-share-reveal-target="keyPanel">
-                            <label class="form-label" for="share-key">{{ 'yopass.public.key_field'|trans({}, 'NowoYopassBundle') }}</label>
-                            <input type="text" id="share-key" class="form-control" data-nowo-share-reveal-target="key" autocomplete="off">
-                            <p class="text-secondary small mt-1 mb-0">{{ 'yopass.public.key_help'|trans({}, 'NowoYopassBundle') }}</p>
-                        </div>
                     {% endif %}
+
+                    {# REQ-TWIG-005: ShareRevealType renders the password (password mode) or key (key mode) input; browser-only, never submitted. #}
+                    {{ form_start(reveal_form, { attr: { autocomplete: 'off', onsubmit: 'return false;' } }) }}
+                        {% for child in reveal_form %}
+                            {% if not child.rendered %}
+                                {{ form_row(child) }}
+                            {% endif %}
+                        {% endfor %}
+                    {{ form_end(reveal_form) }}
 
                     <button type="button" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-share-reveal#reveal" data-nowo-share-reveal-target="revealButton">
                         {{ 'yopass.public.reveal'|trans({}, 'NowoYopassBundle') }}

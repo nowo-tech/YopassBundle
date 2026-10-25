@@ -9,6 +9,7 @@
   - [Route-level checker](#route-level-checker)
   - [Share events (teams, grants, roles)](#share-events-teams-grants-roles)
 - [Twig overrides](#twig-overrides)
+  - [Forms in templates (REQ-TWIG-005)](#forms-in-templates-req-twig-005)
 - [Translations](#translations)
 
 ## Manage shares
@@ -108,6 +109,33 @@ templates/bundles/NowoYopassBundle/
 ```
 
 Or configure paths in `nowo_yopass.templates.*` / `nowo_yopass.web_ui.layout_template`.
+
+### Forms in templates (REQ-TWIG-005)
+
+Every control in the bundle views comes from a PHP Symfony Form Type (Form Kit `yopass` profile) built by the controller and rendered with `form_start` / the child loop / `form_end`:
+
+| View | Variable | Form Type |
+| ---- | -------- | --------- |
+| `manage/index.html.twig` | `create_form` | `ShareCreateType` (ciphertext, payload kind, expiry, max reads; plus the browser-only secret, file, encryption mode and custom password controls) |
+| `manage/index.html.twig` | `revoke_forms`, `delete_forms` (share id → form), `delete_all_form` | `CsrfActionType` (flat `_token`, token ids `revoke-share-<id>`, `delete-share-<id>`, `yopass_delete_all`) |
+| `manage/index.html.twig` | `preview_form` | `SharePreviewType` (preview / extend modal controls) |
+| `manage/created.html.twig` | `links_form` | `ShareCreatedLinksType` (read-only links and key) |
+| `public/reveal.html.twig` | `reveal_form` | `ShareRevealType` (password or key input) |
+
+Browser-only controls (plaintext secret, file, passwords, decryption keys) are unmapped children with fixed ids and Stimulus targets and an **empty `name`**, so they are never sent to the server; the create form stays url-encoded and posts the same payload as before. Render form bodies with the canonical loop after any custom children:
+
+```twig
+{{ form_start(form) }}
+    {% for child in form %}
+        {% if not child.rendered %}
+            {{ form_row(child) }}
+        {% endif %}
+    {% endfor %}
+    <button type="submit">…</button>
+{{ form_end(form) }}
+```
+
+Template overrides and demos **must not** reintroduce raw `<form>`, `<input>`, `<textarea>` or `<select>` markup; `make check-no-raw-html-form` (part of `release-check`) fails when they do.
 
 ## Translations
 

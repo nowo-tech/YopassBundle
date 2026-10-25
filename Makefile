@@ -1,5 +1,5 @@
 # Yopass Bundle - Development
-.PHONY: help up down down-dev build shell install test test-coverage test-coverage-100 coverage-check test-with-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan igor release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor check-open-prs strip-cursor-coauthor-from-history check-twig-extra
+.PHONY: help up down down-dev build shell install test test-coverage test-coverage-100 coverage-check test-with-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan igor release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor check-open-prs strip-cursor-coauthor-from-history check-twig-extra check-no-raw-html-form
 
 COMPOSE_FILE ?= docker-compose.yml
 # Prefer Compose V2 plugin (GitHub Actions / modern Docker Desktop); fall back to docker-compose V1 (REQ-MAKE-010).
@@ -31,6 +31,7 @@ help:
 	@echo "  qa              cs-check + test"
 	@echo "  release-check   Pre-release checks"
 	@echo "  check-open-prs  Fail if unresolved GitHub PRs (REQ-REL-003)"
+	@echo "  check-no-raw-html-form  Fail on raw <form>/<input>/<textarea>/<select> in Twig (REQ-TWIG-005)"
 	@echo "  setup-hooks     Install git hooks (REQ-GIT-001; run once per clone)"
 	@echo "  composer-sync   Validate and align composer.lock"
 	@echo "  clean           Remove vendor and cache"
@@ -143,8 +144,11 @@ check-twig-extra:
 # Run Igor worker-state audit (REQ-CS-008)
 igor: ensure-up
 	$(COMPOSE) exec -T php composer igor
-# check-no-raw-html-form (REQ-TWIG-005) is wired once the remaining raw form markup is migrated
-release-check: ensure-up check-no-cursor-coauthor check-open-prs check-twig-extra composer-sync cs-fix cs-check rector-dry phpstan igor validate-translations coverage-check release-check-demos test-ts
+check-no-raw-html-form:
+	@chmod +x .scripts/check-no-raw-html-form.sh
+	@./.scripts/check-no-raw-html-form.sh
+
+release-check: ensure-up check-no-cursor-coauthor check-open-prs check-twig-extra check-no-raw-html-form composer-sync cs-fix cs-check rector-dry phpstan igor validate-translations coverage-check release-check-demos test-ts
 
 release-check-demos:
 	@$(MAKE) -C demo release-check

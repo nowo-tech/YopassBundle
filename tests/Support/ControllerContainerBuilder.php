@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Tests\Support;
 
+use Nowo\YopassBundle\Form\CsrfActionType;
+use Nowo\YopassBundle\Form\ShareCreatedLinksType;
 use Nowo\YopassBundle\Form\ShareCreateType;
+use Nowo\YopassBundle\Form\SharePreviewType;
+use Nowo\YopassBundle\Form\ShareRevealType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\Form\Extension\Csrf\CsrfExtension;
@@ -54,6 +58,10 @@ final class ControllerContainerBuilder
             ->addExtension(new ValidatorExtension(Validation::createValidatorBuilder()->getValidator()))
             ->addExtension(new PreloadedExtension([
                 FormKitTestSupport::withMerger(new ShareCreateType(self::translator())),
+                FormKitTestSupport::withMerger(new CsrfActionType()),
+                FormKitTestSupport::withMerger(new SharePreviewType()),
+                FormKitTestSupport::withMerger(new ShareCreatedLinksType()),
+                FormKitTestSupport::withMerger(new ShareRevealType()),
             ], []))
             ->getFormFactory();
 

@@ -42,6 +42,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bundle views render every control through Symfony Form Types (REQ-TWIG-005): the revoke / delete / delete-all actions use `CsrfActionType` (same flat `_token` and token ids; the controller validates them through the Form instead of `isCsrfTokenValid()`), the browser-only secret / file / encryption mode / custom password controls are unmapped children of `ShareCreateType` (fixed ids and Stimulus targets, empty `name`, so the posted payload is unchanged), and the preview / extend modal, the created page and the public reveal page use `SharePreviewType`, `ShareCreatedLinksType` and `ShareRevealType`. `ShareCreateType` gains the `allow_custom_password` and `default_encryption` options. Template overrides must render the new form variables (see UPGRADING).
+
+### Added
+
+- `make check-no-raw-html-form` (REQ-TWIG-005) fails on raw `<form>` / `<input>` / `<textarea>` / `<select>` in bundle and demo Twig; it runs in `release-check`.
+
 ## [1.5.5] - 2026-10-25
 
 Reproducible JS bundle: the build stamp is a hash of the sources instead of the build time. See [UPGRADING](UPGRADING.md#to-155).

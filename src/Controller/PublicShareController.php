@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Controller;
 
 use JsonException;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Form\ShareRevealType;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
@@ -66,6 +67,7 @@ final class PublicShareController extends AbstractController
             'share'           => $share,
             'decryption_mode' => $mode,
             'routes'          => $this->routes,
+            'reveal_form'     => $this->createForm(ShareRevealType::class, null, ['decryption_mode' => $mode])->createView(),
         ]);
     }
 

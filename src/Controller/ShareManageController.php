@@ -9,7 +9,10 @@ use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareAccessAction;
 use Nowo\YopassBundle\Exception\ShareExtendException;
+use Nowo\YopassBundle\Form\CsrfActionType;
+use Nowo\YopassBundle\Form\ShareCreatedLinksType;
 use Nowo\YopassBundle\Form\ShareCreateType;
+use Nowo\YopassBundle\Form\SharePreviewType;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
@@ -24,6 +27,7 @@ use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\YopassBundle;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -106,6 +110,17 @@ final class ShareManageController extends AbstractController
             $createForm = $this->buildShareCreateForm()->createView();
         }
 
+        $canRevoke = $this->accessChecker->canRevoke($user);
+        /** @var array<string, FormView> $revokeForms */
+        $revokeForms = [];
+        /** @var array<string, FormView> $deleteForms */
+        $deleteForms = [];
+        foreach ($shares as $share) {
+            $shareId               = (string) $share->getId();
+            $revokeForms[$shareId] = $this->createCsrfActionForm($this->routes['revoke']['name'], 'revoke-share-' . $shareId, $shareId)->createView();
+            $deleteForms[$shareId] = $this->createCsrfActionForm($this->routes['delete']['name'], 'delete-share-' . $shareId, $shareId)->createView();
+        }
+
         return $this->render($this->templates['manage'], [
             'shares'           => $shares,
             'shares_total'     => $total,
@@ -113,8 +128,8 @@ final class ShareManageController extends AbstractController
             'shares_pages'     => $totalPages,
             'list_page_size'   => $pageSize,
             'can_create'       => $this->accessChecker->canCreate($user),
-            'can_revoke'       => $this->accessChecker->canRevoke($user),
-            'can_extend'       => $this->accessChecker->canRevoke($user),
+            'can_revoke'       => $canRevoke,
+            'can_extend'       => $canRevoke,
             'can_share_file'   => $this->fileSharesEnabled,
             'max_file_bytes'   => $this->fileHandler?->getMaxFileBytes() ?? 0,
             'max_secret_chars' => $this->maxSecretChars,
@@ -123,6 +138,13 @@ final class ShareManageController extends AbstractController
             'share_options'    => $this->shareOptions,
             'sharing_options'  => $this->sharingOptions,
             'create_form'      => $createForm,
+            'revoke_forms'     => $revokeForms,
+            'delete_forms'     => $deleteForms,
+            'delete_all_form'  => $this->createCsrfActionForm($this->routes['delete_all']['name'], 'yopass_delete_all')->createView(),
+            'preview_form'     => $this->createForm(SharePreviewType::class, null, [
+                'share_options'  => $this->shareOptions,
+                'extend_enabled' => $canRevoke,
+            ])->createView(),
         ]);
     }
 
@@ -180,6 +202,7 @@ final class ShareManageController extends AbstractController
             'routes'          => $this->routes,
             'sharing_options' => $this->sharingOptions,
             'dashboard_route' => $this->dashboardRoute,
+            'links_form'      => $this->createForm(ShareCreatedLinksType::class)->createView(),
         ]);
     }
 
@@ -260,7 +283,7 @@ final class ShareManageController extends AbstractController
     {
         $this->denyUnlessFeature('revoke');
 
-        if (!$this->isCsrfTokenValid('revoke-share-' . $id, (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfActionValid($this->createCsrfActionForm($this->routes['revoke']['name'], 'revoke-share-' . $id, $id), $request)) {
             throw $this->createAccessDeniedException();
         }
 
@@ -285,7 +308,7 @@ final class ShareManageController extends AbstractController
     {
         $this->denyUnlessFeature('revoke');
 
-        if (!$this->isCsrfTokenValid('delete-share-' . $id, (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfActionValid($this->createCsrfActionForm($this->routes['delete']['name'], 'delete-share-' . $id, $id), $request)) {
             throw $this->createAccessDeniedException();
         }
 
@@ -310,7 +333,7 @@ final class ShareManageController extends AbstractController
     {
         $this->denyUnlessFeature('revoke');
 
-        if (!$this->isCsrfTokenValid('yopass_delete_all', (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfActionValid($this->createCsrfActionForm($this->routes['delete_all']['name'], 'yopass_delete_all'), $request)) {
             throw $this->createAccessDeniedException();
         }
 
@@ -369,6 +392,32 @@ final class ShareManageController extends AbstractController
     }
 
     /**
+     * CSRF-only row / toolbar action form (flat {@code _token}, REQ-TWIG-005).
+     *
+     * @return FormInterface<mixed>
+     */
+    private function createCsrfActionForm(string $route, string $csrfTokenId, ?string $id = null): FormInterface
+    {
+        return $this->createForm(CsrfActionType::class, null, [
+            'action'        => $this->generateUrl($route, $id === null ? [] : ['id' => $id]),
+            'csrf_token_id' => $csrfTokenId,
+        ]);
+    }
+
+    /**
+     * A nameless CSRF-only form has no children, so handleRequest() never auto-submits it: submit the flat POST
+     * body explicitly and let the CSRF listener validate {@code _token}.
+     *
+     * @param FormInterface<mixed> $form
+     */
+    private function isCsrfActionValid(FormInterface $form, Request $request): bool
+    {
+        $form->submit($request->request->all());
+
+        return $form->isValid();
+    }
+
+    /**
      * @return FormInterface<ShareCreateData>
      */
     private function buildShareCreateForm(): FormInterface
@@ -378,11 +427,13 @@ final class ShareManageController extends AbstractController
         $data->maxReads  = $this->shareOptions['default_max_reads'];
 
         return $this->createForm(ShareCreateType::class, $data, [
-            'share_options'        => $this->shareOptions,
-            'max_ciphertext_bytes' => $this->maxCiphertextBytes,
-            'file_shares_enabled'  => $this->fileSharesEnabled,
-            'action'               => $this->generateUrl($this->routes['create']['name']),
-            'method'               => 'POST',
+            'share_options'         => $this->shareOptions,
+            'max_ciphertext_bytes'  => $this->maxCiphertextBytes,
+            'file_shares_enabled'   => $this->fileSharesEnabled,
+            'allow_custom_password' => $this->sharingOptions['allow_custom_password'],
+            'default_encryption'    => $this->sharingOptions['default_encryption'],
+            'action'                => $this->generateUrl($this->routes['create']['name']),
+            'method'                => 'POST',
         ]);
     }
 }
