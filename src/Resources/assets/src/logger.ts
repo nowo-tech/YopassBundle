@@ -48,7 +48,7 @@ export function createBundleLogger(name: string, options: BundleLoggerOptions = 
         scriptLoaded(): void {
             if (buildTime !== undefined && buildTime !== '') {
                 console.log(
-                    `%c${EMOJI.script} ${prefix} script loaded, build time: %c${buildTime}`,
+                    `%c${EMOJI.script} ${prefix} script loaded, build: %c${buildTime}`,
                     STYLES.script,
                     'color:#059669',
                 );
