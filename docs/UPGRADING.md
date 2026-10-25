@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.5.5](#to-155)
 - [To 1.5.4](#to-154)
 - [To 1.5.3](#to-153)
 - [To 1.5.2](#to-152)
@@ -54,6 +55,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.5.5
+
+From **1.5.4**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ## To 1.5.4
 
