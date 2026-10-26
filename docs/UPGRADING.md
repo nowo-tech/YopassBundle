@@ -3,6 +3,8 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.6.0](#to-160)
+  - [Forms rendered through Form Types (REQ-TWIG-005)](#forms-rendered-through-form-types-req-twig-005)
 - [To 1.5.5](#to-155)
 - [To 1.5.4](#to-154)
 - [To 1.5.3](#to-153)
@@ -55,6 +57,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.6.0
+
+From **1.5.5**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ### Forms rendered through Form Types (REQ-TWIG-005)
 

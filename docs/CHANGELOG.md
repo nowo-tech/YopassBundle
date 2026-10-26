@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.6.0] - 2026-10-26](#160---2026-10-26)
 - [[1.5.5] - 2026-10-25](#155---2026-10-25)
 - [[1.5.4] - 2026-10-24](#154---2026-10-24)
 - [[1.5.3] - 2026-10-20](#153---2026-10-20)
@@ -42,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-26
+
+Forms in the bundle views are Symfony Form Types rendered with form_start / child loop / form_end, no raw form controls (REQ-TWIG-005). See [UPGRADING](UPGRADING.md#to-160).
+
 ### Changed
 
 - Bundle views render every control through Symfony Form Types (REQ-TWIG-005): the revoke / delete / delete-all actions use `CsrfActionType` (same flat `_token` and token ids; the controller validates them through the Form instead of `isCsrfTokenValid()`), the browser-only secret / file / encryption mode / custom password controls are unmapped children of `ShareCreateType` (fixed ids and Stimulus targets, empty `name`, so the posted payload is unchanged), and the preview / extend modal, the created page and the public reveal page use `SharePreviewType`, `ShareCreatedLinksType` and `ShareRevealType`. `ShareCreateType` gains the `allow_custom_password` and `default_encryption` options. Template overrides must render the new form variables (see UPGRADING).
@@ -49,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `make check-no-raw-html-form` (REQ-TWIG-005) fails on raw `<form>` / `<input>` / `<textarea>` / `<select>` in bundle and demo Twig; it runs in `release-check`.
+
+[1.6.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.6.0
 
 ## [1.5.5] - 2026-10-25
 
@@ -468,7 +475,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.5.5...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.6.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
