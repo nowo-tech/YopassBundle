@@ -58,6 +58,10 @@
 
 ## Unreleased
 
+### Manage Web UI requires form CSRF protection at compile time
+
+`symfony/security-csrf` is now required (`composer update nowo-tech/yopass-bundle` installs it). With `web_ui.enabled: true` the container no longer compiles without form CSRF protection (`LogicException`: "requires CSRF protection"). Standard Flex hosts (`framework.csrf_protection` enabled, `framework.form.csrf_protection` not disabled) need no change. Otherwise enable `framework.csrf_protection: true` — also in the `test` environment of functional suites that enable the manage UI — or set `web_ui.enabled: false`.
+
 ## To 1.6.0
 
 From **1.5.5**:

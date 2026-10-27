@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle;
 
+use Nowo\YopassBundle\DependencyInjection\Compiler\CsrfProtectionPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\ManageWebUiSecurityPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\PublicRateLimitCachePass;
@@ -27,6 +28,7 @@ final class YopassBundle extends Bundle
         $container->addCompilerPass(new TwigPathsPass());
         $container->addCompilerPass(new ShareFileHandlerPass());
         $container->addCompilerPass(new ManageWebUiSecurityPass());
+        $container->addCompilerPass(new CsrfProtectionPass());
         $container->addCompilerPass(new PublicRateLimitCachePass());
     }
 

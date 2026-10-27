@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- CSRF fails closed: new `CsrfProtectionPass` makes the container refuse to compile when the manage Web UI (`web_ui.enabled: true`) is on and form CSRF protection is unavailable (`security.csrf.token_manager` or `form.type_extension.csrf` missing, or `framework.form.csrf_protection: false`). Before, share revoke / delete / delete all (`CsrfActionType` declares its own CSRF options, checked by `isCsrfActionValid()`) and the create form accepted tokenless cross-site POSTs in that configuration. `symfony/security-csrf` is now a hard requirement. See [UPGRADING](UPGRADING.md#unreleased) and [SECURITY](SECURITY.md#threats-and-mitigations).
+
 ## [1.6.0] - 2026-10-26
 
 Forms in the bundle views are Symfony Form Types rendered with form_start / child loop / form_end, no raw form controls (REQ-TWIG-005). See [UPGRADING](UPGRADING.md#to-160).
