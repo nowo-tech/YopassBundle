@@ -12,6 +12,7 @@ Thank you for contributing to Yopass Bundle.
 - [Pull requests](#pull-requests)
 - [Documentation](#documentation)
 - [Code style](#code-style)
+- [End-to-end tests and screenshots (REQ-DEMO-013)](#end-to-end-tests-and-screenshots-req-demo-013)
 - [License](#license)
 - [AI co-author trailers](#ai-co-author-trailers)
 - [Cursor Agent](#cursor-agent)
@@ -73,6 +74,17 @@ Run `make release-check` before tagging a release.
 
 - PHP: PSR-12 via PHP-CS-Fixer; PHPStan level from `phpstan.neon.dist`.
 - TypeScript: follow existing patterns in `src/Resources/assets/src/`; run `make test-ts` after changes.
+
+## End-to-end tests and screenshots (REQ-DEMO-013)
+
+The Symfony 8 demo ships a Playwright suite in `demo/symfony8/e2e/` (official Playwright image, nothing to install on the host). It creates a share with fake demo text, reveals it once through the one-click link and checks it is gone afterwards:
+
+```bash
+make -C demo/symfony8 test-e2e          # starts the demo if needed, runs the happy-path specs
+make -C demo/symfony8 demo-screenshots  # recaptures docs/images/demo/*.webp (PNG → WebP via sharp)
+```
+
+Never use real secrets in the specs. Refresh the screenshots when the demo UI changes and commit only the `.webp` files.
 
 ## License
 

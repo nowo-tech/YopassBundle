@@ -22,6 +22,8 @@ help:
 	@echo "  test           Run demo tests"
 	@echo "  update-bundle  Sync bundle autoload and clear cache"
 	@echo "  update-deps    Composer update in this demo (REQ-MAKE-008)"
+	@echo "  test-e2e       Playwright e2e against the demo (REQ-DEMO-013)"
+	@echo "  demo-screenshots Recapture README WebP screenshots (docs/images/demo)"
 
 ensure-env:
 	@test -f .env || (cp .env.example .env && echo "Created .env from .env.example")
@@ -86,6 +88,39 @@ update-bundle:
 
 update:
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer update --no-interaction
+
+# REQ-DEMO-013: Playwright e2e + README screenshots (official Playwright image, host network).
+PLAYWRIGHT_IMAGE ?= mcr.microsoft.com/playwright:v1.63.0-jammy
+E2E_PORT = PORT=$$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
+	[ -z "$$PORT" ] && PORT=$$(grep -E '^PORT=' .env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); PORT=$${PORT:-8022}
+
+.PHONY: ensure-up test-e2e demo-screenshots
+
+# Start the demo (migrations + fixtures) only when it is not running.
+ensure-up: ensure-env
+	@if ! $(COMPOSE) ps --status running --services 2>/dev/null | grep -qx $(SERVICE_PHP); then $(MAKE) up; fi
+
+test-e2e: ensure-up
+	@mkdir -p e2e/node_modules
+	@$(E2E_PORT); \
+	docker run --rm --network host \
+		-v "$(CURDIR)/e2e:/e2e" -w /e2e \
+		-e DEMO_BASE_URL=http://127.0.0.1:$$PORT \
+		$(PLAYWRIGHT_IMAGE) \
+		bash -lc 'npm install --no-fund --no-audit && npx playwright test --project=chromium'
+
+demo-screenshots: ensure-up
+	@mkdir -p ../../docs/images/demo e2e/node_modules
+	@$(E2E_PORT); \
+	docker run --rm --network host \
+		-v "$(CURDIR)/e2e:/e2e" \
+		-v "$(CURDIR)/../../docs/images/demo:/screenshots" \
+		-w /e2e \
+		-e DEMO_BASE_URL=http://127.0.0.1:$$PORT \
+		-e SCREENSHOT_DIR=/screenshots \
+		$(PLAYWRIGHT_IMAGE) \
+		bash -lc 'npm install --no-fund --no-audit && npx playwright test --project=screenshots && node scripts/to-webp.mjs /screenshots'
+	@echo "Screenshots written under docs/images/demo/ (WebP)"
 
 # REQ-MAKE-008: update-deps (REQ-MAKE-008)
 BUNDLE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)

@@ -10,6 +10,19 @@ Symfony bundle for **Yopass-style E2E encrypted secret sharing**: client-side li
 
 This bundle is **FrankenPHP worker mode friendly**.
 
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/images/demo/share-created.webp" alt="Secret stored: one-click link, short link and decryption key generated in the browser" />
+      <br /><sub>Encrypted share created — one-click link, short link and key</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/images/demo/share-revealed.webp" alt="Public reveal page showing the secret decrypted in the recipient's browser" />
+      <br /><sub>Recipient reveals the one-time secret, decrypted in the browser</sub>
+    </td>
+  </tr>
+</table>
+
 ## Features
 
 - Browser-side encryption (`libsodium` secretbox); server stores ciphertext only
@@ -60,6 +73,8 @@ See [Usage](docs/USAGE.md) and [Access control events](docs/examples/AccessContr
 make -C demo up-symfony8
 # Demo started at: http://localhost:8022  →  Yopass CRUD at /tools/yopass (auto-login)
 ```
+
+The screenshots at the top of this README come from this demo (fake demo text only); refresh them with `make -C demo/symfony8 demo-screenshots` (`make -C demo/symfony8 test-e2e` runs the Playwright happy path).
 
 ## Documentation
 
