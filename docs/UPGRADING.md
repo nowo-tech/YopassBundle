@@ -3,6 +3,8 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.7.0](#to-170)
+  - [Manage Web UI requires form CSRF protection at compile time](#manage-web-ui-requires-form-csrf-protection-at-compile-time)
 - [To 1.6.0](#to-160)
   - [Forms rendered through Form Types (REQ-TWIG-005)](#forms-rendered-through-form-types-req-twig-005)
 - [To 1.5.5](#to-155)
@@ -57,6 +59,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.7.0
+
+From **1.6.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ### Manage Web UI requires form CSRF protection at compile time
 
