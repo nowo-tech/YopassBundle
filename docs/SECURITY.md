@@ -81,11 +81,19 @@ See [.github/SECURITY.md](../.github/SECURITY.md) for coordinated disclosure.
 
 ## Release security checklist (12.4.1)
 
-| Check | Status |
-| ----- | ------ |
-| No secrets in repo or demo `.env` committed | Maintainer sign-off before tag |
-| `composer audit` clean | Maintainer sign-off before tag |
-| Public routes documented in INSTALLATION | Maintainer sign-off before tag |
-| Access checker and share events documented for integrators | Maintainer sign-off before tag |
-| **AI security audit (REQ-SEC-004)** | **Pass (good)** — see section above; residual Low: key-in-URL opt-in only; Flex ships `security_nowo_yopass.yaml` + `when@prod` embed off |
+Before each tag the maintainer confirms every row below (a note in the release PR or tag message is enough).
 
+| # | Item (12.4.1) | What to confirm for YopassBundle | Status |
+| - | ------------- | -------------------------------- | ------ |
+| 1 | `SECURITY.md` | This file and [.github/SECURITY.md](../.github/SECURITY.md) are current (attack surface, threats, reporting channel). | Maintainer sign-off before tag |
+| 2 | `.env` in `.gitignore` | Root `.gitignore` ignores `.env`, `.env.local`, `.env.*.local`; `demo/symfony8/.gitignore` ignores `.env`, `.env.dev`, `.env.local*`, `.env.s3.local`. Only `.env.example` / `.env.test` / `.env.s3.example` are versioned. | Maintainer sign-off before tag |
+| 3 | No secrets | No real keys, passwords or ciphertexts in the repo, demo env examples or test fixtures (placeholders / runtime-generated values only; GitGuardian green). | Maintainer sign-off before tag |
+| 4 | Safe `config` / recipe | Flex recipe (`.symfony/recipe/`) and shipped defaults stay safe: manage UI requires `ROLE_ADMIN`, `security.allow_unauthenticated: false`, `sharing.default_embed_in_url: false` (and `when@prod` keeps it off), public routes limited to `/share/{id}` and `/share/{id}/consume`. The recipe only adds a placeholder `APP_SECRET` when the host has none — hosts must set a real one. | Maintainer sign-off before tag |
+| 5 | Input / output | Create form: ciphertext required and length-capped by `max_ciphertext_bytes`, `payloadKind` restricted to text/file, `expiresIn` / `maxReads` restricted to the configured option lists, CSRF on every mutating route (`CsrfProtectionPass` fails closed). Output: Twig auto-escaping only (no `|raw` on user data); the server never decrypts — plaintext is rendered only in the recipient's browser. | Maintainer sign-off before tag |
+| 6 | Dependencies | `composer audit` clean (CI `Composer audit` job) and `pnpm audit` reviewed; Dependabot PRs handled; `libsodium-wrappers` / `ext-sodium` on supported versions. | Maintainer sign-off before tag |
+| 7 | No-secret logs | Logs and the access log never contain plaintext, ciphertext, keys or passwords; rate-limit warnings carry a **hashed** client IP only (see [Logging and observability](#logging-and-observability-req-obs-001)). | Maintainer sign-off before tag |
+| 8 | Cryptography | Browser-side libsodium `crypto_secretbox` with a random 32-byte key (key mode) or `crypto_pwhash`-derived key (password mode); no custom primitives; server-side `ShareEncryptionService` is test-only. Keys travel outside the stored envelope (separate channel or opt-in `?decrypt_key=`). | Maintainer sign-off before tag |
+| 9 | Permissions / exposure | Manage routes behind the host firewall and `YopassAccessCheckerInterface` (empty role lists grant nothing; owner-only by default via `ShareAccessCheckEvent`); reads are consumed atomically (`consumeReadIfAvailable`) so a one-time share cannot be read twice; revoked / expired shares return no ciphertext. | Maintainer sign-off before tag |
+| 10 | Limits / DoS | `public_rate_limit` (per client IP, needs `cache.app`) on show/consume; `max_ciphertext_bytes` / `max_secret_chars` / file handler size caps; retention purge (`nowo:yopass:purge-old-shares`) bounds stored data. | Maintainer sign-off before tag |
+| 11 | Public routes documented | Public and manage routes listed in [INSTALLATION.md](INSTALLATION.md) with firewall guidance. | Maintainer sign-off before tag |
+| 12 | **AI security audit (REQ-SEC-004)** | Latest recorded grade — see [AI security audit](#ai-security-audit-req-sec-004) and `BUNDLES_SECURITY_ANALYSIS.md`. | **Pass (good)** — see section above; residual Low: key-in-URL opt-in only; Flex ships `security_nowo_yopass.yaml` + `when@prod` embed off |

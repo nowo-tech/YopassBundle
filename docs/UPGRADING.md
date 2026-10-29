@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Clock-aware share creation and public rate limiting](#clock-aware-share-creation-and-public-rate-limiting)
 - [To 1.7.0](#to-170)
   - [Manage Web UI requires form CSRF protection at compile time](#manage-web-ui-requires-form-csrf-protection-at-compile-time)
 - [To 1.6.0](#to-160)
@@ -59,6 +60,15 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+### Clock-aware share creation and public rate limiting
+
+No action is required for most hosts.
+
+- `Nowo\YopassBundle\Service\ShareCreator::__construct()` gains an optional third argument `?Psr\Clock\ClockInterface $clock = null`, and `Nowo\YopassBundle\Security\PublicEndpointRateLimiter::__construct()` an optional fifth one. Both are wired automatically (framework `clock` service when `symfony/clock` is enabled; otherwise the system clock). If you instantiate or decorate these services yourself, existing calls keep working.
+- `ShareCreateData::resolveExpiresAt(array $expirationOptions, ?DateTimeImmutable $now = null)` — the new parameter is optional; omitting it keeps the previous “relative to now” behaviour.
+- If your application replaces the `clock` service (for example `MockClock` in functional tests), new share expiration dates and the public rate-limit window now follow that clock, like share extension, retrieval and retention already did.
+- Demo only: `demo/symfony8` no longer defines the Flex PostgreSQL `database` service. If you ran the demo before, remove the orphan container/volume with `docker compose down --remove-orphans` and `docker volume rm yopass-bundle-demo-symfony-8_database_data` (if present).
 
 ## To 1.7.0
 

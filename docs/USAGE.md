@@ -10,6 +10,7 @@
   - [Share events (teams, grants, roles)](#share-events-teams-grants-roles)
 - [Twig overrides](#twig-overrides)
   - [Forms in templates (REQ-TWIG-005)](#forms-in-templates-req-twig-005)
+- [Clock (REQ-DI-001)](#clock-req-di-001)
 - [Translations](#translations)
 
 ## Manage shares
@@ -96,19 +97,37 @@ final class MyShareAccessListener
 
 ## Twig overrides
 
-Manage pages extend the configured layout (`nowo_yopass_layout_template`). Set `web_ui.layout_template` to your project layout so bundle pages render inside your admin shell — see [Configuration — Web UI](CONFIGURATION.md#web-ui-manage-pages).
+The bundle registers the Twig namespace **`NowoYopassBundle`** with `TwigPathsPass` (always on; no feature flag). When `templates/bundles/NowoYopassBundle/` exists in your application at container compile time it is **prepended** to the namespace, and the bundle views (`src/Resources/views/`) are **appended** as the fallback — so an application file at the override path **always wins** over the shipped one. Controllers render logical names (`@NowoYopassBundle/...`) only.
 
-Place template overrides under:
+**Prefer upgrade-safe customisation first (no Twig fork):**
 
-```
-templates/bundles/NowoYopassBundle/
-├── manage/index.html.twig
-├── manage/created.html.twig
-├── public/reveal.html.twig
-└── layout.html.twig
-```
+| Depth | How | On bundle upgrade |
+| ----- | --- | ----------------- |
+| **Preferred** | Set `web_ui.layout_template` (your admin shell or the `layout_integrate_host.html.twig` bridge), `web_ui.css_framework`, `web_ui.icon_set`, translations, CSS on the bundle classes — see [Configuration — Web UI](CONFIGURATION.md#web-ui-manage-pages) | Vendor pages and fixes apply automatically |
+| **Surgical** | Point one `nowo_yopass.templates.*` key at your own template that `{% extends '@NowoYopassBundle/...' %}` and overrides a single block with `{{ parent() }}`, or override only the `_action_icons.html.twig` partial | Only that block / partial is yours; the rest keeps upgrading |
+| **Full-file override** | Copy a page into `templates/bundles/NowoYopassBundle/<subpath>` | That `<subpath>` is **frozen** (see below) |
 
-Or configure paths in `nowo_yopass.templates.*` / `nowo_yopass.web_ui.layout_template`.
+**Freeze rule.** An application file at the override path always wins and will **not** pick up vendor changes for that path until you remove or merge it. A full-file override is an escape hatch for deep redesigns; every `composer update` keeps serving your copy of that `<subpath>` (including its JavaScript hooks and CSRF form wiring) while the rest of the bundle upgrades. For a one-time-secret UI this matters: a frozen `manage/*.html.twig` or `public/reveal.html.twig` will not receive security-relevant template fixes.
+
+**Procedure (full-file override)**
+
+1. Pick the `<subpath>` from the table below.
+2. Create `templates/bundles/NowoYopassBundle/<subpath>` in your application (same relative path and file name).
+3. Clear the cache (`php bin/console cache:clear`) — the override directory is detected when the container is compiled, so the cache must be rebuilt the first time you create it.
+4. Treat the file as a fork: diff it against the vendor copy on each bundle upgrade.
+
+| `<subpath>` (under `src/Resources/views/`) | Purpose |
+| ------------------------------------------ | ------- |
+| `layout.html.twig` | Default standalone HTML shell (used when `web_ui.layout_template` is not set); blocks `title`, `stylesheets` / `nowo_ui_styles`, `body` / `nowo_ui_content`, `javascripts` / `nowo_ui_scripts`. |
+| `layout_integrate_host.html.twig` | Bridge that extends the host `base.html.twig`; meant to be referenced from `web_ui.layout_template` rather than overridden. |
+| `manage/index.html.twig` | Manage page: create form, share list, preview / extend modal, revoke / delete actions. |
+| `manage/created.html.twig` | Page shown after creating a share (short link, one-click link, decryption key). |
+| `public/reveal.html.twig` | Public reveal page (key or password input, client-side decryption). |
+| `_action_icons.html.twig` | Macro for the view / extend / revoke / delete action icons. |
+
+Alternatively point `nowo_yopass.templates.*` (`manage`, `created`, `public`) at your own application templates instead of using the override path.
+
+**Recovering upstream after a freeze:** delete (or rename aside) the application override, clear the cache (`php bin/console cache:clear`), and re-apply only the surgical customisation you still need. Diff your copy against the new vendor file under `vendor/nowo-tech/yopass-bundle/src/Resources/views/` before re-copying.
 
 ### Forms in templates (REQ-TWIG-005)
 
@@ -136,6 +155,12 @@ Browser-only controls (plaintext secret, file, passwords, decryption keys) are u
 ```
 
 Template overrides and demos **must not** reintroduce raw `<form>`, `<input>`, `<textarea>` or `<select>` markup; `make check-no-raw-html-form` (part of `release-check`) fails when they do.
+
+## Clock (REQ-DI-001)
+
+Every time-dependent service takes an optional `Psr\Clock\ClockInterface` (autowired to the framework `clock` service when `symfony/clock` is installed, otherwise the system clock): `ShareCreator` (expiration date of new shares), `ShareExtender`, `ShareRetriever`, `ShareRetentionPurger`, the Doctrine ORM / MongoDB share repositories (atomic consume) and `PublicEndpointRateLimiter` (fixed window). Freeze time in tests with `Symfony\Component\Clock\MockClock`.
+
+Justified exception: the `SecureShare` / `SecureShareDocument` / `ShareAccessLog` persistence objects stamp `createdAt`, `revokedAt` and `accessedAt` with the wall clock in their own methods (entities do not receive services), and `SecureShare::isAvailable()` compares against the current time. Availability decisions in the HTTP flow go through the clock-aware services above.
 
 ## Translations
 

@@ -10,6 +10,7 @@ The bundle includes a **Symfony 8** demo under `demo/symfony8/` using **FrankenP
 - [Production / worker mode](#production--worker-mode)
 - [Demo pages](#demo-pages)
 - [Commands](#commands)
+- [Database (MySQL)](#database-mysql)
 - [Switching classic vs worker (`FRANKENPHP_MODE`)](#switching-classic-vs-worker-frankenphp_mode)
 - [Troubleshooting](#troubleshooting)
 
@@ -58,19 +59,29 @@ Or set `APP_ENV=prod` in `.env` and rebuild. The entrypoint keeps the production
 ## Commands
 
 ```bash
-make -C demo/symfony8 up          # start (install + cache + assets)
-make -C demo/symfony8 down        # stop
-make -C demo/symfony8 shell       # PHP container shell
-make -C demo/symfony8 test        # smoke checks
-make -C demo/symfony8 link-bundle # symlink local bundle (path repo)
-make -C demo/symfony8 update-bundle
+make -C demo/symfony8 up            # start (install + migrations + fixtures)
+make -C demo/symfony8 down          # stop
+make -C demo/symfony8 restart       # restart containers (use down + up after .env changes)
+make -C demo/symfony8 build         # rebuild images
+make -C demo/symfony8 ensure-up     # start only when not running
+make -C demo/symfony8 setup         # create DB, migrate, load fixtures
+make -C demo/symfony8 shell         # PHP container shell
+make -C demo/symfony8 test          # demo tests
+make -C demo/symfony8 test-coverage # demo tests with coverage (needs pcov/xdebug in the image)
+make -C demo/symfony8 verify        # HTTP 200 on /tools/yopass
+make -C demo/symfony8 update-bundle # refresh autoload/assets after bundle changes (path repo)
 ```
 
 From bundle root:
 
 ```bash
-make -C demo up
+make -C demo up-symfony8
+make -C demo release-check   # boot + HTTP 200 smoke
 ```
+
+## Database (MySQL)
+
+The demo persists shares with Doctrine ORM in the **`mysql`** service (`mysql:8.0`) of `demo/symfony8/docker-compose.yml` (REQ-DEMO-011). `DATABASE_URL` points at the service hostname (`mysql:3306`), the PHP service waits for its healthcheck, and data lives in the `mysql-data` named volume. The service publishes **no host ports** (REQ-DEMO-006) — use `make -C demo/symfony8 shell` and the Doctrine console, or `docker compose exec mysql mysql -u demo -p`, to inspect it. There is no other database service (the Flex PostgreSQL `database` service was removed). `make -C demo/symfony8 database-empty` wipes shares and reloads fixtures.
 
 ## Switching classic vs worker (`FRANKENPHP_MODE`)
 

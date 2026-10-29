@@ -7,19 +7,25 @@ COMPOSE ?= $(shell $(DOCKER_BIN) compose version >/dev/null 2>&1 && echo "$(DOCK
 endif
 SERVICE_PHP = php
 
-.PHONY: help ensure-env up down build install database database-empty shell test update-bundle fixtures update update-deps
+.PHONY: help ensure-env up down restart build install setup database database-empty shell test test-coverage verify update-bundle fixtures update update-deps
 
 help:
 	@echo "Yopass Bundle — Symfony 8.1 Demo"
 	@echo ""
 	@echo "  up             Start demo (FrankenPHP, port from .env)"
 	@echo "  down           Stop containers"
+	@echo "  restart        Restart containers (recreate with make down && make up after .env changes)"
+	@echo "  build          Rebuild demo images"
+	@echo "  ensure-up      Start the demo only when it is not running"
 	@echo "  install        Install Composer dependencies"
+	@echo "  setup          Create DB, run migrations and load fixtures"
 	@echo "  database       Create DB and run migrations"
 	@echo "  database-empty Drop DB, migrate, reload fixtures (wipe shares)"
 	@echo "  fixtures       Load demo user (auto-login, no password needed)"
 	@echo "  shell          Open shell in PHP container"
 	@echo "  test           Run demo tests"
+	@echo "  test-coverage  Run demo tests with coverage (when a coverage driver is installed)"
+	@echo "  verify         HTTP 200 check on the manage page"
 	@echo "  update-bundle  Sync bundle autoload and clear cache"
 	@echo "  update-deps    Composer update in this demo (REQ-MAKE-008)"
 	@echo "  test-e2e       Playwright e2e against the demo (REQ-DEMO-013)"
@@ -55,6 +61,9 @@ up: ensure-env
 down:
 	@$(COMPOSE) down
 
+restart: ensure-up
+	@$(COMPOSE) restart
+
 build:
 	@$(COMPOSE) build
 
@@ -63,6 +72,11 @@ install:
 
 database:
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer database
+
+# REQ-MAKE-003: schema + fixtures, same steps as `up` (keeps existing shares; the demo user fixture is
+# skipped when it already exists — use database-empty for a clean reset).
+setup: ensure-up database
+	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console doctrine:fixtures:load --no-interaction --append || echo "Fixtures already loaded (use make database-empty to reset)."
 
 database-empty:
 	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console doctrine:database:drop --force --if-exists
@@ -81,6 +95,20 @@ shell:
 test: update-bundle
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer test || echo "No demo tests yet"
 
+# REQ-MAKE-003: the demo image ships no coverage driver; bundle coverage lives in the root (make -C ../.. test-coverage).
+test-coverage: update-bundle
+	@if $(COMPOSE) exec -T $(SERVICE_PHP) php -m | grep -qiE '^(pcov|xdebug)$$'; then \
+		$(COMPOSE) exec -T $(SERVICE_PHP) php vendor/bin/phpunit --coverage-text; \
+	else \
+		echo "No coverage driver in the demo image; running tests without coverage (bundle coverage: make -C ../.. test-coverage)."; \
+		$(COMPOSE) exec -T $(SERVICE_PHP) composer test || echo "No demo tests yet"; \
+	fi
+
+# REQ-MAKE-003: final check — the manage page answers HTTP 200.
+verify: ensure-up
+	@$(E2E_PORT); \
+	curl -sf -o /dev/null "http://127.0.0.1:$$PORT/tools/yopass" && echo "Demo verify OK (http://127.0.0.1:$$PORT/tools/yopass)" || (echo "Demo verify failed (http://127.0.0.1:$$PORT/tools/yopass)" && exit 1)
+
 update-bundle:
 	@$(COMPOSE) exec -T $(SERVICE_PHP) composer dump-autoload
 	@$(COMPOSE) exec -T $(SERVICE_PHP) php bin/console assets:install public --symlink
@@ -94,7 +122,7 @@ PLAYWRIGHT_IMAGE ?= mcr.microsoft.com/playwright:v1.63.0-jammy
 E2E_PORT = PORT=$$(grep -E '^PORT=' .env 2>/dev/null | cut -d= -f2 | tr -d '\r'); \
 	[ -z "$$PORT" ] && PORT=$$(grep -E '^PORT=' .env.example 2>/dev/null | cut -d= -f2 | tr -d '\r'); PORT=$${PORT:-8022}
 
-.PHONY: ensure-up test-e2e demo-screenshots
+.PHONY: test-e2e demo-screenshots
 
 # Start the demo (migrations + fixtures) only when it is not running.
 ensure-up: ensure-env

@@ -103,20 +103,21 @@ The screenshots at the top of this README come from this demo (fake demo text on
 
 ## Tests and Coverage
 
-Current coverage: PHP 99%+ (statements via `make coverage-check`); TypeScript ~76% (lines — password-mode paths need browser sodium).
+PHPUnit (unit + integration with Doctrine ORM/SQLite and MongoDB mocks) and Vitest (libsodium crypto helpers and Stimulus controllers on happy-dom). Both gates fail the build below their threshold.
 
 ```bash
 make test              # PHPUnit
 make test-coverage     # PHP coverage + percentage script
 make coverage-check    # PHP coverage + 99% statements gate
-make test-ts           # Vitest (crypto)
+make test-ts           # Vitest + coverage (all TS sources, 90% gate)
 make release-check     # Full pre-release chain
 ```
 
-| Language | Coverage |
-|----------|----------|
-| PHP | 99%+ (Statements) — `make coverage-check` |
-| TypeScript | ~76% (Lines) — `make test-ts` (password-mode paths require browser sodium runtime) |
+| Language | Coverage | Gate |
+|----------|----------|------|
+| PHP | 99.20% (statements 1729/1743, Lines 99.20%) | `make coverage-check` (≥ 99%) |
+| TypeScript | 97.75% (lines 609/623; branches 92.12%) | `vitest.config.ts` thresholds (≥ 90% lines / statements / functions / branches) |
+| Python | N/A | — |
 
 ## License
 

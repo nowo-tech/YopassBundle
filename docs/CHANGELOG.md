@@ -44,6 +44,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **REQ-DI-001** — `ShareCreator` computes the expiration date of new shares from an injectable `Psr\Clock\ClockInterface` (new optional third constructor argument; autowired to the framework `clock`), and `PublicEndpointRateLimiter` uses the clock instead of `time()` for its fixed window (new optional fifth argument, wired to `Psr\Clock\ClockInterface` when the service exists). `ShareCreateData::resolveExpiresAt()` accepts an optional `$now` reference time. Without a clock service both fall back to the system clock, so behaviour is unchanged. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Documentation
+
+- **REQ-TWIG-001** — USAGE “Twig overrides”: loader order, upgrade-safe customisation table, freeze rule, override procedure, full `<subpath>` table and recovery after a freeze.
+- **REQ-SEC-002** — SECURITY release checklist (12.4.1) now covers every item (SECURITY.md, `.env` ignore, secrets, config/recipe, input/output, dependencies, logs, cryptography, permissions/exposure, limits/DoS, AI audit).
+- **REQ-DI-001** — USAGE “Clock” section lists the clock-aware services and the documented entity exception.
+- **REQ-CS-001** — PHPDoc description on every public class and public method in `src/`.
+- **REQ-TEST-007** — README “Tests and Coverage” shows the measured PHP and TypeScript percentages.
+- DEMO-FRANKENPHP: “Database (MySQL)” section and corrected demo command list.
+
+### Tests
+
+- **REQ-TEST-003** — Vitest coverage now measures every TypeScript source under `src/Resources/assets/src/` (previously only `yopass-crypto.ts`) and fails below 90% lines / statements / functions / branches. New happy-dom tests for the Stimulus controllers and helpers (`happy-dom` dev dependency).
+- Clock-driven tests for `ShareCreator`, `ShareCreateData` and `PublicEndpointRateLimiter`.
+
+### Demo
+
+- **REQ-DEMO-006 / REQ-DEMO-011** — removed the unused Flex PostgreSQL `database` service, its volume and the tracked `compose.override.yaml` (published port 5432); MySQL is the only demo database.
+- **REQ-MAKE-003** — demo Makefile adds `restart`, `setup`, `test-coverage` and `verify` (HTTP 200 on `/tools/yopass`).
+
 ## [1.7.0] - 2026-10-28
 
 Security: the admin UI refuses to compile without form CSRF protection (CsrfProtectionPass, fail closed). See [UPGRADING](UPGRADING.md#to-170).
