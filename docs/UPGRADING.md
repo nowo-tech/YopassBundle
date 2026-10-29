@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.8.0](#to-180)
   - [Clock-aware share creation and public rate limiting](#clock-aware-share-creation-and-public-rate-limiting)
 - [To 1.7.0](#to-170)
   - [Manage Web UI requires form CSRF protection at compile time](#manage-web-ui-requires-form-csrf-protection-at-compile-time)
@@ -60,6 +61,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.8.0
+
+From **1.7.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ### Clock-aware share creation and public rate limiting
 

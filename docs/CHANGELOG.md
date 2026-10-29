@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.8.0] - 2026-10-29](#180---2026-10-29)
 - [[1.7.0] - 2026-10-28](#170---2026-10-28)
 - [[1.6.0] - 2026-10-26](#160---2026-10-26)
 - [[1.5.5] - 2026-10-25](#155---2026-10-25)
@@ -44,6 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-29
+
+Yopass: injected clock in share creation and public rate limiter, TS coverage over every source, Twig override docs See [UPGRADING](UPGRADING.md#to-180).
+
 ### Changed
 
 - **REQ-DI-001** — `ShareCreator` computes the expiration date of new shares from an injectable `Psr\Clock\ClockInterface` (new optional third constructor argument; autowired to the framework `clock`), and `PublicEndpointRateLimiter` uses the clock instead of `time()` for its fixed window (new optional fifth argument, wired to `Psr\Clock\ClockInterface` when the service exists). `ShareCreateData::resolveExpiresAt()` accepts an optional `$now` reference time. Without a clock service both fall back to the system clock, so behaviour is unchanged. See [UPGRADING](UPGRADING.md#unreleased).
@@ -66,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **REQ-DEMO-006 / REQ-DEMO-011** — removed the unused Flex PostgreSQL `database` service, its volume and the tracked `compose.override.yaml` (published port 5432); MySQL is the only demo database.
 - **REQ-MAKE-003** — demo Makefile adds `restart`, `setup`, `test-coverage` and `verify` (HTTP 200 on `/tools/yopass`).
+
+[1.8.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.8.0
 
 ## [1.7.0] - 2026-10-28
 
@@ -509,7 +516,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.8.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
