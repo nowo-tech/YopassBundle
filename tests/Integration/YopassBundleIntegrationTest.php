@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Integration;
 
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
+use Nowo\YopassBundle\EventListener\ShareKeyQueryRedirectListener;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
@@ -30,5 +31,10 @@ final class YopassBundleIntegrationTest extends TestCase
         self::assertTrue($container->hasDefinition(YopassRouteLoader::class));
         self::assertTrue($container->hasAlias(ShareRepositoryInterface::class));
         self::assertTrue($container->hasDefinition(ShareRetriever::class));
+        self::assertSame('%nowo_yopass.web_ui.enabled%', $container->getDefinition(YopassRouteLoader::class)->getArgument('$webUiEnabled'));
+
+        $listener = $container->getDefinition(ShareKeyQueryRedirectListener::class);
+        self::assertTrue($listener->isAutoconfigured());
+        self::assertSame('%nowo_yopass.routes%', $listener->getArgument('$routes'));
     }
 }

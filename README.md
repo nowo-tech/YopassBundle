@@ -29,7 +29,7 @@ This bundle is **FrankenPHP worker mode friendly**.
 - Text and file payloads (max 512 KB files; file tab requires `file_handler` service)
 - Configurable expiration options, max-read limits, list pagination, and retention purge (`nowo:yopass:purge-old-shares`)
 - Auto-generated decryption key or custom password mode
-- One-click links via `?decrypt_key=` query parameter; short links with manual key entry
+- One-click links with the key in the URL fragment (`#decrypt_key=`, never sent to the server; `sharing.allow_embed_in_url`); short links with manual key entry
 - Authenticated manage UI + anonymous public reveal/consume routes
 - Configurable routes, table prefix, templates, and pluggable access control
 - **Share events** — customize list queries and per-share access (teams, grants, roles) without built-in ACL
@@ -62,7 +62,7 @@ Full reference: [Configuration](docs/CONFIGURATION.md).
 ## Usage
 
 - Manage UI: `/tools/yopass` (configurable)
-- Public reveal: `/share/{id}` or `/share/{id}?decrypt_key=…` (configurable)
+- Public reveal: `/share/{id}` or `/share/{id}#decrypt_key=…` (configurable)
 - Override Twig: `templates/bundles/NowoYopassBundle/`
 
 See [Usage](docs/USAGE.md) and [Access control events](docs/examples/AccessControl.md).

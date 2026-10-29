@@ -25,7 +25,9 @@ const CSRF_PLACEHOLDER = 'REDACTED-TEST-CSRF';
 let app: Application | null = null;
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function markup(options: { extendPath?: string; optionalTargets?: boolean } = {}): string {
+type MountOptions = { extendPath?: string; optionalTargets?: boolean; allowEmbed?: boolean };
+
+function markup(options: MountOptions = {}): string {
     const optional = options.optionalTargets === false
         ? ''
         : `
@@ -56,7 +58,8 @@ function markup(options: { extendPath?: string; optionalTargets?: boolean } = {}
              data-preview-csrf-token-value="${CSRF_PLACEHOLDER}"
              data-preview-errors-value='${ERRORS}'
              data-preview-availability-labels-value='{"active":"Active"}'
-             data-preview-extend-success-message-value="Limits extended.">
+             data-preview-extend-success-message-value="Limits extended."
+             ${options.allowEmbed === true ? 'data-preview-allow-embed-in-url-value="true"' : ''}>
             <button id="open" data-share-id="share-1" data-action="preview#open">Preview</button>
             <button id="open-extend" data-share-id="share-1" data-action="preview#openExtend">Extend</button>
             <button id="open-missing" data-action="preview#open">Broken</button>
@@ -84,7 +87,7 @@ function markup(options: { extendPath?: string; optionalTargets?: boolean } = {}
         </div>`;
 }
 
-async function mount(options: { extendPath?: string; optionalTargets?: boolean } = {}): Promise<YopassManagePreviewController> {
+async function mount(options: MountOptions = {}): Promise<YopassManagePreviewController> {
     document.body.innerHTML = markup(options);
     app = new Application(document.documentElement);
     await app.start();
@@ -162,7 +165,7 @@ describe('yopass-manage-preview-controller', () => {
             extendable: false,
         });
 
-        await mount();
+        await mount({ allowEmbed: true });
         byId('open').click();
         await vi.waitFor(() => expect(target('output').textContent).toBe('preview me'));
 
@@ -174,7 +177,7 @@ describe('yopass-manage-preview-controller', () => {
         expect(document.body.classList.contains('modal-open')).toBe(true);
         expect(target('availability').textContent).toBe('Active');
         expect(target<HTMLInputElement>('publicLink').value)
-            .toBe(`${window.location.origin}/s/share-1?decrypt_key=${encodeURIComponent(key)}`);
+            .toBe(`${window.location.origin}/s/share-1#decrypt_key=${encodeURIComponent(key)}`);
         expect(visible('accessLogPanel')).toBe(true);
         expect(visible('accessLogEmpty')).toBe(true);
         expect(visible('accessLogTable')).toBe(false);
@@ -188,6 +191,18 @@ describe('yopass-manage-preview-controller', () => {
         expect(modal.style.display).toBe('none');
         expect(modal.getAttribute('aria-hidden')).toBe('true');
         expect(document.body.classList.contains('modal-open')).toBe(false);
+    });
+
+    it('never embeds the stored key in the public link when embedding is not allowed', async () => {
+        const { ciphertext, key } = await encryptText('no embed');
+        storeShareKey('share-1', 'key', key);
+        respond({ status: 'ok', availability: 'active', ciphertext, mode: 'key', publicPath: '/s/share-1' });
+
+        await mount();
+        byId('open').click();
+        await vi.waitFor(() => expect(target('output').textContent).toBe('no embed'));
+
+        expect(target<HTMLInputElement>('publicLink').value).toBe(`${window.location.origin}/s/share-1`);
     });
 
     it('asks for the key when none is stored and decrypts from the form', async () => {
@@ -220,14 +235,14 @@ describe('yopass-manage-preview-controller', () => {
         storeShareKey('share-1', 'password', 'REDACTED-TEST-PASSWORD');
         respond({ status: 'ok', ciphertext: 'envelope', mode: 'password', publicPath: '/s/share-1' });
 
-        await mount();
+        await mount({ allowEmbed: true });
         byId('open').click();
         await vi.waitFor(() => expect(visible('passwordPanel')).toBe(true));
 
         expect(visible('keyPanel')).toBe(false);
         expect(target<HTMLInputElement>('password').value).toBe('REDACTED-TEST-PASSWORD');
         expect(target<HTMLInputElement>('publicLink').value)
-            .toBe(`${window.location.origin}/s/share-1?decrypt_key=REDACTED-TEST-PASSWORD`);
+            .toBe(`${window.location.origin}/s/share-1#decrypt_key=REDACTED-TEST-PASSWORD`);
         expect(fetchMock).toHaveBeenCalledTimes(1);
 
         vi.mocked(decryptPayload).mockResolvedValueOnce({ kind: 'text', text: 'pw content' });
@@ -373,11 +388,14 @@ describe('yopass-manage-preview-controller', () => {
             onTestFinished(() => {
                 vi.mocked(window.setTimeout).mockRestore();
             });
-            respond(extendable);
+            respond({ ...extendable, publicPath: '/s/share-1' });
+            storeShareKey('share-1', 'key', 'REDACTED-TEST-KEY');
 
-            await mount();
+            await mount({ allowEmbed: true });
             byId('open').click();
             await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+            const linkBefore = target<HTMLInputElement>('publicLink').value;
+            expect(linkBefore).toBe(`${window.location.origin}/s/share-1#decrypt_key=REDACTED-TEST-KEY`);
 
             target<HTMLSelectElement>('extendExpiresIn').value = '1d';
             target<HTMLSelectElement>('extendMaxReads').value = '5';
@@ -397,6 +415,8 @@ describe('yopass-manage-preview-controller', () => {
             expect(target('extendSuccess').textContent).toBe('Limits extended.');
             expect(target('availability').textContent).toBe('Active');
             expect(target('extendSummary').textContent).toContain('4 / 5');
+            // The re-rendered link keeps the key of the active share (renderMetadata receives the share id).
+            expect(target<HTMLInputElement>('publicLink').value).toBe(linkBefore);
             expect(timers).toHaveLength(1);
 
             Object.defineProperty(window.location, 'reload', { value: reload, configurable: true });

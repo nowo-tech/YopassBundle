@@ -46,6 +46,20 @@ final class YopassRouteLoaderTest extends TestCase
         self::assertSame(['GET'], $collection->get('nowo_yopass_index')->getMethods());
     }
 
+    public function testRegistersOnlyPublicRoutesWhenTheWebUiIsDisabled(): void
+    {
+        $routes = [
+            'public_show'    => ['path' => '/share/{id}', 'name' => 'nowo_yopass_public_share'],
+            'public_consume' => ['path' => '/share/{id}/consume', 'name' => 'nowo_yopass_public_consume'],
+        ];
+        // No manage route config is needed: ShareManageController is not read at all.
+        $collection = (new YopassRouteLoader($routes, '', false))->load('.', 'nowo_yopass');
+
+        self::assertSame(['nowo_yopass_public_share', 'nowo_yopass_public_consume'], array_keys($collection->all()));
+        self::assertNull($collection->get('nowo_yopass_index'));
+        self::assertNull($collection->get('nowo_yopass_delete_all'));
+    }
+
     public function testSupportsOnlyNowoYopassType(): void
     {
         $loader = $this->loader();

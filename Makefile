@@ -1,5 +1,5 @@
 # Yopass Bundle - Development
-.PHONY: help up down down-dev build shell install test test-coverage test-coverage-100 coverage-check test-with-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan igor release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor check-open-prs strip-cursor-coauthor-from-history check-twig-extra check-no-raw-html-form
+.PHONY: help up down down-dev build shell install typecheck test test-coverage test-coverage-100 coverage-check test-with-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan igor release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor check-open-prs strip-cursor-coauthor-from-history check-twig-extra check-no-raw-html-form
 
 COMPOSE_FILE ?= docker-compose.yml
 # Prefer Compose V2 plugin (GitHub Actions / modern Docker Desktop); fall back to docker-compose V1 (REQ-MAKE-010).
@@ -21,6 +21,7 @@ help:
 	@echo "  assets-watch    Watch and rebuild TS on change"
 	@echo "  test-ts         Run TypeScript (Vitest) unit tests"
 	@echo "  assets-test     Alias of test-ts"
+	@echo "  typecheck       TypeScript type-check (tsc --noEmit)"
 	@echo "  test            Run PHPUnit tests"
 	@echo "  test-coverage   Run tests with code coverage"
 	@echo "  coverage-check  Enforce PHP coverage threshold"
@@ -89,6 +90,10 @@ test-ts: ensure-up
 	sh .scripts/ts-coverage-percent.sh coverage-ts.txt
 assets-test: test-ts
 
+# TypeScript type-check (Vite/esbuild strip types without checking them)
+typecheck: ensure-up
+	$(COMPOSE) exec -T $(SERVICE_PHP) pnpm run typecheck
+
 test: ensure-up
 	$(COMPOSE) exec -T $(SERVICE_PHP) composer install --no-interaction
 	$(COMPOSE) exec $(SERVICE_PHP) composer test
@@ -148,7 +153,7 @@ check-no-raw-html-form:
 	@chmod +x .scripts/check-no-raw-html-form.sh
 	@./.scripts/check-no-raw-html-form.sh
 
-release-check: ensure-up check-no-cursor-coauthor check-open-prs check-twig-extra check-no-raw-html-form composer-sync cs-fix cs-check rector-dry phpstan igor validate-translations coverage-check release-check-demos test-ts
+release-check: ensure-up check-no-cursor-coauthor check-open-prs check-twig-extra check-no-raw-html-form composer-sync cs-fix cs-check rector-dry phpstan igor validate-translations coverage-check release-check-demos typecheck test-ts
 
 release-check-demos:
 	@$(MAKE) -C demo release-check

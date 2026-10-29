@@ -31,14 +31,23 @@ final class ShareCreatedLinksType extends AbstractType
 
     /**
      * Builds the read-only link fields shown after creating a share.
+     *
+     * The one-click field (key embedded in the link) only exists when {@code allow_embed_in_url} is true
+     * ({@code nowo_yopass.sharing.allow_embed_in_url}).
      */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        foreach ([
+        $fields = [
             'oneClickLink' => 'resultOneClickLink',
             'shortLink'    => 'resultShortLink',
             'key'          => 'resultKey',
-        ] as $name => $target) {
+        ];
+
+        if ($options['allow_embed_in_url'] !== true) {
+            unset($fields['oneClickLink']);
+        }
+
+        foreach ($fields as $name => $target) {
             $builder->add($name, TextType::class, [
                 'mapped'   => false,
                 'required' => false,
@@ -73,7 +82,9 @@ final class ShareCreatedLinksType extends AbstractType
             'method'             => 'GET',
             'csrf_protection'    => false,
             'translation_domain' => YopassBundle::TRANSLATION_DOMAIN,
+            'allow_embed_in_url' => false,
         ]);
+        $resolver->setAllowedTypes('allow_embed_in_url', 'bool');
     }
 
     /**

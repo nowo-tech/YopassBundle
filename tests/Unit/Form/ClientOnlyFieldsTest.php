@@ -87,9 +87,15 @@ final class ClientOnlyFieldsTest extends TestCase
         $noExtend = $factory->create(SharePreviewType::class)->createView();
         self::assertArrayNotHasKey('extendExpiresIn', $noExtend->children);
 
+        // REQ-SEC-004 M1: the one-click (key-in-link) field only exists when sharing.allow_embed_in_url is true.
         $links = $factory->create(ShareCreatedLinksType::class)->createView();
-        self::assertSame('yopass-created-one-click', $links['oneClickLink']->vars['id']);
+        self::assertArrayNotHasKey('oneClickLink', $links->children);
+        self::assertSame('yopass-created-short', $links['shortLink']->vars['id']);
         self::assertSame('resultKey', $links['key']->vars['attr']['data-nowo-yopass-created-target']);
+
+        $embed = $factory->create(ShareCreatedLinksType::class, null, ['allow_embed_in_url' => true])->createView();
+        self::assertSame('yopass-created-one-click', $embed['oneClickLink']->vars['id']);
+        self::assertSame('', $embed['oneClickLink']->vars['full_name']);
 
         $password = $factory->create(ShareRevealType::class, null, ['decryption_mode' => 'password'])->createView();
         self::assertSame('share-password', $password['password']->vars['id']);

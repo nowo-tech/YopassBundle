@@ -67,6 +67,7 @@ export default class extends Controller {
         errors: { type: Object, default: {} },
         availabilityLabels: { type: Object, default: {} },
         extendSuccessMessage: { type: String, default: 'Updated.' },
+        allowEmbedInUrl: { type: Boolean, default: false },
     };
 
     declare readonly modalTarget: HTMLElement;
@@ -99,6 +100,7 @@ export default class extends Controller {
     declare readonly errorsValue: Record<string, string>;
     declare readonly availabilityLabelsValue: Record<string, string>;
     declare readonly extendSuccessMessageValue: string;
+    declare readonly allowEmbedInUrlValue: boolean;
     declare readonly hasOutputTarget: boolean;
     declare readonly hasErrorTarget: boolean;
     declare readonly hasPasswordPanelTarget: boolean;
@@ -135,7 +137,9 @@ export default class extends Controller {
         this.hideExtendSuccess();
         this.hideError();
 
-        if (!this.activeShareId || this.extendPathTemplateValue === '') {
+        const shareId = this.activeShareId;
+
+        if (!shareId || this.extendPathTemplateValue === '') {
             return;
         }
 
@@ -152,7 +156,7 @@ export default class extends Controller {
         }
 
         try {
-            const response = await fetch(this.buildExtendUrl(this.activeShareId), {
+            const response = await fetch(this.buildExtendUrl(shareId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -171,6 +175,7 @@ export default class extends Controller {
             }
 
             this.previewData = {
+                status: this.previewData?.status ?? data.status,
                 ...this.previewData,
                 availability: data.availability,
                 maxReads: data.maxReads,
@@ -178,7 +183,7 @@ export default class extends Controller {
                 expiresAt: data.expiresAt,
             };
 
-            this.renderMetadata(this.previewData);
+            this.renderMetadata(this.previewData, shareId);
             this.renderExtendPanel(this.previewData);
             this.showExtendSuccess();
 
@@ -337,8 +342,9 @@ export default class extends Controller {
         }
 
         if (this.hasPublicLinkTarget && data.publicPath) {
-            const storedKey = loadShareKey(shareId);
             const baseLink = `${window.location.origin}${data.publicPath}`;
+            // The key goes into the link (URL fragment, never sent to the server) only when the host allows embedding.
+            const storedKey = this.allowEmbedInUrlValue ? loadShareKey(shareId) : null;
             const mode: ShareUrlKeyMode = (data.mode ?? storedKey?.mode ?? 'key') === 'password' ? 'password' : 'key';
 
             this.publicLinkTarget.value = storedKey?.material

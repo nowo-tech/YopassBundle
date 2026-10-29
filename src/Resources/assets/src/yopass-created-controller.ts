@@ -8,8 +8,9 @@ import {
 } from './yopass-share-url';
 
 /**
- * Shows one-click, short link and decryption key after a share is created.
- * Key material is read from the URL query string or sessionStorage (never from the server).
+ * Shows the short link, the decryption key and (only when `sharing.allow_embed_in_url` is true) the one-click link
+ * after a share is created. The one-click link carries the key in the URL fragment (`#decrypt_key=`), which the
+ * browser never sends to the server. Key material is read from sessionStorage (or a legacy URL), never from the server.
  */
 export default class extends Controller {
     static targets = [
@@ -25,6 +26,7 @@ export default class extends Controller {
         shareId: String,
         publicPath: String,
         showRememberNotice: { type: Boolean, default: true },
+        allowEmbedInUrl: { type: Boolean, default: false },
         keyUnavailableMessage: { type: String, default: 'Decryption key is not available. Create a new share to see the links again.' },
     };
 
@@ -37,6 +39,8 @@ export default class extends Controller {
     declare readonly shareIdValue: string;
     declare readonly publicPathValue: string;
     declare readonly showRememberNoticeValue: boolean;
+    declare readonly allowEmbedInUrlValue: boolean;
+    declare readonly hasResultOneClickLinkTarget: boolean;
     declare readonly keyUnavailableMessageValue: string;
     declare readonly hasRememberNoticeTarget: boolean;
     declare readonly hasErrorTarget: boolean;
@@ -56,6 +60,10 @@ export default class extends Controller {
     }
 
     copyOneClickLink(): void {
+        if (!this.hasResultOneClickLinkTarget) {
+            return;
+        }
+
         void navigator.clipboard?.writeText(this.resultOneClickLinkTarget.value);
     }
 
@@ -87,7 +95,7 @@ export default class extends Controller {
         return `${window.location.origin}${this.publicPathValue}`;
     }
 
-    private buildOneClickLink(shortLink: string, keyMaterial: string, mode: ShareUrlKeyMode): string {
+    private buildOneClickLink(keyMaterial: string, mode: ShareUrlKeyMode): string {
         const pathWithKey = buildShareUrlWithKey(this.publicPathValue, keyMaterial, mode);
 
         return `${window.location.origin}${pathWithKey}`;
@@ -97,7 +105,12 @@ export default class extends Controller {
         const shortLink = this.buildShortLink();
 
         this.resultShortLinkTarget.value = shortLink;
-        this.resultOneClickLinkTarget.value = this.buildOneClickLink(shortLink, keyMaterial, mode);
+
+        if (this.hasResultOneClickLinkTarget) {
+            // Never put the key in a URL when the host disabled embedding (the Twig view omits the field as well).
+            this.resultOneClickLinkTarget.value = this.allowEmbedInUrlValue ? this.buildOneClickLink(keyMaterial, mode) : '';
+        }
+
         this.resultKeyTarget.value = keyMaterial;
 
         if (this.hasRememberNoticeTarget) {

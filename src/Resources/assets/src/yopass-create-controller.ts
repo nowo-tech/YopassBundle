@@ -172,7 +172,10 @@ export default class extends Controller {
 
             this.formTarget.submit();
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'UNKNOWN';
+            // Only the bundle's own error codes are shown; raw library messages map to CREATE_FAILED.
+            const message = error instanceof Error
+                ? (/^[A-Z][A-Z_]*$/.test(error.message) ? error.message : 'CREATE_FAILED')
+                : 'UNKNOWN';
             this.showError(message);
 
             if (this.isTextTabActive() && !this.isSecretWithinLimit()) {

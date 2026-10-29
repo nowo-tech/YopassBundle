@@ -1,4 +1,5 @@
-import _sodium from 'libsodium-wrappers';
+// The sumo build is required: the standard build has no crypto_pwhash (Argon2id) used by password mode.
+import _sodium from 'libsodium-wrappers-sumo';
 
 export type YopassTextPayload = {
     kind: 'text';

@@ -277,6 +277,15 @@ describe('yopass-create-controller', () => {
             expect(sessionStorage.getItem(PENDING_KEY_STORAGE)).toBeNull();
         });
 
+        it('maps raw library errors to CREATE_FAILED', async () => {
+            vi.mocked(encryptPayload).mockRejectedValueOnce(new Error('length cannot be null or undefined'));
+            await mount();
+            typeSecret('abc');
+
+            submitForm();
+            await vi.waitFor(() => expect(errorText()).toBe('CREATE_FAILED'));
+        });
+
         it('reports UNKNOWN for non-Error failures', async () => {
             vi.mocked(encryptPayload).mockRejectedValueOnce('boom');
             await mount();

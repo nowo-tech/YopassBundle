@@ -1,4 +1,10 @@
-/** Canonical query parameter for one-click decrypt links. */
+/**
+ * Canonical parameter name for one-click decrypt links.
+ *
+ * The bundle now writes it in the URL **fragment** (`/share/{id}#decrypt_key=…`), which the browser never sends
+ * to the server. The query-string form (`?decrypt_key=…`) of links created up to 1.8.0 is still read; the server
+ * redirects it to the fragment form before routing (see `ShareKeyQueryRedirectListener`).
+ */
 export const SHARE_DECRYPT_KEY_QUERY_PARAM = 'decrypt_key';
 
 /** @deprecated Legacy param names kept for backward compatibility when reading URLs. */
@@ -8,16 +14,25 @@ const LEGACY_PASSWORD_QUERY_PARAM = 'password';
 export type ShareUrlKeyMode = 'key' | 'password';
 
 /**
- * Returns the query parameter name used when embedding decryption material in a share URL.
+ * Returns the parameter name used when embedding decryption material in a share URL fragment.
  */
 export function getShareKeyQueryParam(_mode: ShareUrlKeyMode = 'key'): string {
     return SHARE_DECRYPT_KEY_QUERY_PARAM;
 }
 
 /**
- * Reads decryption material from the current URL for the expected mode (supports legacy params).
+ * Reads decryption material from the current URL for the expected mode.
+ *
+ * Order: `#decrypt_key=` fragment, then the legacy query parameters (`?decrypt_key=`, `?key=` / `?password=`),
+ * then a legacy raw `#material` fragment.
  */
 export function readShareKeyFromUrl(mode: ShareUrlKeyMode): string {
+    const fromFragment = readFragmentParam();
+
+    if (fromFragment !== '') {
+        return fromFragment;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const decryptKey = params.get(SHARE_DECRYPT_KEY_QUERY_PARAM)?.trim() ?? '';
 
@@ -48,6 +63,12 @@ export function readShareKeyFromUrl(mode: ShareUrlKeyMode): string {
  * Reads decryption material from the URL and infers whether it is a key or password.
  */
 export function readShareKeyFromUrlAnyMode(): { material: string; mode: ShareUrlKeyMode } | null {
+    const fromFragment = readFragmentParam();
+
+    if (fromFragment !== '') {
+        return { material: fromFragment, mode: 'key' };
+    }
+
     const params = new URLSearchParams(window.location.search);
     const decryptKey = params.get(SHARE_DECRYPT_KEY_QUERY_PARAM)?.trim() ?? '';
 
@@ -77,35 +98,31 @@ export function readShareKeyFromUrlAnyMode(): { material: string; mode: ShareUrl
 }
 
 /**
- * Builds a relative share URL with decryption material in the query string.
+ * Builds a relative share URL with decryption material in the URL fragment (never sent to the server).
  */
 export function buildShareUrlWithKey(
     baseUrl: string,
     keyMaterial: string,
     mode: ShareUrlKeyMode = 'key',
 ): string {
-    const url = new URL(baseUrl, window.location.origin);
-    url.searchParams.set(getShareKeyQueryParam(mode), keyMaterial);
+    const url = buildUrlWithFragmentKey(baseUrl, keyMaterial, mode);
 
-    return `${url.pathname}${url.search}`;
+    return `${url.pathname}${url.search}${url.hash}`;
 }
 
 /**
- * Builds an absolute share URL with decryption material in the query string.
+ * Builds an absolute share URL with decryption material in the URL fragment (never sent to the server).
  */
 export function buildFullShareUrlWithKey(
     baseUrl: string,
     keyMaterial: string,
     mode: ShareUrlKeyMode = 'key',
 ): string {
-    const url = new URL(baseUrl, window.location.origin);
-    url.searchParams.set(getShareKeyQueryParam(mode), keyMaterial);
-
-    return url.toString();
+    return buildUrlWithFragmentKey(baseUrl, keyMaterial, mode).toString();
 }
 
 /**
- * Removes decryption material from the address bar without reloading the page.
+ * Removes decryption material (key query parameters and the whole fragment) from the address bar without reloading.
  */
 export function stripShareKeyFromUrl(_mode?: ShareUrlKeyMode): void {
     const url = new URL(window.location.href);
@@ -117,10 +134,28 @@ export function stripShareKeyFromUrl(_mode?: ShareUrlKeyMode): void {
     window.history.replaceState(null, '', `${url.pathname}${url.search}`);
 }
 
+function buildUrlWithFragmentKey(baseUrl: string, keyMaterial: string, mode: ShareUrlKeyMode): URL {
+    const url = new URL(baseUrl, window.location.origin);
+    url.searchParams.delete(SHARE_DECRYPT_KEY_QUERY_PARAM);
+    url.hash = new URLSearchParams({ [getShareKeyQueryParam(mode)]: keyMaterial }).toString();
+
+    return url;
+}
+
+function readFragmentParam(): string {
+    const raw = window.location.hash.replace(/^#/, '');
+
+    if (!raw.startsWith(`${SHARE_DECRYPT_KEY_QUERY_PARAM}=`)) {
+        return '';
+    }
+
+    return new URLSearchParams(raw).get(SHARE_DECRYPT_KEY_QUERY_PARAM)?.trim() ?? '';
+}
+
 function readLegacyHashMaterial(): string {
     const raw = window.location.hash.replace(/^#/, '').trim();
 
-    if (raw === '') {
+    if (raw === '' || raw.startsWith(`${SHARE_DECRYPT_KEY_QUERY_PARAM}=`)) {
         return '';
     }
 

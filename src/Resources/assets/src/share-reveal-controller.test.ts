@@ -126,6 +126,20 @@ describe('share-reveal-controller', () => {
         expect(visible('downloadLink')).toBe(false);
     });
 
+    it('auto-reveals with the key from a #decrypt_key= fragment link and clears the fragment', async () => {
+        const { ciphertext, key } = await encryptText('fragment secret');
+        window.history.replaceState(null, '', `/s/share-1#decrypt_key=${encodeURIComponent(key)}`);
+        respondWith({ status: 'ok', ciphertext });
+
+        await mount();
+        await vi.waitFor(() => expect(visible('output')).toBe(true));
+
+        expect(target('output').textContent).toBe('fragment secret');
+        expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(key);
+        expect(window.location.hash).toBe('');
+        expect(window.location.search).toBe('');
+    });
+
     it('uses a key stored in sessionStorage for the share', async () => {
         const { ciphertext, key } = await encryptText('stored');
         storeShareKey('share-1', 'key', key);

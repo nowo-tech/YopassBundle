@@ -213,7 +213,9 @@ final class ShareManageController extends AbstractController
             'routes'          => $this->routes,
             'sharing_options' => $this->sharingOptions,
             'dashboard_route' => $this->dashboardRoute,
-            'links_form'      => $this->createForm(ShareCreatedLinksType::class)->createView(),
+            'links_form'      => $this->createForm(ShareCreatedLinksType::class, null, [
+                'allow_embed_in_url' => $this->sharingOptions['allow_embed_in_url'],
+            ])->createView(),
         ]);
     }
 

@@ -45,6 +45,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Yopass: one-click links carry the key in the URL fragment and honour the embed options, no `APP_SECRET` in the Flex recipe, working password mode. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Security
+
+- **REQ-SEC-004 M1 — the `sharing.allow_embed_in_url` / `sharing.default_embed_in_url` options had no effect up to 1.8.0.** The "share created" page always offered a one-click `/share/{id}?decrypt_key=…` link (and the manage preview embedded the stored key in its public link), so the key or password was sent to the server in the query string, where web-server / reverse-proxy access logs, the Symfony router log and APM tools could record it. Now:
+  - One-click links put the key in the **URL fragment** (`/share/{id}#decrypt_key=…`), which browsers never send to the server.
+  - The one-click link is rendered only when `sharing.allow_embed_in_url` is `true` (default `true`); otherwise the page shows the short link and the key separately. `sharing.default_embed_in_url: true` lists it first; with the default `false` it comes after the short link and the key. The manage preview embeds the stored key in its public link only when embedding is allowed.
+  - New `ShareKeyQueryRedirectListener` (`kernel.request`, priority 64, before the router): a `GET|HEAD` of the public share page carrying `decrypt_key` / `key` / `password` in the query string is answered `303 See Other` to the same path with the key moved into the fragment (`Cache-Control: no-store`, `Referrer-Policy: no-referrer`). Old links keep working, the router never logs the key, and it no longer stays in the address bar or the history. The first request of such an old link still reaches the web server / proxy, which may have logged it.
+- **REQ-SEC-004 M2 — the Flex recipes (1.0.0 and 1.1.0) appended `APP_SECRET=ChangeMeInProduction` to the host `.env`.** Flex appends the recipe block unconditionally, and Dotenv keeps the last definition, so this public value could override the host secret (`kernel.secret` signs fragment URIs, remember-me cookies, login links, `UriSigner` URLs). The `env` block is removed from both recipe manifests; the bundle needs no secret. Hosts that installed the recipe must remove the line and rotate `APP_SECRET` (see UPGRADING).
+
+### Fixed
+
+- **REQ-SEC-004 L1 — password mode did not work in the browser.** The shipped `yopass.js` was built with the standard `libsodium-wrappers`, which has no `crypto_pwhash` (Argon2id); creating a password-protected share failed (closed: nothing was posted) and password envelopes could not be decrypted. The bundle now depends on `libsodium-wrappers-sumo` `^0.8.4` (same API and version line) and `src/Resources/public/js/yopass.js` is rebuilt. Raw library errors on create are shown as `CREATE_FAILED` instead of the library message.
+- **REQ-SEC-004 L2** — with `web_ui.enabled: false` the route loader registers only the public routes (`/share/{id}`, `/share/{id}/consume`). Before, the manage routes stayed routed while the CSRF / SecurityBundle compile checks were skipped.
+- Manage preview: after extending a share, the re-rendered public link kept no key because `renderMetadata()` was called without the share id (`tsc` error).
+
+### Tests
+
+- Vitest: password-mode encrypt / decrypt round trips (text and file) against the real libsodium build, no mock; fragment link build / read / strip; created page and preview with embedding allowed / not allowed; reveal from a `#decrypt_key=` fragment.
+- PHPUnit: `ShareKeyQueryRedirectListenerTest`, route loader with the Web UI disabled, `ShareCreatedLinksType` `allow_embed_in_url` option.
+
+### CI
+
+- TypeScript job runs `pnpm run typecheck` (`tsc --noEmit`) before Vitest; new `make typecheck` (part of `make release-check`).
+
+
 ## [1.8.0] - 2026-10-29
 
 Yopass: injected clock in share creation and public rate limiter, TS coverage over every source, Twig override docs See [UPGRADING](UPGRADING.md#to-180).

@@ -59,17 +59,43 @@ describe('yopass-created-controller', () => {
         document.body.innerHTML = '';
     });
 
-    it('renders links from the URL key and removes it from the address bar', async () => {
+    it('renders a fragment one-click link when embedding is allowed and removes the key from the address bar', async () => {
         window.history.replaceState(null, '', `/created?decrypt_key=${MATERIAL}&x=1`);
 
-        await mount(markup());
+        await mount(markup('data-created-allow-embed-in-url-value="true"'));
 
         const origin = window.location.origin;
         expect(input('resultShortLink').value).toBe(`${origin}/s/share-1`);
-        expect(input('resultOneClickLink').value).toBe(`${origin}/s/share-1?decrypt_key=${MATERIAL}`);
+        expect(input('resultOneClickLink').value).toBe(`${origin}/s/share-1#decrypt_key=${MATERIAL}`);
+        expect(input('resultOneClickLink').value).not.toContain('?');
         expect(input('resultKey').value).toBe(MATERIAL);
         expect(window.location.search).toBe('?x=1');
         expect(document.querySelector('[data-created-target="rememberNotice"]')!.classList.contains('d-none')).toBe(false);
+    });
+
+    it('never builds a key-bearing link when embedding is not allowed (default)', async () => {
+        storePendingShareKey('key', MATERIAL);
+
+        await mount(markup());
+
+        expect(input('resultOneClickLink').value).toBe('');
+        expect(input('resultShortLink').value).toBe(`${window.location.origin}/s/share-1`);
+        expect(input('resultKey').value).toBe(MATERIAL);
+    });
+
+    it('renders only the short link and the key when the one-click field is absent', async () => {
+        storePendingShareKey('key', MATERIAL);
+        document.body.innerHTML = '';
+
+        await mount(markup('data-created-allow-embed-in-url-value="true"').replace(
+            /<input data-created-target="resultOneClickLink">\s*<button data-action="created#copyOneClickLink">c1<\/button>/,
+            '<button data-action="created#copyOneClickLink">c1</button>',
+        ));
+
+        expect(document.querySelector('[data-created-target="resultOneClickLink"]')).toBeNull();
+        expect(input('resultKey').value).toBe(MATERIAL);
+        (document.querySelector('button') as HTMLButtonElement).click();
+        expect(writeText).not.toHaveBeenCalled();
     });
 
     it('binds pending sessionStorage material to the share id', async () => {
@@ -85,7 +111,7 @@ describe('yopass-created-controller', () => {
 
     it('copies each value to the clipboard', async () => {
         storePendingShareKey('key', MATERIAL);
-        await mount(markup());
+        await mount(markup('data-created-allow-embed-in-url-value="true"'));
 
         for (const button of Array.from(document.querySelectorAll('button'))) {
             button.click();

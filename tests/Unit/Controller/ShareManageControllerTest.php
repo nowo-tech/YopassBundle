@@ -25,6 +25,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -180,6 +181,42 @@ final class ShareManageControllerTest extends TestCase
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertStringContainsString('@NowoYopassBundle/manage/created.html.twig', (string) $response->getContent());
+    }
+
+    public function testCreatedPassesTheEmbedOptionToTheLinksForm(): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-000000000021', $user);
+        $share->setCiphertext('x')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        $container  = ControllerContainerBuilder::bind($controller, $user);
+        $twig       = new class {
+            /** @var array<string, mixed> */
+            public array $context = [];
+
+            /**
+             * @param array<string, mixed> $context
+             */
+            public function render(string $name, array $context = []): string
+            {
+                $this->context = $context;
+
+                return $name;
+            }
+        };
+        $container->set('twig', $twig);
+
+        $controller->created($share->getId());
+
+        $links = $twig->context['links_form'];
+        self::assertInstanceOf(FormView::class, $links);
+        // The test controller is configured with sharing.allow_embed_in_url: true.
+        self::assertArrayHasKey('oneClickLink', $links->children);
+        self::assertTrue($twig->context['sharing_options']['allow_embed_in_url']);
     }
 
     public function testCreateRedirectsWhenFilePayloadDisabled(): void

@@ -241,7 +241,7 @@ jobs:
       - run: composer phpstan
 
   typescript:
-    name: Vitest (TypeScript)
+    name: Vitest + tsc (TypeScript)
     runs-on: ubuntu-latest
 
     steps:
@@ -253,6 +253,8 @@ jobs:
 
       - run: npm install -g pnpm@10
       - run: pnpm install --frozen-lockfile
+      - name: Type-check (tsc --noEmit)
+        run: pnpm run typecheck
       - run: pnpm run test:coverage
 
   security-audit:

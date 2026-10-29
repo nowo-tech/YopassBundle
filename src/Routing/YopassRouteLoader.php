@@ -51,10 +51,13 @@ final class YopassRouteLoader extends Loader
      * Creates the loader from the configured routes map and route prefix.
      *
      * @param array<string, array{path: string, name: string}> $routes
+     * @param bool $webUiEnabled When false ({@code nowo_yopass.web_ui.enabled: false}) the manage routes are not
+     *                           registered, so the CSRF / SecurityBundle compile checks they rely on can be skipped safely
      */
     public function __construct(
         private readonly array $routes,
         private readonly string $routePrefix,
+        private readonly bool $webUiEnabled = true,
     ) {
     }
 
@@ -67,7 +70,11 @@ final class YopassRouteLoader extends Loader
         // flag breaks route reloads after cache:clear (REQ-DEMO-010 / REQ-SF-004).
         $collection = new RouteCollection();
 
-        foreach ([ShareManageController::class, PublicShareController::class] as $controllerClass) {
+        $controllers = $this->webUiEnabled
+            ? [ShareManageController::class, PublicShareController::class]
+            : [PublicShareController::class];
+
+        foreach ($controllers as $controllerClass) {
             $this->addRoutesFromController($collection, $controllerClass);
         }
 

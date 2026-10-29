@@ -13,8 +13,11 @@ nowo_yopass:
 
     # file_handler: App\Yopass\LocalShareFileHandler  # optional file shares
 
-    # Prefer short links by default (no ?decrypt_key= in URL). Set true only if you accept key-in-URL risk.
+    # Link sharing. One-click links carry the key in the URL fragment (#decrypt_key=…), which browsers never send to
+    # the server. allow_embed_in_url: false offers only the short link + the key (send them on separate channels).
+    # default_embed_in_url: true lists the one-click link first on the "share created" page.
     sharing:
+        allow_embed_in_url: true
         default_embed_in_url: false
 
     security:

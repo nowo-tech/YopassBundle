@@ -8,8 +8,9 @@ YopassBundle installed.
 
 3. Install assets: php bin/console assets:install
 
-4. Prefer short share links (`sharing.default_embed_in_url: false`, Flex when@prod).
-   Only enable key-in-URL if you accept proxy/Referer leakage risk.
+4. One-click links put the key in the URL fragment (#decrypt_key=…), never sent to the server.
+   Set `sharing.allow_embed_in_url: false` to offer only the short link + the key (separate channels).
+   The bundle needs no APP_SECRET entry: set a real APP_SECRET (env var or secrets vault) yourself.
 
 5. Optional: custom ACL via YopassAccessCheckerInterface and share events
    (see vendor/nowo-tech/yopass-bundle/docs/examples/AccessControl.md).

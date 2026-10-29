@@ -179,8 +179,8 @@ nowo_yopass:
     sharing:
         default_encryption: auto       # auto | password
         allow_custom_password: true
-        default_embed_in_url: false    # one-click link includes ?decrypt_key= (opt-in; safer default is false)
-        allow_embed_in_url: true
+        default_embed_in_url: false    # true: list the one-click link first on the "share created" page
+        allow_embed_in_url: true       # false: no one-click link at all (short link + key only)
         show_remember_notice: true
 ```
 
@@ -188,8 +188,8 @@ nowo_yopass:
 |--------|---------|-------------|
 | `sharing.default_encryption` | `auto` | Default mode in create form. |
 | `sharing.allow_custom_password` | `true` | Show password encryption option. |
-| `sharing.default_embed_in_url` | `false` | When true, create form pre-checks one-click links with `?decrypt_key=`. Default false prefers short links. |
-| `sharing.allow_embed_in_url` | `true` | When false, only short links are offered. |
+| `sharing.default_embed_in_url` | `false` | When true (and embedding is allowed), the "share created" page lists the one-click link first. With false it comes after the short link and the key. |
+| `sharing.allow_embed_in_url` | `true` | When true, the created page offers a one-click link with the key in the URL fragment (`#decrypt_key=`, never sent to the server) and the manage preview embeds the stored key in its public link. When false, only the short link and the key are shown (send them on separate channels). Up to 1.8.0 both options had no effect. |
 | `sharing.show_remember_notice` | `true` | Post-create security reminder. |
 
 ### Public link formats
@@ -197,7 +197,7 @@ nowo_yopass:
 | Type | Example | Notes |
 |------|---------|-------|
 | Short | `/share/{uuid}` | Recipient enters key manually on reveal page. |
-| One-click | `/share/{uuid}?decrypt_key=BASE64URL` | Auto-reveal; legacy `#`, `?key=`, `?password=` still read. |
+| One-click | `/share/{uuid}#decrypt_key=BASE64URL` | Fragment, never sent to the server. Auto-reveal. Legacy raw `#key` still read. Legacy query links (`?decrypt_key=`, `?key=`, `?password=`) are redirected `303` to the fragment form before routing. |
 
 ## Access log
 
@@ -344,7 +344,7 @@ nowo_yopass:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `web_ui.enabled` | `true` | Manage Web UI feature flag. Access is still enforced by `security.access_roles` and the host firewall. |
+| `web_ui.enabled` | `true` | Manage Web UI feature flag. When false, only the public routes (`/share/{id}`, `/share/{id}/consume`) are registered and the CSRF / SecurityBundle compile checks of the manage UI are skipped. When true, access is enforced by `security.access_roles` and the host firewall. |
 | `web_ui.layout_template` | `@NowoYopassBundle/layout.html.twig` | Layout extended by manage pages (Twig global `nowo_yopass_layout_template`). |
 | `web_ui.css_framework` | `tabler` | CSS stack for macros and optional CDN in the bundle default layout. |
 | `web_ui.icon_set` | `tabler-icons` | Icon set for row actions when using bundle markup. |

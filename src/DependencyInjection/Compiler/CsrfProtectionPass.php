@@ -37,7 +37,7 @@ final class CsrfProtectionPass implements CompilerPassInterface
             || !$container->hasDefinition('form.type_extension.csrf')
             || $formCsrfDisabled
         ) {
-            throw new LogicException('NowoYopassBundle: the manage Web UI (web_ui.enabled: true) requires CSRF protection. Enable framework.csrf_protection and framework.form.csrf_protection (composer require symfony/security-csrf), or set nowo_yopass.web_ui.enabled: false.');
+            throw new LogicException('NowoYopassBundle: the manage Web UI (web_ui.enabled: true) requires CSRF protection. Enable framework.csrf_protection and framework.form.csrf_protection (composer require symfony/security-csrf), or set nowo_yopass.web_ui.enabled: false (the manage routes are then not registered at all).');
         }
     }
 }

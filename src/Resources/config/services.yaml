@@ -21,13 +21,22 @@ services:
         resource: '../../Controller/'
         public: true
 
-    # Loads routes from nowo_yopass.routes and nowo_yopass.route_prefix parameters.
+    # Loads routes from nowo_yopass.routes and nowo_yopass.route_prefix parameters; only the public routes when
+    # nowo_yopass.web_ui.enabled is false (REQ-SEC-004 L2).
     Nowo\YopassBundle\Routing\YopassRouteLoader:
         arguments:
             $routes: '%nowo_yopass.routes%'
             $routePrefix: '%nowo_yopass.route_prefix%'
+            $webUiEnabled: '%nowo_yopass.web_ui.enabled%'
         tags:
             - { name: routing.loader }
+
+    # REQ-SEC-004 M1: redirects legacy /share/{id}?decrypt_key=… links to the #decrypt_key= fragment before routing,
+    # so the key is not reflected, logged by the router or kept in the browser history.
+    Nowo\YopassBundle\EventListener\ShareKeyQueryRedirectListener:
+        arguments:
+            $routes: '%nowo_yopass.routes%'
+            $routePrefix: '%nowo_yopass.route_prefix%'
 
     Nowo\YopassBundle\Service\ShareCreator:
         arguments:

@@ -147,6 +147,7 @@
             <div class="{{ ui.card(nowo_yopass_css_framework|default('tabler')) }}"
                  data-controller="nowo-yopass-manage-preview"
                  data-nowo-yopass-manage-preview-preview-path-template-value="{{ path(routes.preview.name, { id: '{id}' }) }}"
+                 data-nowo-yopass-manage-preview-allow-embed-in-url-value="{{ sharing_options.allow_embed_in_url|default(false) ? 'true' : 'false' }}"
                  {% if can_extend %}
                  data-nowo-yopass-manage-preview-extend-path-template-value="{{ path(routes.extend.name, { id: '{id}' }) }}"
                  data-nowo-yopass-manage-preview-csrf-token-value="{{ csrf_token('yopass_extend') }}"

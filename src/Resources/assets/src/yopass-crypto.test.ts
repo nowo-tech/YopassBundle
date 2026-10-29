@@ -21,6 +21,35 @@ describe('yopass-crypto', () => {
         expect(plain).toEqual({ kind: 'text', text: 'hello-yopass' });
     });
 
+    // Runs against the real libsodium build (no mock): the standard libsodium-wrappers build has no crypto_pwhash,
+    // which broke password mode up to 1.8.0 (REQ-SEC-004 L1).
+    it('encrypts and decrypts a text payload in password mode with the real library', async () => {
+        const password = 'REDACTED-TEST-PASSWORD'; // ggignore: test placeholder password
+        const encrypted = await encryptPayload({ kind: 'text', text: 'password-mode secret' }, {
+            generateKey: false,
+            password,
+        });
+        const envelope = JSON.parse(encrypted.ciphertext) as { v: number; mode: string; salt?: string; box: string };
+
+        expect(envelope.v).toBe(1);
+        expect(envelope.mode).toBe('password');
+        expect(envelope.salt).toMatch(/^[A-Za-z0-9+/]+=*$/);
+        expect(encrypted.decryptionKey).toBeUndefined();
+        expect(encrypted.ciphertext).not.toContain('password-mode secret');
+
+        await expect(decryptPayload(encrypted.ciphertext, password))
+            .resolves.toEqual({ kind: 'text', text: 'password-mode secret' });
+        await expect(decryptPayload(encrypted.ciphertext, 'wrong-password')).rejects.toThrow();
+    });
+
+    it('round-trips a file payload in password mode with the real library', async () => {
+        const file = new File([new Uint8Array([0, 1, 2, 250, 255])], 'blob.bin', { type: 'application/octet-stream' });
+        const payload = await readFileAsPayload(file, 1024);
+        const encrypted = await encryptPayload(payload, { generateKey: false, password: 'REDACTED-TEST-PASSWORD' }); // ggignore: test placeholder password
+
+        await expect(decryptPayload(encrypted.ciphertext, 'REDACTED-TEST-PASSWORD')).resolves.toEqual(payload); // ggignore: test placeholder password
+    });
+
     it('rejects using generateKey and password together', async () => {
         await expect(
             encryptPayload({ kind: 'text', text: 'x' }, { generateKey: true, password: 'nope' }),

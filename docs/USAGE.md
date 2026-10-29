@@ -27,8 +27,8 @@ Authenticated users open the manage UI (default `/tools/yopass`):
 After creating a share, the **created** page shows:
 
 - **Short link** — `/share/{id}` (key shared separately or pasted on the reveal page)
-- **One-click link** — `/share/{id}?decrypt_key=…`
 - **Decryption key** — copy for separate delivery
+- **One-click link** — `/share/{id}#decrypt_key=…`, only when `sharing.allow_embed_in_url` is `true` (listed first when `sharing.default_embed_in_url` is `true`). The key is in the URL fragment, which browsers never send to the server.
 
 ## Public reveal
 
@@ -37,11 +37,11 @@ Recipients open `/share/{id}`:
 | Link type | URL | Behaviour |
 |-----------|-----|-----------|
 | Short | `/share/{id}` | Enter decryption key in the form, then click **Reveal secret** |
-| One-click | `/share/{id}?decrypt_key=…` | Key read from query string; auto-reveal when possible |
+| One-click | `/share/{id}#decrypt_key=…` | Key read from the URL fragment (never sent to the server), then removed from the address bar; auto-reveal when possible |
 
 Each successful consume consumes one read. Decryption happens client-side; the server returns ciphertext only.
 
-Legacy URLs with `#key`, `?key=`, or `?password=` are still accepted when opening a link.
+Legacy URLs keep working: a raw `#key` fragment is read as before, and query-string keys (`?decrypt_key=`, `?key=`, `?password=`, used by links created up to 1.8.0) are redirected by the server (`303`, before routing) to the `#decrypt_key=` form.
 
 ## Console
 

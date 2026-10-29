@@ -61,11 +61,36 @@ describe('yopass-share-url', () => {
         expect(readShareKeyFromUrlAnyMode()).toBeNull();
     });
 
-    it('builds relative and absolute links with the key in the query string', () => {
-        expect(buildShareUrlWithKey('/s/abc?x=1', 'k/+=')).toBe('/s/abc?x=1&decrypt_key=k%2F%2B%3D');
+    it('builds relative and absolute links with the key in the URL fragment', () => {
+        expect(buildShareUrlWithKey('/s/abc?x=1', 'k/+=')).toBe('/s/abc?x=1#decrypt_key=k%2F%2B%3D');
         expect(buildFullShareUrlWithKey('https://example.test/s/abc', 'kk', 'password'))
-            .toBe('https://example.test/s/abc?decrypt_key=kk');
-        expect(buildFullShareUrlWithKey('/s/abc', 'kk')).toBe(`${window.location.origin}/s/abc?decrypt_key=kk`);
+            .toBe('https://example.test/s/abc#decrypt_key=kk');
+        expect(buildFullShareUrlWithKey('/s/abc', 'kk')).toBe(`${window.location.origin}/s/abc#decrypt_key=kk`);
+        expect(buildShareUrlWithKey('/s/abc?decrypt_key=old', 'kk')).toBe('/s/abc#decrypt_key=kk');
+    });
+
+    it('reads the #decrypt_key= fragment first, for both modes', () => {
+        setUrl('/s/abc?decrypt_key=query-value#decrypt_key=%20pass%20word%2B1%20');
+
+        expect(readShareKeyFromUrl('key')).toBe('pass word+1');
+        expect(readShareKeyFromUrl('password')).toBe('pass word+1');
+        expect(readShareKeyFromUrlAnyMode()).toEqual({ material: 'pass word+1', mode: 'key' });
+    });
+
+    it('round-trips material through a built fragment link', () => {
+        const material = 'p@ss word/+=&#?';
+        setUrl(buildShareUrlWithKey('/s/abc', material, 'password'));
+
+        expect(window.location.search).toBe('');
+        expect(readShareKeyFromUrl('password')).toBe(material);
+    });
+
+    it('treats an empty #decrypt_key= fragment as no material', () => {
+        setUrl('/s/abc#decrypt_key=');
+
+        expect(readShareKeyFromUrl('key')).toBe('');
+        expect(readShareKeyFromUrl('password')).toBe('');
+        expect(readShareKeyFromUrlAnyMode()).toBeNull();
     });
 
     it('strips every key parameter but keeps the rest of the query string', () => {
@@ -74,6 +99,15 @@ describe('yopass-share-url', () => {
         stripShareKeyFromUrl();
 
         expect(window.location.pathname).toBe('/s/abc');
+        expect(window.location.search).toBe('?keep=1');
+    });
+
+    it('strips the key fragment from the address bar', () => {
+        setUrl('/s/abc?keep=1#decrypt_key=secret');
+
+        stripShareKeyFromUrl();
+
+        expect(window.location.hash).toBe('');
         expect(window.location.search).toBe('?keep=1');
     });
 });

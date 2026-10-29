@@ -62,6 +62,47 @@
 
 ## Unreleased
 
+From **1.8.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console assets:install
+```
+
+`src/Resources/public/js/yopass.js` changed (fragment links, libsodium sumo build): install the assets again and purge any CDN / HTTP cache that serves `/bundles/yopass/js/yopass.js`.
+
+### Remove the recipe `APP_SECRET` and rotate it (security)
+
+The Flex recipes up to this release appended this block to `.env` (or `.env.dist`):
+
+```dotenv
+###> nowo-tech/yopass-bundle ###
+APP_SECRET=ChangeMeInProduction
+###< nowo-tech/yopass-bundle ###
+```
+
+Dotenv keeps the last definition, so that public value could replace your own `APP_SECRET`.
+
+1. Delete the `###> nowo-tech/yopass-bundle ###` block (or at least its `APP_SECRET` line) from `.env` / `.env.dist`. Also check `.env.local.php` (`composer dump-env`) and any image built from those files.
+2. If the deployed `kernel.secret` was ever `ChangeMeInProduction`, **rotate** `APP_SECRET`: set a new random value (`php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'`) in the real environment or the secrets vault (`php bin/console secrets:set APP_SECRET`), then redeploy. Remember-me cookies, login links and signed URLs issued with the old secret stop validating; users sign in again.
+3. Yopass itself never reads `APP_SECRET`.
+
+### One-click links: key in the URL fragment, embed options honoured (security)
+
+Up to 1.8.0 `sharing.allow_embed_in_url` and `sharing.default_embed_in_url` were ignored: the "share created" page always offered a `/share/{id}?decrypt_key=…` link, so keys reached the server (access logs, router log, APM).
+
+- New one-click links are `/share/{id}#decrypt_key=…`. The fragment is never sent to the server. The reveal page reads it and removes it from the address bar.
+- **Old links still work.** A `GET /share/{id}?decrypt_key=…` (or legacy `?key=` / `?password=`) is redirected (`303`) to `/share/{id}#decrypt_key=…` before routing (`ShareKeyQueryRedirectListener`), so the application never logs or renders it. The web server / reverse proxy in front of the app may still have logged the first request of an old link: treat those logs as sensitive, or rotate (recreate) shares sent with old one-click links.
+- `sharing.allow_embed_in_url: false` now really hides the one-click link: the created page shows the short link and the key (send them on separate channels), and the manage preview shows the public link without the key. Default stays `true`.
+- `sharing.default_embed_in_url: true` lists the one-click link first on the created page; with the default `false` it comes after the short link and the key.
+- If you override `@NowoYopassBundle/manage/created.html.twig`: the `links_form.oneClickLink` child exists only when `allow_embed_in_url` is `true`. Guard it with `{% if links_form.oneClickLink is defined %}` and pass `data-nowo-yopass-created-allow-embed-in-url-value` like the bundle template (without it the controller never fills the one-click field). If you override `manage/index.html.twig`, add `data-nowo-yopass-manage-preview-allow-embed-in-url-value="{{ sharing_options.allow_embed_in_url ? 'true' : 'false' }}"` to the preview controller element to keep keys in preview links.
+- If something else in your stack builds links with `?decrypt_key=` (a custom integration, e-mails), switch it to `#decrypt_key=` (URL-encoded value).
+
+### Password mode, Web UI flag
+
+- Password-protected shares now work in the browser (`libsodium-wrappers-sumo`). If you build `yopass.js` yourself from `src/Resources/assets`, replace `libsodium-wrappers` with `libsodium-wrappers-sumo@^0.8.4`. The shipped bundle grows from about 490 KiB to about 590 KiB.
+- `web_ui.enabled: false` now leaves only the public routes registered (`/share/{id}`, `/share/{id}/consume`). Before, the manage routes stayed reachable. If you relied on them with the Web UI disabled, enable the Web UI again (its CSRF / SecurityBundle compile checks then apply).
+
 ## To 1.8.0
 
 From **1.7.0**:
