@@ -3,6 +3,10 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.9.0](#to-190)
+  - [Remove the recipe `APP_SECRET` and rotate it (security)](#remove-the-recipe-app_secret-and-rotate-it-security)
+  - [One-click links: key in the URL fragment, embed options honoured (security)](#one-click-links-key-in-the-url-fragment-embed-options-honoured-security)
+  - [Password mode, Web UI flag](#password-mode-web-ui-flag)
 - [To 1.8.0](#to-180)
   - [Clock-aware share creation and public rate limiting](#clock-aware-share-creation-and-public-rate-limiting)
 - [To 1.7.0](#to-170)
@@ -61,6 +65,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.9.0
+
+From **1.8.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 From **1.8.0**:
 

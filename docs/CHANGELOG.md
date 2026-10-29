@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.9.0] - 2026-10-29](#190---2026-10-29)
 - [[1.8.0] - 2026-10-29](#180---2026-10-29)
 - [[1.7.0] - 2026-10-28](#170---2026-10-28)
 - [[1.6.0] - 2026-10-26](#160---2026-10-26)
@@ -45,6 +46,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-29
+
+Yopass: decryption key kept in the URL fragment (never sent to the server), recipe APP_SECRET removed, password mode works (libsodium sumo) See [UPGRADING](UPGRADING.md#to-190).
+
 Yopass: one-click links carry the key in the URL fragment and honour the embed options, no `APP_SECRET` in the Flex recipe, working password mode. See [UPGRADING](UPGRADING.md#unreleased).
 
 ### Security
@@ -70,6 +75,7 @@ Yopass: one-click links carry the key in the URL fragment and honour the embed o
 
 - TypeScript job runs `pnpm run typecheck` (`tsc --noEmit`) before Vitest; new `make typecheck` (part of `make release-check`).
 
+[1.9.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.9.0
 
 ## [1.8.0] - 2026-10-29
 
@@ -542,7 +548,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.9.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
