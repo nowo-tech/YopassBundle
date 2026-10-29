@@ -24,11 +24,17 @@ final class CsrfActionType extends AbstractType
 {
     use FormOptionsTrait;
 
+    /**
+     * Builds a CSRF-only action form (no fields).
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         // CSRF only — no application fields.
     }
 
+    /**
+     * Configures the CSRF token id and form action options.
+     */
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
@@ -40,6 +46,9 @@ final class CsrfActionType extends AbstractType
         $resolver->setAllowedTypes('csrf_token_id', 'string');
     }
 
+    /**
+     * Returns an empty block prefix so the token is posted as a flat "_token" field.
+     */
     #[Override]
     public function getBlockPrefix(): string
     {

@@ -23,6 +23,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
 
     private ClockInterface $clock;
 
+    /**
+     * Creates the repository on the given Doctrine manager (optional registry/manager name for resets) and clock.
+     */
     public function __construct(
         private DocumentManager $documentManager,
         ?ClockInterface $clock = null,
@@ -48,6 +51,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return $this->toEntity($document);
     }
 
+    /**
+     * Atomically consumes one read of an available share; returns null when it is not available.
+     */
     public function consumeReadIfAvailable(string $id): ?SecureShare
     {
         $now = $this->now();
@@ -67,6 +73,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return $document instanceof SecureShareDocument ? $this->toEntity($document) : null;
     }
 
+    /**
+     * Returns all shares created by the given user.
+     */
     public function findByCreator(object $creator): array
     {
         /** @var list<SecureShareDocument> $documents */
@@ -78,6 +87,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return array_map($this->toEntity(...), $documents);
     }
 
+    /**
+     * Counts the shares created by the given user.
+     */
     public function countByCreator(object $creator): int
     {
         $result = $this->dm()->createQueryBuilder(SecureShareDocument::class)
@@ -93,6 +105,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return 0;
     }
 
+    /**
+     * Returns one page of shares created by the given user.
+     */
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array
     {
         /** @var list<SecureShareDocument> $documents */
@@ -107,6 +122,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return array_map($this->toEntity(...), $documents);
     }
 
+    /**
+     * Deletes the shares of the given user created before a date; returns the number removed.
+     */
     public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int
     {
         /** @var iterable<SecureShareDocument> $documents */
@@ -119,6 +137,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return $this->removeDocuments($documents);
     }
 
+    /**
+     * Deletes every share of the given user; returns the number removed.
+     */
     public function removeAllByCreator(object $creator): int
     {
         /** @var iterable<SecureShareDocument> $documents */
@@ -130,6 +151,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return $this->removeDocuments($documents);
     }
 
+    /**
+     * Deletes all shares created before a date; returns the number removed.
+     */
     public function removeOlderThan(DateTimeImmutable $before): int
     {
         /** @var iterable<SecureShareDocument> $documents */
@@ -141,6 +165,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return $this->removeDocuments($documents);
     }
 
+    /**
+     * Schedules a share for persistence.
+     */
     public function persist(SecureShare $share): void
     {
         $existing = $this->dm()->find(SecureShareDocument::class, $share->getId());
@@ -151,6 +178,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         $this->dm()->persist($document);
     }
 
+    /**
+     * Schedules a share for removal.
+     */
     public function remove(SecureShare $share): void
     {
         $document = $this->dm()->find(SecureShareDocument::class, $share->getId());
@@ -160,6 +190,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         }
     }
 
+    /**
+     * Writes pending share changes to storage.
+     */
     public function flush(): void
     {
         $this->dm()->flush();

@@ -13,6 +13,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
 final readonly class ConfigurableYopassAccessChecker implements YopassAccessCheckerInterface
 {
     /**
+     * Creates the checker with the configured role lists (an empty list grants nothing).
+     *
      * @param list<string> $adminRoles
      * @param list<string> $accessRoles
      * @param list<string> $createRoles
@@ -29,6 +31,9 @@ final readonly class ConfigurableYopassAccessChecker implements YopassAccessChec
     ) {
     }
 
+    /**
+     * Whether the current user may open the manage UI.
+     */
     public function canAccess(?UserInterface $user = null): bool
     {
         if ($this->isAdmin()) {
@@ -38,6 +43,9 @@ final readonly class ConfigurableYopassAccessChecker implements YopassAccessChec
         return $this->hasAnyRole($this->accessRoles);
     }
 
+    /**
+     * Whether the current user may create shares.
+     */
     public function canCreate(?UserInterface $user = null): bool
     {
         if ($this->isAdmin()) {
@@ -47,6 +55,9 @@ final readonly class ConfigurableYopassAccessChecker implements YopassAccessChec
         return $this->hasAnyRole($this->createRoles);
     }
 
+    /**
+     * Whether the current user may list shares.
+     */
     public function canList(?UserInterface $user = null): bool
     {
         if ($this->isAdmin()) {
@@ -56,6 +67,9 @@ final readonly class ConfigurableYopassAccessChecker implements YopassAccessChec
         return $this->hasAnyRole($this->listRoles);
     }
 
+    /**
+     * Whether the current user may revoke shares.
+     */
     public function canRevoke(?UserInterface $user = null): bool
     {
         if ($this->isAdmin()) {

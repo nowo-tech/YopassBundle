@@ -12,12 +12,18 @@ use Nowo\YopassBundle\Document\SecureShareDocument;
  */
 final readonly class SecureShareDocumentMetadataListener
 {
+    /**
+     * Creates the listener with the configured collection name and user document class.
+     */
     public function __construct(
         private string $collectionName,
         private string $userClass,
     ) {
     }
 
+    /**
+     * Applies the configured collection name and the creator reference target to the share document.
+     */
     public function loadClassMetadata(LoadClassMetadataEventArgs $args): void
     {
         $metadata = $args->getClassMetadata();

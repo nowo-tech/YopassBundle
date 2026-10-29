@@ -18,12 +18,18 @@ use function mb_substr;
  */
 final readonly class ShareAccessLogger
 {
+    /**
+     * Creates the access logger.
+     */
     public function __construct(
         private ShareAccessLogRepositoryInterface $accessLogRepository,
         private bool $enabled,
     ) {
     }
 
+    /**
+     * Records a successful public consume (share id, read number, client IP, user agent) when access logging is enabled.
+     */
     public function logSuccessfulConsume(SecureShare $share, Request $request): void
     {
         if (!$this->enabled) {
@@ -46,6 +52,8 @@ final readonly class ShareAccessLogger
     }
 
     /**
+     * Returns the recent access log entries for a share.
+     *
      * @return list<array{
      *     accessedAt: string,
      *     readNumber: int,
@@ -73,6 +81,9 @@ final readonly class ShareAccessLogger
         return $entries;
     }
 
+    /**
+     * Whether access logging is enabled (access_log.enabled).
+     */
     public function isEnabled(): bool
     {
         return $this->enabled;

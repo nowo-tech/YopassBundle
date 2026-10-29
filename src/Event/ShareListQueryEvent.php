@@ -22,12 +22,18 @@ final class ShareListQueryEvent extends Event
 
     private ?int $overrideTotal = null;
 
+    /**
+     * Creates the event for the viewer and the subject used for list queries.
+     */
     public function __construct(
         private readonly UserInterface $viewer,
         private object $listSubject,
     ) {
     }
 
+    /**
+     * Returns the user viewing the list.
+     */
     public function getViewer(): UserInterface
     {
         return $this->viewer;
@@ -41,18 +47,26 @@ final class ShareListQueryEvent extends Event
         return $this->listSubject;
     }
 
+    /**
+     * Replaces the subject passed to the repository creator queries.
+     */
     public function setListSubject(object $listSubject): void
     {
         // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->listSubject = $listSubject;
     }
 
+    /**
+     * Whether a listener provided shares that replace the repository query.
+     */
     public function hasOverride(): bool
     {
         return $this->overrideShares !== null;
     }
 
     /**
+     * Returns the listener-provided shares that replace the repository query, if any.
+     *
      * @return list<SecureShare>
      */
     public function getOverrideShares(): array
@@ -60,6 +74,9 @@ final class ShareListQueryEvent extends Event
         return $this->overrideShares ?? [];
     }
 
+    /**
+     * Returns the listener-provided total that replaces the repository count, if any.
+     */
     public function getOverrideTotal(): int
     {
         return $this->overrideTotal ?? 0;

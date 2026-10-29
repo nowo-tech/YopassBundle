@@ -9,6 +9,9 @@ namespace Nowo\YopassBundle\Support;
  */
 final class UserIdResolver
 {
+    /**
+     * Returns the user's getId() value as a string, or null when the user exposes no id.
+     */
     public static function getId(object $user): ?string
     {
         if (!method_exists($user, 'getId')) {
@@ -24,6 +27,9 @@ final class UserIdResolver
         return (string) $id;
     }
 
+    /**
+     * Whether both users expose the same non-null id.
+     */
     public static function isSameUser(object $left, object $right): bool
     {
         $leftId  = self::getId($left);

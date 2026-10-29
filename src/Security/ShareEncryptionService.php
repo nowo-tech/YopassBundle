@@ -18,6 +18,8 @@ use const SODIUM_CRYPTO_SECRETBOX_NONCEBYTES;
 final class ShareEncryptionService
 {
     /**
+     * Encrypts a payload into a key-mode envelope (test helper; production encryption happens in the browser).
+     *
      * @return array{ciphertext: string, key: string}
      */
     public function encryptPayload(string $jsonPayload): array
@@ -39,6 +41,9 @@ final class ShareEncryptionService
         ];
     }
 
+    /**
+     * Decrypts a key-mode envelope with a URL-safe key (test helper; production decryption happens in the browser).
+     */
     public function decryptEnvelope(string $ciphertext, string $urlSafeKey): string
     {
         /** @var array{v?: int, mode?: string, box?: string} $envelope */

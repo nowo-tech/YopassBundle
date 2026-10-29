@@ -22,6 +22,8 @@ final readonly class ShareExtender
     private ClockInterface $clock;
 
     /**
+     * Creates the extender with the repository, share options and an optional clock.
+     *
      * @param array{
      *     expiration_options: list<array{id: string, interval: string}>,
      *     max_reads_options: list<int>
@@ -35,6 +37,9 @@ final readonly class ShareExtender
         $this->clock = $clock ?? new Clock();
     }
 
+    /**
+     * Extends the expiration and/or max reads of a share; throws ShareExtendException when nothing valid changes.
+     */
     public function extend(SecureShare $share, ?string $expiresIn, ?int $maxReads): void
     {
         if ($share->getRevokedAt() instanceof DateTimeImmutable) {

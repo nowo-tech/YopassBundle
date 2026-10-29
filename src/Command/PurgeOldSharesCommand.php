@@ -13,12 +13,18 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 use function sprintf;
 
+/**
+ * Console command that deletes shares older than the configured retention age.
+ */
 #[AsCommand(
     name: 'nowo:yopass:purge-old-shares',
     description: 'Delete Yopass shares older than the configured retention age',
 )]
 final class PurgeOldSharesCommand extends Command
 {
+    /**
+     * Creates the command with the retention purger.
+     */
     public function __construct(
         private readonly ShareRetentionPurger $retentionPurger,
     ) {

@@ -19,6 +19,9 @@ use function sprintf;
  */
 final readonly class SecureShareMetadataListener
 {
+    /**
+     * Creates the listener with the configured table names and user entity class.
+     */
     public function __construct(
         private string $tableName,
         private string $userClass,
@@ -26,6 +29,9 @@ final readonly class SecureShareMetadataListener
     ) {
     }
 
+    /**
+     * Applies the configured table names and the creator relation target to the bundle entities.
+     */
     public function loadClassMetadata(LoadClassMetadataEventArgs $args): void
     {
         $metadata = $args->getClassMetadata();

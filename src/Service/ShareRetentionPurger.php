@@ -21,6 +21,8 @@ final readonly class ShareRetentionPurger
     private ClockInterface $clock;
 
     /**
+     * Creates the purger with the repository, share options and an optional clock.
+     *
      * @param array{
      *     retention?: array{enabled?: bool, max_age?: string}
      * } $shareOptions
@@ -36,11 +38,17 @@ final readonly class ShareRetentionPurger
         $this->clock   = $clock ?? new Clock();
     }
 
+    /**
+     * Whether retention purging is enabled (shares.retention.enabled).
+     */
     public function isEnabled(): bool
     {
         return $this->enabled;
     }
 
+    /**
+     * Deletes the given user's shares older than the retention age; returns the number removed.
+     */
     public function purgeForCreator(object $creator): int
     {
         $cutoff = $this->resolveCutoff();
@@ -59,6 +67,9 @@ final readonly class ShareRetentionPurger
         return $removed;
     }
 
+    /**
+     * Deletes all shares older than the retention age; returns the number removed.
+     */
     public function purgeAll(): int
     {
         $cutoff = $this->resolveCutoff();

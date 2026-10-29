@@ -21,6 +21,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
 
     private ClockInterface $clock;
 
+    /**
+     * Creates the repository on the given Doctrine manager (optional registry/manager name for resets) and clock.
+     */
     public function __construct(
         private EntityManagerInterface $entityManager,
         ?ClockInterface $clock = null,
@@ -48,6 +51,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         return $share instanceof SecureShare ? $share : null;
     }
 
+    /**
+     * Atomically consumes one read of an available share; returns null when it is not available.
+     */
     public function consumeReadIfAvailable(string $id): ?SecureShare
     {
         $now     = $this->now();
@@ -70,6 +76,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         return $this->find($id);
     }
 
+    /**
+     * Returns all shares created by the given user.
+     */
     public function findByCreator(object $creator): array
     {
         /** @var list<SecureShare> $shares */
@@ -81,11 +90,17 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         return $shares;
     }
 
+    /**
+     * Counts the shares created by the given user.
+     */
     public function countByCreator(object $creator): int
     {
         return $this->em()->getRepository(SecureShare::class)->count(['creator' => $creator]);
     }
 
+    /**
+     * Returns one page of shares created by the given user.
+     */
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array
     {
         /** @var list<SecureShare> $shares */
@@ -99,6 +114,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         return $shares;
     }
 
+    /**
+     * Deletes the shares of the given user created before a date; returns the number removed.
+     */
     public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int
     {
         return (int) $this->em()->createQueryBuilder()
@@ -111,6 +129,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->execute();
     }
 
+    /**
+     * Deletes every share of the given user; returns the number removed.
+     */
     public function removeAllByCreator(object $creator): int
     {
         return (int) $this->em()->createQueryBuilder()
@@ -121,6 +142,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->execute();
     }
 
+    /**
+     * Deletes all shares created before a date; returns the number removed.
+     */
     public function removeOlderThan(DateTimeImmutable $before): int
     {
         return (int) $this->em()->createQueryBuilder()
@@ -131,11 +155,17 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->execute();
     }
 
+    /**
+     * Schedules a share for persistence.
+     */
     public function persist(SecureShare $share): void
     {
         $this->em()->persist($share);
     }
 
+    /**
+     * Schedules a share for removal.
+     */
     public function remove(SecureShare $share): void
     {
         $managed = $this->em()->find(SecureShare::class, $share->getId());
@@ -145,6 +175,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         }
     }
 
+    /**
+     * Writes pending share changes to storage.
+     */
     public function flush(): void
     {
         $this->em()->flush();

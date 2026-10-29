@@ -17,6 +17,8 @@ use Symfony\Contracts\EventDispatcher\Event;
 final class ShareListResultEvent extends Event
 {
     /**
+     * Creates the event with the viewer, the listed shares and the total count.
+     *
      * @param list<SecureShare> $shares
      */
     public function __construct(
@@ -26,12 +28,17 @@ final class ShareListResultEvent extends Event
     ) {
     }
 
+    /**
+     * Returns the user viewing the list.
+     */
     public function getViewer(): UserInterface
     {
         return $this->viewer;
     }
 
     /**
+     * Returns the listed shares.
+     *
      * @return list<SecureShare>
      */
     public function getShares(): array
@@ -40,6 +47,8 @@ final class ShareListResultEvent extends Event
     }
 
     /**
+     * Replaces the listed shares.
+     *
      * @param list<SecureShare> $shares
      */
     public function setShares(array $shares): void
@@ -48,11 +57,17 @@ final class ShareListResultEvent extends Event
         $this->shares = $shares;
     }
 
+    /**
+     * Returns the total number of shares (before pagination).
+     */
     public function getTotal(): int
     {
         return $this->total;
     }
 
+    /**
+     * Replaces the total number of shares.
+     */
     public function setTotal(int $total): void
     {
         // @igor-ignore - Request-scoped Event DTO; not a shared worker service.

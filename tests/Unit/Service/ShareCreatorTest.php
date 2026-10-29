@@ -11,6 +11,7 @@ use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 
 final class ShareCreatorTest extends TestCase
 {
@@ -33,5 +34,18 @@ final class ShareCreatorTest extends TestCase
         self::assertSame($data->ciphertext, $share->getCiphertext());
         self::assertSame(2, $share->getMaxReads());
         self::assertSame('file', $share->getPayloadKind());
+    }
+
+    public function testCreateComputesExpirationFromInjectedClock(): void
+    {
+        $data            = new ShareCreateData();
+        $data->expiresIn = '1h';
+
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $clock      = new MockClock('2026-03-01 08:00:00');
+
+        $share = (new ShareCreator($repository, DefaultShareOptions::get()['expiration_options'], $clock))->create(new TestUser(), $data);
+
+        self::assertSame('2026-03-01 09:00:00', $share->getExpiresAt()->format('Y-m-d H:i:s'));
     }
 }

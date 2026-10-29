@@ -19,6 +19,9 @@ use function count;
  */
 final readonly class ShareLister
 {
+    /**
+     * Creates the lister with the repository and the event dispatcher.
+     */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         private EventDispatcherInterface $eventDispatcher,
@@ -26,6 +29,8 @@ final readonly class ShareLister
     }
 
     /**
+     * Lists the viewer's shares (one page) letting listeners alter the query and the result.
+     *
      * @return array{shares: list<SecureShare>, total: int}
      */
     public function list(UserInterface $viewer, int $pageSize, int $page): array

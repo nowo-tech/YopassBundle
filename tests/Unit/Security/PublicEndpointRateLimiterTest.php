@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Tests\Unit\Security;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
@@ -53,5 +54,19 @@ final class PublicEndpointRateLimiterTest extends TestCase
         $limiter->consume($request, 'consume');
 
         self::assertTrue(true);
+    }
+
+    public function testWindowResetsWhenInjectedClockMovesPastInterval(): void
+    {
+        $clock   = new MockClock('2026-01-01 00:00:00');
+        $limiter = new PublicEndpointRateLimiter(new ArrayAdapter(), 1, 60, null, $clock);
+        $request = Request::create('/share/test/consume', 'POST', server: ['REMOTE_ADDR' => '203.0.113.12']);
+
+        $limiter->consume($request, 'consume');
+        $clock->sleep(61);
+        $limiter->consume($request, 'consume');
+
+        $this->expectException(TooManyRequestsHttpException::class);
+        $limiter->consume($request, 'consume');
     }
 }

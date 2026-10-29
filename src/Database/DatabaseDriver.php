@@ -32,6 +32,8 @@ final class DatabaseDriver
     public const PLATFORM_OTHER = 'other';
 
     /**
+     * Returns the supported persistence driver ids.
+     *
      * @return list<string>
      */
     public static function drivers(): array
@@ -44,6 +46,8 @@ final class DatabaseDriver
     }
 
     /**
+     * Returns the supported database platform ids.
+     *
      * @return list<string>
      */
     public static function platforms(): array
@@ -61,6 +65,8 @@ final class DatabaseDriver
     }
 
     /**
+     * Returns the platform ids backed by Doctrine ORM.
+     *
      * @return list<string>
      */
     public static function relationalPlatforms(): array
@@ -76,6 +82,9 @@ final class DatabaseDriver
         ];
     }
 
+    /**
+     * Resolves the effective driver: doctrine_orm with the mongodb platform selects doctrine_mongodb; other values are kept.
+     */
     public static function resolveDriver(string $driver, string $platform): string
     {
         if ($driver !== self::DOCTRINE_ORM) {

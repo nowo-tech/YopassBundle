@@ -56,4 +56,13 @@ final class ShareCreateDataTest extends TestCase
         $before = new DateTimeImmutable('+48 hours');
         self::assertGreaterThan($before->getTimestamp() - 5, $after->getTimestamp());
     }
+
+    public function testResolveExpiresAtIsRelativeToGivenNow(): void
+    {
+        $data            = new ShareCreateData();
+        $data->expiresIn = '24h';
+        $now             = new DateTimeImmutable('2026-01-01 10:00:00');
+
+        self::assertSame('2026-01-02 10:00:00', $data->resolveExpiresAt($this->expirationOptions(), $now)->format('Y-m-d H:i:s'));
+    }
 }

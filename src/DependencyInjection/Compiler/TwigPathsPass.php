@@ -19,6 +19,9 @@ final class TwigPathsPass implements CompilerPassInterface
 {
     private const TWIG_NAMESPACE = 'NowoYopassBundle';
 
+    /**
+     * Registers the application override directory and the bundle views for the @NowoYopassBundle namespace.
+     */
     public function process(ContainerBuilder $container): void
     {
         $loaderId = $this->getNativeLoaderServiceId($container);

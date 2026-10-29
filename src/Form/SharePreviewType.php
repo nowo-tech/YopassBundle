@@ -37,6 +37,9 @@ final class SharePreviewType extends AbstractType
 
     private const TARGET = 'data-nowo-yopass-manage-preview-target';
 
+    /**
+     * Builds the manage preview form (extend expiration / max reads).
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('password', PasswordType::class, [
@@ -97,6 +100,9 @@ final class SharePreviewType extends AbstractType
         ]);
     }
 
+    /**
+     * Exposes the preview Stimulus values to the form view.
+     */
     public function finishView(FormView $view, FormInterface $form, array $options): void
     {
         $this->detachClientOnlyChildren($view, [
@@ -108,6 +114,9 @@ final class SharePreviewType extends AbstractType
         ]);
     }
 
+    /**
+     * Configures the preview form options.
+     */
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
@@ -121,6 +130,9 @@ final class SharePreviewType extends AbstractType
         $resolver->setAllowedTypes('extend_enabled', 'bool');
     }
 
+    /**
+     * Returns the Twig block prefix of this form type.
+     */
     #[Override]
     public function getBlockPrefix(): string
     {

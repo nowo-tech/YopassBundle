@@ -30,6 +30,9 @@ final class ShareRevealType extends AbstractType
     use ClientOnlyFieldsTrait;
     use FormOptionsTrait;
 
+    /**
+     * Builds the public reveal form (password input in password mode).
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         if ($options['decryption_mode'] === 'password') {
@@ -57,6 +60,9 @@ final class ShareRevealType extends AbstractType
         ]);
     }
 
+    /**
+     * Exposes the reveal Stimulus values to the form view.
+     */
     public function finishView(FormView $view, FormInterface $form, array $options): void
     {
         $this->detachClientOnlyChildren($view, [
@@ -65,6 +71,9 @@ final class ShareRevealType extends AbstractType
         ]);
     }
 
+    /**
+     * Configures the decryption mode option.
+     */
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
@@ -76,6 +85,9 @@ final class ShareRevealType extends AbstractType
         $resolver->setAllowedTypes('decryption_mode', 'string');
     }
 
+    /**
+     * Returns the Twig block prefix of this form type.
+     */
     #[Override]
     public function getBlockPrefix(): string
     {

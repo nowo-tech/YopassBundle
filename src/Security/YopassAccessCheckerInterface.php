@@ -13,11 +13,23 @@ use Symfony\Component\Security\Core\User\UserInterface;
  */
 interface YopassAccessCheckerInterface
 {
+    /**
+     * Whether the user may open the manage UI.
+     */
     public function canAccess(?UserInterface $user = null): bool;
 
+    /**
+     * Whether the user may create shares.
+     */
     public function canCreate(?UserInterface $user = null): bool;
 
+    /**
+     * Whether the user may list shares.
+     */
     public function canList(?UserInterface $user = null): bool;
 
+    /**
+     * Whether the user may revoke shares.
+     */
     public function canRevoke(?UserInterface $user = null): bool;
 }

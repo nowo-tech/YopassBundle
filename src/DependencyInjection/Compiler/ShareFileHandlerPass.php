@@ -19,6 +19,9 @@ use function sprintf;
  */
 final class ShareFileHandlerPass implements CompilerPassInterface
 {
+    /**
+     * Wires the configured share file handler into the manage controller.
+     */
     public function process(ContainerBuilder $container): void
     {
         if (!$container->hasParameter('nowo_yopass.file_handler')) {

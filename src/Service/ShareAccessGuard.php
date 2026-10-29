@@ -17,11 +17,17 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final readonly class ShareAccessGuard
 {
+    /**
+     * Creates the guard with the event dispatcher.
+     */
     public function __construct(
         private EventDispatcherInterface $eventDispatcher,
     ) {
     }
 
+    /**
+     * Whether the user may perform the action on the share (owner by default, overridable via ShareAccessCheckEvent).
+     */
     public function canManage(UserInterface $user, SecureShare $share, ShareAccessAction $action): bool
     {
         $granted = UserIdResolver::isSameUser($share->getCreator(), $user);

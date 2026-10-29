@@ -11,6 +11,9 @@ final class DefaultShareFileHandler implements ShareFileHandlerInterface
 {
     private const MAX_FILE_BYTES = 512 * 1024;
 
+    /**
+     * Returns the maximum accepted file size in bytes.
+     */
     public function getMaxFileBytes(): int
     {
         return self::MAX_FILE_BYTES;

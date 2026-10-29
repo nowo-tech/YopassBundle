@@ -19,6 +19,9 @@ use function sprintf;
  */
 final class FileHandlerPass implements CompilerPassInterface
 {
+    /**
+     * Aliases the configured file handler and injects it into the manage controller.
+     */
     public function process(ContainerBuilder $container): void
     {
         if (!$container->hasParameter('nowo_yopass.file_handler')) {

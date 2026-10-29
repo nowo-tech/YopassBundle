@@ -26,6 +26,8 @@ enum CssFramework: string
     case None = 'none';
 
     /**
+     * Returns all CSS framework values.
+     *
      * @return list<string>
      */
     public static function values(): array
@@ -33,6 +35,9 @@ enum CssFramework: string
         return array_map(static fn (self $case): string => $case->value, self::cases());
     }
 
+    /**
+     * Whether the bundle layout loads a Bootstrap 5 compatible CDN stylesheet for this framework.
+     */
     public function loadsBootstrapCompatibleCdn(): bool
     {
         return match ($this) {
@@ -41,6 +46,9 @@ enum CssFramework: string
         };
     }
 
+    /**
+     * Whether the bundle layout loads the Bootstrap 4 CDN stylesheet for this framework.
+     */
     public function loadsBootstrap4Cdn(): bool
     {
         return $this === self::Bootstrap4;

@@ -31,6 +31,8 @@ use const JSON_THROW_ON_ERROR;
 final class PublicShareController extends AbstractController
 {
     /**
+     * Creates the public share controller.
+     *
      * @param array{layout: string, manage: string, public: string} $templates
      * @param array<string, array{path: string, name: string}> $routes
      */
@@ -44,6 +46,9 @@ final class PublicShareController extends AbstractController
     ) {
     }
 
+    /**
+     * Renders the public reveal page for a share (ciphertext is fetched and decrypted in the browser).
+     */
     #[Route('/share/{id}', name: 'nowo_yopass_public_share', methods: ['GET'])]
     public function show(string $id, Request $request): Response
     {
@@ -71,6 +76,9 @@ final class PublicShareController extends AbstractController
         ]);
     }
 
+    /**
+     * Consumes one read of a share and returns its ciphertext as JSON.
+     */
     #[Route('/share/{id}/consume', name: 'nowo_yopass_public_consume', methods: ['POST'])]
     public function consume(string $id, Request $request): JsonResponse
     {

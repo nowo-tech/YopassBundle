@@ -20,18 +20,27 @@ final class ShareCreateData
     public string $payloadKind = 'text';
 
     /**
+     * Resolves the absolute expiration date for the selected expiration option.
+     *
+     * Falls back to the first configured option when the submitted id is unknown.
+     *
      * @param list<array{id: string, interval: string}> $expirationOptions
+     * @param DateTimeImmutable|null $now Reference time (inject a clock in services; defaults to the current time)
+     *
+     * @return DateTimeImmutable Expiration date relative to $now
      */
-    public function resolveExpiresAt(array $expirationOptions): DateTimeImmutable
+    public function resolveExpiresAt(array $expirationOptions, ?DateTimeImmutable $now = null): DateTimeImmutable
     {
+        $now ??= new DateTimeImmutable();
+
         foreach ($expirationOptions as $option) {
             if ($option['id'] === $this->expiresIn) {
-                return new DateTimeImmutable('+' . ltrim($option['interval'], '+ '));
+                return $now->modify('+' . ltrim($option['interval'], '+ '));
             }
         }
 
         $fallback = $expirationOptions[0];
 
-        return new DateTimeImmutable('+' . ltrim($fallback['interval'], '+ '));
+        return $now->modify('+' . ltrim($fallback['interval'], '+ '));
     }
 }

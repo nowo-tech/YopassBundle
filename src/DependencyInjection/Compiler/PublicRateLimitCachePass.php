@@ -21,6 +21,9 @@ final class PublicRateLimitCachePass implements CompilerPassInterface
 {
     public const ENABLED_PARAMETER = 'nowo_yopass.public_rate_limit.enabled';
 
+    /**
+     * Warns when public rate limiting is enabled but no cache.app pool is available.
+     */
     public function process(ContainerBuilder $container): void
     {
         if (!$container->hasParameter(self::ENABLED_PARAMETER) || $container->getParameter(self::ENABLED_PARAMETER) !== true) {

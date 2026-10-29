@@ -17,6 +17,7 @@ use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
@@ -40,6 +41,9 @@ use function sprintf;
  */
 final class YopassExtension extends Extension implements PrependExtensionInterface
 {
+    /**
+     * Loads the bundle configuration and registers the bundle services.
+     */
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
@@ -89,6 +93,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 '%nowo_yopass.public_rate_limit.limit%',
                 '%nowo_yopass.public_rate_limit.interval_seconds%',
                 new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+                // REQ-DI-001: framework clock when available (falls back to the system clock).
+                new Reference(ClockInterface::class, ContainerInterface::NULL_ON_INVALID_REFERENCE),
             ]);
 
         $this->registerShareRepository($container, $driver, $database, $storageName, $collection, $config);
@@ -146,11 +152,17 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             ->setArgument('$fileSharesEnabled', $enabled);
     }
 
+    /**
+     * Returns the configuration alias ("nowo_yopass").
+     */
     public function getAlias(): string
     {
         return Configuration::ALIAS;
     }
 
+    /**
+     * Prepends Form Kit, asset package, UI Kit and Doctrine mapping configuration.
+     */
     public function prepend(ContainerBuilder $container): void
     {
         $this->prependFormKitDefaults($container);

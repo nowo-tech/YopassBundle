@@ -48,6 +48,8 @@ final class YopassRouteLoader extends Loader
     ];
 
     /**
+     * Creates the loader from the configured routes map and route prefix.
+     *
      * @param array<string, array{path: string, name: string}> $routes
      */
     public function __construct(
@@ -56,6 +58,9 @@ final class YopassRouteLoader extends Loader
     ) {
     }
 
+    /**
+     * Builds the Yopass route collection from the configured paths and names.
+     */
     public function load(mixed $resource, ?string $type = null): RouteCollection
     {
         // No instance "$loaded" flag: FrankenPHP worker reuses the container; a sticky
@@ -69,6 +74,9 @@ final class YopassRouteLoader extends Loader
         return $collection;
     }
 
+    /**
+     * Whether this loader handles the given resource type ("nowo_yopass").
+     */
     public function supports(mixed $resource, ?string $type = null): bool
     {
         return $type === 'nowo_yopass';

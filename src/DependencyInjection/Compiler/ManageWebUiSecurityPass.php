@@ -13,6 +13,9 @@ use Symfony\Component\DependencyInjection\Exception\LogicException;
  */
 final class ManageWebUiSecurityPass implements CompilerPassInterface
 {
+    /**
+     * Fails compilation when the manage Web UI requires authentication but SecurityBundle is missing.
+     */
     public function process(ContainerBuilder $container): void
     {
         if (!$container->hasParameter('nowo_yopass.web_ui.enabled')) {

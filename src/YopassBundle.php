@@ -22,6 +22,9 @@ final class YopassBundle extends Bundle
 {
     public const TRANSLATION_DOMAIN = 'NowoYopassBundle';
 
+    /**
+     * Registers the bundle compiler passes.
+     */
     public function build(ContainerBuilder $container): void
     {
         $container->addCompilerPass(new FileHandlerPass());
@@ -32,6 +35,9 @@ final class YopassBundle extends Bundle
         $container->addCompilerPass(new PublicRateLimitCachePass());
     }
 
+    /**
+     * Returns the bundle DI extension (alias "nowo_yopass").
+     */
     public function getContainerExtension(): ExtensionInterface
     {
         if (!$this->extension instanceof ExtensionInterface) {

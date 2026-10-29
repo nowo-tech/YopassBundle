@@ -29,6 +29,9 @@ final class ShareCreatedLinksType extends AbstractType
     use ClientOnlyFieldsTrait;
     use FormOptionsTrait;
 
+    /**
+     * Builds the read-only link fields shown after creating a share.
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         foreach ([
@@ -49,6 +52,9 @@ final class ShareCreatedLinksType extends AbstractType
         }
     }
 
+    /**
+     * Exposes the created-page Stimulus values to the form view.
+     */
     public function finishView(FormView $view, FormInterface $form, array $options): void
     {
         $this->detachClientOnlyChildren($view, [
@@ -58,6 +64,9 @@ final class ShareCreatedLinksType extends AbstractType
         ]);
     }
 
+    /**
+     * Configures the created-links form options.
+     */
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
@@ -67,6 +76,9 @@ final class ShareCreatedLinksType extends AbstractType
         ]);
     }
 
+    /**
+     * Returns the Twig block prefix of this form type.
+     */
     #[Override]
     public function getBlockPrefix(): string
     {

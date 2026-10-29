@@ -48,6 +48,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 final class ShareManageController extends AbstractController
 {
     /**
+     * Creates the manage controller with routes, templates, limits and share options.
+     *
      * @param array<string, array{path: string, name: string}> $routes
      * @param array{layout: string, manage: string, created: string, public: string} $templates
      * @param array{
@@ -88,6 +90,9 @@ final class ShareManageController extends AbstractController
     ) {
     }
 
+    /**
+     * Renders the manage page with the create form and the viewer's shares.
+     */
     #[Route('/tools/yopass', name: 'nowo_yopass_index', methods: ['GET'])]
     public function index(Request $request): Response
     {
@@ -148,6 +153,9 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
+    /**
+     * Stores a client-encrypted share submitted from the create form.
+     */
     #[Route('/tools/yopass/create', name: 'nowo_yopass_create', methods: ['POST'])]
     public function create(Request $request): RedirectResponse
     {
@@ -182,6 +190,9 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
+    /**
+     * Renders the page shown after creating a share (links and key handling).
+     */
     #[Route('/tools/yopass/{id}/created', name: 'nowo_yopass_created', methods: ['GET'])]
     public function created(string $id): Response
     {
@@ -206,6 +217,9 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
+    /**
+     * Returns share metadata as JSON for the manage preview (never the plaintext).
+     */
     #[Route('/tools/yopass/{id}/preview', name: 'nowo_yopass_preview', methods: ['GET'])]
     public function preview(string $id): JsonResponse
     {
@@ -233,6 +247,9 @@ final class ShareManageController extends AbstractController
         return new JsonResponse($result);
     }
 
+    /**
+     * Extends the expiration and/or max reads of a share (CSRF-protected JSON endpoint).
+     */
     #[Route('/tools/yopass/{id}/extend', name: 'nowo_yopass_extend', methods: ['POST'])]
     public function extend(string $id, Request $request): JsonResponse
     {
@@ -278,6 +295,9 @@ final class ShareManageController extends AbstractController
         ]);
     }
 
+    /**
+     * Revokes a share so it can no longer be read.
+     */
     #[Route('/tools/yopass/{id}/revoke', name: 'nowo_yopass_revoke', methods: ['POST'])]
     public function revoke(string $id, Request $request): RedirectResponse
     {
@@ -303,6 +323,9 @@ final class ShareManageController extends AbstractController
         return $this->redirectToRoute($this->routes['manage']['name']);
     }
 
+    /**
+     * Deletes a share owned by the viewer.
+     */
     #[Route('/tools/yopass/{id}/delete', name: 'nowo_yopass_delete', methods: ['POST'])]
     public function delete(string $id, Request $request): RedirectResponse
     {
@@ -328,6 +351,9 @@ final class ShareManageController extends AbstractController
         return $this->redirectToRoute($this->routes['manage']['name']);
     }
 
+    /**
+     * Deletes every share owned by the viewer.
+     */
     #[Route('/tools/yopass/delete-all', name: 'nowo_yopass_delete_all', methods: ['POST'])]
     public function deleteAll(Request $request): RedirectResponse
     {

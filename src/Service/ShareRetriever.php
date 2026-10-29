@@ -20,6 +20,9 @@ final readonly class ShareRetriever
 {
     private ClockInterface $clock;
 
+    /**
+     * Creates the retriever with the repository and an optional clock.
+     */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         ?ClockInterface $clock = null,
@@ -28,6 +31,8 @@ final readonly class ShareRetriever
     }
 
     /**
+     * Consumes one read of a share and returns the ciphertext payload or the reason it is unavailable.
+     *
      * @return array{status: string, ciphertext?: string, mode?: string}
      */
     public function consume(string $shareId): array
@@ -95,6 +100,9 @@ final readonly class ShareRetriever
         ];
     }
 
+    /**
+     * Returns the availability state of a share ("active", "revoked", "expired" or "consumed").
+     */
     public function availability(SecureShare $share): string
     {
         return $this->resolveAvailability($share);

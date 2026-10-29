@@ -54,11 +54,17 @@ final class ShareCreateType extends AbstractType
     /** Payload kinds the browser can submit; anything else is rejected by validation. */
     public const PAYLOAD_KINDS = ['text', 'file'];
 
+    /**
+     * Creates the form type with the share, sharing and limit options.
+     */
     public function __construct(
         private readonly TranslatorInterface $translator,
     ) {
     }
 
+    /**
+     * Builds the create form (ciphertext, expiration, max reads, payload kind and browser-only inputs).
+     */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         /** @var array{
@@ -137,6 +143,9 @@ final class ShareCreateType extends AbstractType
         });
     }
 
+    /**
+     * Exposes the Stimulus values and limits to the form view.
+     */
     public function finishView(FormView $view, FormInterface $form, array $options): void
     {
         $this->detachClientOnlyChildren($view, [
@@ -153,6 +162,9 @@ final class ShareCreateType extends AbstractType
         $view->vars['multipart'] = false;
     }
 
+    /**
+     * Configures the data class, CSRF token id and type options.
+     */
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([

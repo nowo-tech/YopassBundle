@@ -12,6 +12,9 @@ use Twig\Extension\GlobalsInterface;
  */
 final class YopassTwigExtension extends AbstractExtension implements GlobalsInterface
 {
+    /**
+     * Creates the extension with the Web UI layout, CSS framework and icon set.
+     */
     public function __construct(
         private readonly string $layoutTemplate,
         private readonly string $cssFramework,
@@ -19,6 +22,9 @@ final class YopassTwigExtension extends AbstractExtension implements GlobalsInte
     ) {
     }
 
+    /**
+     * Returns the Twig globals for the layout template, CSS framework and icon set.
+     */
     public function getGlobals(): array
     {
         return [

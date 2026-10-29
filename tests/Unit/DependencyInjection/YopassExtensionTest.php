@@ -24,6 +24,7 @@ use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Twig\YopassTwigExtension;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
 use stdClass;
 use Symfony\Bundle\FrameworkBundle\DependencyInjection\FrameworkExtension;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
@@ -62,6 +63,9 @@ final class YopassExtensionTest extends TestCase
         self::assertInstanceOf(Reference::class, $arguments[3]);
         self::assertSame('logger', (string) $arguments[3]);
         self::assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $arguments[3]->getInvalidBehavior());
+        self::assertInstanceOf(Reference::class, $arguments[4]);
+        self::assertSame(ClockInterface::class, (string) $arguments[4]);
+        self::assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $arguments[4]->getInvalidBehavior());
     }
 
     public function testLoadSetsParametersAndDefaultAccessChecker(): void

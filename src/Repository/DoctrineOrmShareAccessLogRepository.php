@@ -16,6 +16,9 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
 {
     use ResolvesEntityManagerTrait;
 
+    /**
+     * Creates the repository on the given entity manager.
+     */
     public function __construct(
         private EntityManagerInterface $entityManager,
         private ?ManagerRegistry $registry = null,
@@ -23,6 +26,9 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
     ) {
     }
 
+    /**
+     * Returns the most recent access log entries for a share.
+     */
     public function findByShare(SecureShare $share, int $limit = 50): array
     {
         /** @var list<ShareAccessLog> $logs */
@@ -35,11 +41,17 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
         return $logs;
     }
 
+    /**
+     * Schedules an access log entry for persistence.
+     */
     public function persist(ShareAccessLog $log): void
     {
         $this->em()->persist($log);
     }
 
+    /**
+     * Writes pending access log changes to the database.
+     */
     public function flush(): void
     {
         $this->em()->flush();
