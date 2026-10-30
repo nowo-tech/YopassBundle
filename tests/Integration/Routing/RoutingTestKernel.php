@@ -22,6 +22,8 @@ use Twig\Extra\TwigExtraBundle\TwigExtraBundle;
 
 use function sys_get_temp_dir;
 
+use const PHP_VERSION_ID;
+
 /**
  * Host-like kernel for REQ-SF-004 rule 7. Its routing is the Symfony default `routing.controllers` resource
  * (what `config/routes.yaml` of a Symfony >= 7.3 skeleton loads) and, only when $importBundleRoutes is true,
@@ -83,6 +85,10 @@ final class RoutingTestKernel extends Kernel
             'dbal' => ['url' => 'sqlite:///%kernel.cache_dir%/routing-test.sqlite'],
             'orm'  => [],
         ]);
+        if (PHP_VERSION_ID >= 80400) {
+            // PHP 8.4+ with Doctrine Bundle 2 (Symfony 7.4 jobs): native lazy objects (default in Doctrine Bundle 3).
+            $container->extension('doctrine', ['orm' => ['enable_native_lazy_objects' => true]]);
+        }
         $services = $container->services();
         $services->set('logger', NullLogger::class);
         $services->set(InMemoryShareRepository::class)->public();
