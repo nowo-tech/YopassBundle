@@ -48,6 +48,13 @@ the download link and the error on `flash_error`) and `nowo_ui_scripts` (`{{ par
 - `public/reveal.html.twig` — public reveal page (`/share/{id}`, id `public`); variables `header` (`View\PageHeader`),
   `page_layout`, `share`, `decryption_mode` (`key` | `password`), `routes`, `reveal_form`; `data-testid="yopass-reveal"`.
 
+**Security — the guest / public layout must not load third-party scripts.** The reveal page renders the decryption
+key (URL fragment / input) and the decrypted secret inside the layout it extends, so any analytics, tag manager,
+session replay, chat or other third-party script in `web_ui.public_layout_template` / `nowo_ui_kit.layouts.guest` can
+read them. Use a dedicated minimal layout (first-party scripts only) and a strict `Content-Security-Policy` when the
+site-wide guest layout carries such scripts. A host template set through `web_ui.templates.public` must not add them
+either. See [Usage — layout security](USAGE.md#public-reveal-page-layout-security) and [Security](SECURITY.md).
+
 The key / password never reaches the server: it is read from the URL fragment (`#decrypt_key=`) or the form, whose
 fields have no `name`; legacy `?decrypt_key=` links are redirected (`303`) to the fragment before routing.
 

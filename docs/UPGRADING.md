@@ -98,6 +98,12 @@ twig:
 | Bootstrap `div.modal` preview, `window.confirm()` on revoke / delete | native `<dialog>` (UiKit `dialog` partial) and the UiKit confirm `<dialog>`; the layout must load the UiKit runtime scripts (`{{ include(nowo_ui_partial('scripts')) }}`, done by the UiKit layouts) |
 | Framework classes in markup / form types (`btn`, `card`, `alert`, `form-control`, `d-none`, …) | theme slots + `nowo-ui-*` / `nowo-yopass-*` hooks; `hidden` attribute; FormKit profile `yopass` sets only `nowo-ui-input` |
 
+**Security:** the reveal page now renders inside your guest layout. That layout (or `web_ui.public_layout_template`)
+must **not load third-party scripts** (analytics, tag manager, session replay, chat widgets): they could read the
+decryption key and the decrypted secret. Point `web_ui.public_layout_template` at a dedicated minimal layout if your
+site-wide guest layout carries them. The reveal and "share created" pages now send `Cache-Control: no-store, private`
+and `Referrer-Policy: no-referrer`. See [Usage — layout security](USAGE.md#public-reveal-page-layout-security).
+
 - **Host layout still a 1.x layout?** If `web_ui.layout_template` points at a layout that renders `body` (e.g. your
   `base.html.twig` or `@NowoYopassBundle/layout_integrate_host.html.twig`), the pages keep rendering through the
   deprecated `@NowoYopassBundle/_legacy_layout.html.twig` bridge (a deprecation is logged). Move the layout to

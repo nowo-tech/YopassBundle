@@ -185,6 +185,26 @@ describe('yopass-manage-preview-controller', () => {
 
         byId('close').click();
         expect(modal.open).toBe(false);
+        expect(target('output').textContent).toBe('');
+        expect(visible('output')).toBe(false);
+        expect(target<HTMLInputElement>('key').value).toBe('');
+        expect(target<HTMLInputElement>('publicLink').value).toBe('');
+    });
+
+    it('wipes the decrypted text when the dialog is closed outside the controller (Escape, backdrop)', async () => {
+        const { ciphertext, key } = await encryptText('do not linger');
+        storeShareKey('share-1', 'key', key);
+        respond({ status: 'ok', availability: 'active', ciphertext, mode: 'key', publicPath: '/s/share-1' });
+
+        await mount();
+        byId('open').click();
+        await vi.waitFor(() => expect(target('output').textContent).toBe('do not linger'));
+
+        target<HTMLDialogElement>('modal').close();
+        await vi.waitFor(() => expect(target('output').textContent).toBe(''));
+        expect(visible('output')).toBe(false);
+        expect(target<HTMLInputElement>('key').value).toBe('');
+        expect(document.body.textContent).not.toContain('do not linger');
     });
 
     it('resets the preview state when the dialog is closed outside the controller (Escape, UiKit close)', async () => {
@@ -316,6 +336,19 @@ describe('yopass-manage-preview-controller', () => {
         expect(link.download).toBe('report.txt');
         expect(link.textContent).toBe('report.txt');
         expect(visible('output')).toBe(false);
+
+        const revokeObjectURL = vi.fn();
+        const originalRevoke = URL.revokeObjectURL;
+        URL.revokeObjectURL = revokeObjectURL;
+        onTestFinished(() => {
+            URL.revokeObjectURL = originalRevoke;
+        });
+
+        byId('close').click();
+        expect(revokeObjectURL).toHaveBeenCalledWith('blob:test-url');
+        expect(link.hasAttribute('href')).toBe(false);
+        expect(link.textContent).toBe('');
+        expect(visible('downloadLink')).toBe(false);
     });
 
     it('shows PREVIEW_FAILED when the preview request fails', async () => {

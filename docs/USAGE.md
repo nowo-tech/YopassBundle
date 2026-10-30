@@ -4,6 +4,7 @@
 
 - [Manage shares](#manage-shares)
 - [Public reveal](#public-reveal)
+  - [Public reveal page: layout security](#public-reveal-page-layout-security)
 - [Console](#console)
 - [Custom access control](#custom-access-control)
   - [Route-level checker](#route-level-checker)
@@ -48,6 +49,24 @@ Each successful consume consumes one read. Decryption happens client-side; the s
 
 The reveal page is a unique page on the UiKit **guest layout** (`nowo_ui_kit.layouts.guest`, or
 `web_ui.public_layout_template`).
+
+### Public reveal page: layout security
+
+The decryption key (URL fragment or form input) and the decrypted secret live in the reveal page's DOM, which is
+rendered inside **your** guest / public layout. Every script that layout loads runs in the same page and can read them.
+
+- The guest / public layout used for the reveal page **must not load third-party scripts**: no tag manager, analytics,
+  session replay, chat widget, A/B testing, marketing or ad snippet, and no script from a third-party CDN. Only
+  first-party, self-hosted scripts (UiKit, your own assets, `js/yopass.js`).
+- If your site-wide guest layout carries such scripts, point `web_ui.public_layout_template` at a dedicated minimal
+  layout (extend `@NowoUiKit/layout/guest.html.twig` or use the UiKit bridge) without them.
+- Send a strict `Content-Security-Policy` for `/share/{id}` (at least `script-src 'self'`; no `unsafe-inline` /
+  third-party origins).
+- The same rule applies to the admin layout for the "share created" page and the manage preview (stored key, one-click
+  link, decrypted preview).
+
+The bundle sends `Cache-Control: no-store, private` and `Referrer-Policy: no-referrer` on the reveal page
+(`GET /share/{id}`) and the "share created" page; do not override them in a listener or a reverse proxy.
 
 Legacy URLs keep working: a raw `#key` fragment is read as before, and query-string keys (`?decrypt_key=`, `?key=`, `?password=`, used by links created up to 1.8.0) are redirected by the server (`303`, before routing) to the `#decrypt_key=` form.
 
