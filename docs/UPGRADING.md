@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.10.1](#to-1101)
 - [To 1.10.0](#to-1100)
   - [Template contract (UiKit page contract, REQ-UI-003)](#template-contract-uikit-page-contract-req-ui-003)
   - [Configuration keys](#configuration-keys)
@@ -68,6 +69,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.10.1
+
+From **1.10.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 No action needed when you import the `nowo_yopass` route loader (`resource: .`, `type: nowo_yopass`, the documented setup). If on Symfony >= 7.3 the share pages answered without that import (through the default `controllers: { resource: routing.controllers }` of `config/routes.yaml`), they are gone now: import the loader (see [INSTALLATION](INSTALLATION.md)).
 
