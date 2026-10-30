@@ -69,6 +69,8 @@
 
 ## Unreleased
 
+No action needed when you import the `nowo_yopass` route loader (`resource: .`, `type: nowo_yopass`, the documented setup). If on Symfony >= 7.3 the share pages answered without that import (through the default `controllers: { resource: routing.controllers }` of `config/routes.yaml`), they are gone now: import the loader (see [INSTALLATION](INSTALLATION.md)).
+
 ## To 1.10.0
 
 From **1.9.0**:

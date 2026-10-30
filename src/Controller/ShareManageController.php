@@ -34,7 +34,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -46,7 +45,6 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  * {@see YopassRouteLoader} imports those attributes and applies {@code nowo_yopass.routes} /
  * {@code route_prefix} overrides so hosts need not fork controllers.
  */
-#[AsController]
 final class ShareManageController extends AbstractController
 {
     /**

@@ -17,7 +17,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\Routing\Attribute\Route;
 
 use const JSON_THROW_ON_ERROR;
@@ -28,7 +27,6 @@ use const JSON_THROW_ON_ERROR;
  * Paths and methods are declared with {@see Route} attributes (REQ-SF-004);
  * {@see YopassRouteLoader} imports them and applies config path/name overrides.
  */
-#[AsController]
 final class PublicShareController extends AbstractController
 {
     /**

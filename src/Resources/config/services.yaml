@@ -15,11 +15,18 @@ services:
             - '../../Document/'
             - '../../Doctrine/'     # Metadata listeners wired in YopassExtension
             - '../../Security/PublicEndpointRateLimiter.php'
+            - '../../Controller/'
 
     # Manage and public controllers must be public for Symfony routing.
+    # REQ-SF-004 rule 7: controllers are registered explicitly, NOT autoconfigured (no #[AsController]). On
+    # Symfony >= 7.3 a #[Route] class is autoconfigured with the routing.controller tag and the host's
+    # `routing.controllers` resource would expose /tools/yopass/... and the anonymous /share/{id} endpoints without
+    # the nowo_yopass route loader (bypassing the configured routes, route_prefix and web_ui.enabled: false).
     Nowo\YopassBundle\Controller\:
         resource: '../../Controller/'
         public: true
+        autoconfigure: false
+        tags: ['controller.service_arguments', 'container.service_subscriber']
 
     # Loads routes from nowo_yopass.routes and nowo_yopass.route_prefix parameters; only the public routes when
     # nowo_yopass.web_ui.enabled is false (REQ-SEC-004 L2).
@@ -58,6 +65,8 @@ services:
     # Authenticated manage UI and create API. File handler alias is wired by ShareFileHandlerPass.
     Nowo\YopassBundle\Controller\ShareManageController:
         public: true
+        autoconfigure: false
+        tags: ['controller.service_arguments', 'container.service_subscriber']
         arguments:
             $routes: '%nowo_yopass.routes%'
             $maxCiphertextBytes: '%nowo_yopass.max_ciphertext_bytes%'
@@ -71,6 +80,8 @@ services:
     # Anonymous public reveal and consume endpoints (ciphertext only; decryption in browser).
     Nowo\YopassBundle\Controller\PublicShareController:
         public: true
+        autoconfigure: false
+        tags: ['controller.service_arguments', 'container.service_subscriber']
         arguments:
             $routes: '%nowo_yopass.routes%'
 
