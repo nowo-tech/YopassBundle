@@ -12,6 +12,7 @@ use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareRetriever;
+use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,7 +34,6 @@ final class PublicShareController extends AbstractController
     /**
      * Creates the public share controller.
      *
-     * @param array{layout: string, manage: string, public: string} $templates
      * @param array<string, array{path: string, name: string}> $routes
      */
     public function __construct(
@@ -41,7 +41,7 @@ final class PublicShareController extends AbstractController
         private readonly ShareRetriever $shareRetriever,
         private readonly ShareAccessLogger $accessLogger,
         private readonly PublicEndpointRateLimiter $rateLimiter,
-        private readonly array $templates,
+        private readonly YopassPageFactory $pages,
         private readonly array $routes,
     ) {
     }
@@ -68,7 +68,10 @@ final class PublicShareController extends AbstractController
         } catch (JsonException) {
         }
 
-        return $this->render($this->templates['public'], [
+        // REQ-UI-003: unique page on the guest layout (page_layout null = nowo_ui_kit.layouts.guest).
+        return $this->render($this->pages->template('public'), [
+            'header'          => $this->pages->publicHeader(),
+            'page_layout'     => $this->pages->publicLayout(),
             'share'           => $share,
             'decryption_mode' => $mode,
             'routes'          => $this->routes,

@@ -53,7 +53,7 @@ final class ShareCreatedLinksType extends AbstractType
                 'required' => false,
                 'label'    => false,
                 'attr'     => [
-                    'class'                           => 'form-control',
+                    'class'                           => 'nowo-ui-input nowo-ui-input--full',
                     'readonly'                        => true,
                     'data-nowo-yopass-created-target' => $target,
                 ],

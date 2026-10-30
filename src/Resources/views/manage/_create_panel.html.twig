@@ -1,0 +1,105 @@
+{#
+  Create-share panel of the manage page (REQ-UI-003 data region before the list scaffold). The secret (text or file) is
+  encrypted in the browser by the nowo-yopass-create controller; only the ciphertext is posted (REQ-TWIG-005: the
+  browser-only controls of ShareCreateType have no name and are never submitted).
+  Variables: create_form (FormView of ShareCreateType), can_share_file, max_file_bytes, max_secret_chars, bundle.
+  Theme slots: card, card_header, card_title, card_intro, card_body, form, tabs, tab, tab_active, muted, form_error,
+  form_row, form_label, flash_error, form_actions, btn_primary.
+#}
+{% trans_default_domain 'NowoYopassBundle' %}
+{% set _b = bundle|default('NowoYopassBundle') %}
+<section class="{{ nowo_ui_class('card', _b) }} {{ nowo_ui_class('section', _b) }} nowo-yopass-create" data-testid="yopass-create"{{ nowo_ui_attrs('card', _b) }}>
+    <header class="{{ nowo_ui_class('card_header', _b) }}">
+        <h2 class="{{ nowo_ui_class('card_title', _b) }}">{{ 'yopass.create.title'|trans }}</h2>
+        <p class="{{ nowo_ui_class('card_intro', _b) }}">{{ 'yopass.e2e_notice'|trans }}</p>
+    </header>
+    <div class="{{ nowo_ui_class('card_body', _b) }}">
+        {{ form_start(create_form, {
+            attr: {
+                class: nowo_ui_class('form', _b),
+                'data-controller': 'nowo-yopass-create',
+                'data-action': 'submit->nowo-yopass-create#submit',
+                'data-nowo-yopass-create-target': 'form',
+                'data-nowo-yopass-create-file-enabled-value': can_share_file ? 'true' : 'false',
+                'data-nowo-yopass-create-max-file-bytes-value': max_file_bytes,
+                'data-nowo-yopass-create-max-secret-chars-value': max_secret_chars,
+                'data-nowo-yopass-create-counter-format-value': 'yopass.secret.counter'|trans,
+                'data-nowo-yopass-create-counter-class-value': nowo_ui_class('muted', _b),
+                'data-nowo-yopass-create-counter-limit-class-value': nowo_ui_class('form_error', _b),
+                'data-nowo-yopass-create-tab-class-value': nowo_ui_class('tab', _b),
+                'data-nowo-yopass-create-tab-active-class-value': nowo_ui_class('tab_active', _b),
+                'data-nowo-yopass-create-errors-value': {
+                    SECRET_REQUIRED: 'yopass.error.secret'|trans,
+                    SECRET_TOO_LARGE: 'yopass.error.secret_too_large'|trans,
+                    FILE_REQUIRED: 'yopass.error.file'|trans,
+                    FILE_TOO_LARGE: 'yopass.error.file_too_large'|trans,
+                    PASSWORD_REQUIRED: 'yopass.error.password'|trans,
+                    CREATE_FAILED: 'yopass.error.create'|trans,
+                }|json_encode,
+            },
+        }) }}
+
+            <div class="{{ nowo_ui_class('tabs', _b) }}" role="tablist"{{ nowo_ui_attrs('tabs', _b) }}>
+                <button type="button" role="tab" aria-selected="true" class="{{ nowo_ui_class('tab_active', _b) }}" data-action="nowo-yopass-create#switchTab" data-yopass-tab="text">
+                    {{ 'yopass.tab.text'|trans }}
+                </button>
+                {% if can_share_file %}
+                    <button type="button" role="tab" aria-selected="false" class="{{ nowo_ui_class('tab', _b) }}" data-action="nowo-yopass-create#switchTab" data-yopass-tab="file">
+                        {{ 'yopass.tab.file'|trans }}
+                    </button>
+                {% endif %}
+            </div>
+
+            {{ form_widget(create_form.ciphertext, {attr: {'data-nowo-yopass-create-target': 'ciphertext'}}) }}
+            {{ form_widget(create_form.payloadKind, {attr: {'data-nowo-yopass-create-target': 'payloadKind'}}) }}
+
+            <div class="{{ nowo_ui_class('form_row', _b) }}" data-nowo-yopass-create-target="textPanel">
+                {{ form_label(create_form.secret) }}
+                {{ form_widget(create_form.secret) }}
+                <div class="nowo-yopass-create__secret-meta">
+                    <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.secret.help'|trans({'%limit%': max_secret_chars}) }}</p>
+                    <span class="{{ nowo_ui_class('muted', _b) }}" data-nowo-yopass-create-target="secretCounter" aria-live="polite"></span>
+                </div>
+                <p class="{{ nowo_ui_class('form_error', _b) }}" hidden data-nowo-yopass-create-target="secretLimitHelp">{{ 'yopass.secret.limit_reached'|trans }}</p>
+            </div>
+
+            {% if create_form.file is defined %}
+                <div class="{{ nowo_ui_class('form_row', _b) }}" hidden data-nowo-yopass-create-target="filePanel">
+                    {{ form_label(create_form.file) }}
+                    {{ form_widget(create_form.file) }}
+                    <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.file.help'|trans }}</p>
+                </div>
+            {% endif %}
+
+            {{ form_row(create_form.expiresIn) }}
+            {{ form_row(create_form.maxReads) }}
+
+            {# REQ-TWIG-005: browser-only radios (unmapped, never posted; see ShareCreateType::finishView()), rendered by the host form theme. #}
+            {{ form_row(create_form.encryptionMode) }}
+
+            {% if create_form.customPassword is defined %}
+                <div class="{{ nowo_ui_class('form_row', _b) }}" hidden data-nowo-yopass-create-target="customPasswordPanel">
+                    {{ form_label(create_form.customPassword) }}
+                    {{ form_widget(create_form.customPassword) }}
+                    <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.key.custom_help'|trans }}</p>
+                </div>
+            {% endif %}
+
+            {# REQ-TWIG-003 rule 3: children with custom markup are rendered above; the loop renders the rest (CSRF, future fields). #}
+            {% for child in create_form %}
+                {% if not child.rendered %}
+                    {{ form_row(child) }}
+                {% endif %}
+            {% endfor %}
+
+            <div class="{{ nowo_ui_class('flash_error', _b) }}" role="alert" hidden data-nowo-yopass-create-target="error"></div>
+
+            <div class="{{ nowo_ui_class('form_actions', _b) }}"{{ nowo_ui_attrs('form_actions', _b) }}>
+                <button type="submit" class="{{ nowo_ui_class('btn_primary', _b) }}" data-nowo-yopass-create-target="submit">
+                    {{ 'yopass.create.submit'|trans }}
+                </button>
+            </div>
+
+        {{ form_end(create_form) }}
+    </div>
+</section>

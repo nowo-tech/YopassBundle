@@ -31,22 +31,22 @@ function markup(options: MountOptions = {}): string {
     const optional = options.optionalTargets === false
         ? ''
         : `
-            <div data-preview-target="error" class="d-none"></div>
-            <pre data-preview-target="output" class="d-none"></pre>
-            <a data-preview-target="downloadLink" class="d-none"></a>
+            <div data-preview-target="error" hidden></div>
+            <pre data-preview-target="output" hidden></pre>
+            <a data-preview-target="downloadLink" hidden></a>
             <input data-preview-target="publicLink">
             <button id="copy" data-action="preview#copyPublicLink">Copy</button>
             <span data-preview-target="availability"></span>
-            <div data-preview-target="passwordPanel" class="d-none"></div>
-            <div data-preview-target="keyPanel" class="d-none"></div>
+            <div data-preview-target="passwordPanel" hidden></div>
+            <div data-preview-target="keyPanel" hidden></div>
             <button data-preview-target="decryptButton">Decrypt</button>
-            <div data-preview-target="extendPanel" class="d-none">
+            <div data-preview-target="extendPanel" hidden>
                 <span data-preview-target="extendSummary"></span>
-                <div data-preview-target="extendSuccess" class="d-none"></div>
+                <div data-preview-target="extendSuccess" hidden></div>
             </div>
-            <div data-preview-target="accessLogPanel" class="d-none">
-                <p data-preview-target="accessLogEmpty" class="d-none">No reads yet</p>
-                <table data-preview-target="accessLogTable" class="d-none">
+            <div data-preview-target="accessLogPanel" hidden>
+                <p data-preview-target="accessLogEmpty" hidden>No reads yet</p>
+                <table data-preview-target="accessLogTable" hidden>
                     <tbody data-preview-target="accessLogBody"></tbody>
                 </table>
             </div>`;
@@ -63,7 +63,7 @@ function markup(options: MountOptions = {}): string {
             <button id="open" data-share-id="share-1" data-action="preview#open">Preview</button>
             <button id="open-extend" data-share-id="share-1" data-action="preview#openExtend">Extend</button>
             <button id="open-missing" data-action="preview#open">Broken</button>
-            <div data-preview-target="modal" aria-hidden="true" style="display:none">
+            <dialog data-preview-target="modal">
                 ${optional}
                 <form id="decrypt-form" data-action="submit->preview#decryptFromForm">
                     <input data-preview-target="password">
@@ -83,7 +83,7 @@ function markup(options: MountOptions = {}): string {
                     </select>
                 </form>
                 <button id="close" data-action="preview#close">Close</button>
-            </div>
+            </dialog>
         </div>`;
 }
 
@@ -105,7 +105,7 @@ function target<T extends HTMLElement = HTMLElement>(name: string): T {
 }
 
 function visible(name: string): boolean {
-    return !target(name).classList.contains('d-none');
+    return !target(name).hidden;
 }
 
 function byId<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -149,7 +149,7 @@ describe('yopass-manage-preview-controller', () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
 
         expect(fetchMock).not.toHaveBeenCalled();
-        expect(target('modal').style.display).toBe('none');
+        expect(target<HTMLDialogElement>('modal').open).toBe(false);
     });
 
     it('opens the modal, renders metadata and decrypts with the stored key', async () => {
@@ -170,11 +170,8 @@ describe('yopass-manage-preview-controller', () => {
         await vi.waitFor(() => expect(target('output').textContent).toBe('preview me'));
 
         expect(fetchMock).toHaveBeenCalledWith('/manage/share-1/preview', { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-        const modal = target('modal');
-        expect(modal.classList.contains('show')).toBe(true);
-        expect(modal.style.display).toBe('block');
-        expect(modal.hasAttribute('aria-hidden')).toBe(false);
-        expect(document.body.classList.contains('modal-open')).toBe(true);
+        const modal = target<HTMLDialogElement>('modal');
+        expect(modal.open).toBe(true);
         expect(target('availability').textContent).toBe('Active');
         expect(target<HTMLInputElement>('publicLink').value)
             .toBe(`${window.location.origin}/s/share-1#decrypt_key=${encodeURIComponent(key)}`);
@@ -187,10 +184,19 @@ describe('yopass-manage-preview-controller', () => {
         expect(target<HTMLInputElement>('key').value).toBe(key);
 
         byId('close').click();
-        expect(modal.classList.contains('show')).toBe(false);
-        expect(modal.style.display).toBe('none');
-        expect(modal.getAttribute('aria-hidden')).toBe('true');
-        expect(document.body.classList.contains('modal-open')).toBe(false);
+        expect(modal.open).toBe(false);
+    });
+
+    it('resets the preview state when the dialog is closed outside the controller (Escape, UiKit close)', async () => {
+        respond({ status: 'ok', availability: 'active', publicPath: '/s/share-1' });
+
+        const controller = await mount();
+        byId('open').click();
+        await vi.waitFor(() => expect(target<HTMLDialogElement>('modal').open).toBe(true));
+        expect((controller as unknown as { activeShareId: string | null }).activeShareId).toBe('share-1');
+
+        target<HTMLDialogElement>('modal').close();
+        await vi.waitFor(() => expect((controller as unknown as { activeShareId: string | null }).activeShareId).toBeNull());
     });
 
     it('never embeds the stored key in the public link when embedding is not allowed', async () => {
@@ -440,7 +446,7 @@ describe('yopass-manage-preview-controller', () => {
             submit('extend-form');
             await vi.waitFor(() => expect(target('error').textContent).toBe('Extend failed.'));
 
-            target('error').classList.add('d-none');
+            target('error').hidden = true;
             fetchMock.mockRejectedValueOnce(new Error('offline'));
             submit('extend-form');
             await vi.waitFor(() => expect(visible('error')).toBe(true));

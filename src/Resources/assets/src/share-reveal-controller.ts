@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { setHidden, syncHidden } from './visibility';
 import { decryptPayload, payloadToDisplayAsync } from './yopass-crypto';
 import { loadShareKey, storeShareKey } from './yopass-share-keys';
 import {
@@ -61,6 +62,7 @@ export default class extends Controller {
     private capturedKeyMaterial = '';
 
     connect(): void {
+        syncHidden(this.element as HTMLElement, this.identifier);
         this.captureKeyMaterialFromUrl();
 
         if (this.modeValue === 'password') {
@@ -110,22 +112,22 @@ export default class extends Controller {
             if (display.type === 'text') {
                 if (this.hasOutputTarget) {
                     this.outputTarget.textContent = display.text;
-                    this.outputTarget.classList.remove('d-none');
+                    setHidden(this.outputTarget, false);
                 }
 
                 if (this.hasDownloadLinkTarget) {
-                    this.downloadLinkTarget.classList.add('d-none');
+                    setHidden(this.downloadLinkTarget, true);
                 }
             } else {
                 if (this.hasOutputTarget) {
-                    this.outputTarget.classList.add('d-none');
+                    setHidden(this.outputTarget, true);
                 }
 
                 if (this.hasDownloadLinkTarget) {
                     this.downloadLinkTarget.href = URL.createObjectURL(display.blob);
                     this.downloadLinkTarget.download = display.filename;
                     this.downloadLinkTarget.textContent = display.filename;
-                    this.downloadLinkTarget.classList.remove('d-none');
+                    setHidden(this.downloadLinkTarget, false);
                 }
             }
 
@@ -165,11 +167,11 @@ export default class extends Controller {
         this.passwordTarget.value = urlMaterial;
 
         if (this.hasPasswordPanelTarget) {
-            this.passwordPanelTarget.classList.add('d-none');
+            setHidden(this.passwordPanelTarget, true);
         }
 
         if (this.hasPasswordFromLinkHintTarget) {
-            this.passwordFromLinkHintTarget.classList.remove('d-none');
+            setHidden(this.passwordFromLinkHintTarget, false);
         }
     }
 
@@ -182,22 +184,22 @@ export default class extends Controller {
             }
 
             if (this.hasKeyPanelTarget) {
-                this.keyPanelTarget.classList.add('d-none');
+                setHidden(this.keyPanelTarget, true);
             }
 
             if (this.hasKeyFromLinkHintTarget) {
-                this.keyFromLinkHintTarget.classList.remove('d-none');
+                setHidden(this.keyFromLinkHintTarget, false);
             }
 
             return;
         }
 
         if (this.hasKeyPanelTarget) {
-            this.keyPanelTarget.classList.remove('d-none');
+            setHidden(this.keyPanelTarget, false);
         }
 
         if (this.hasKeyFromLinkHintTarget) {
-            this.keyFromLinkHintTarget.classList.add('d-none');
+            setHidden(this.keyFromLinkHintTarget, true);
         }
     }
 
@@ -240,31 +242,31 @@ export default class extends Controller {
     private showError(status: string): void {
         if (this.hasErrorTarget) {
             this.errorTarget.textContent = this.errorsValue[status] ?? status;
-            this.errorTarget.classList.remove('d-none');
+            setHidden(this.errorTarget, false);
         }
 
         if (this.hasOutputTarget) {
-            this.outputTarget.classList.add('d-none');
+            setHidden(this.outputTarget, true);
         }
     }
 
     private hideError(): void {
         if (this.hasErrorTarget) {
-            this.errorTarget.classList.add('d-none');
+            setHidden(this.errorTarget, true);
         }
     }
 
     private hideRevealControls(): void {
         if (this.hasRevealButtonTarget) {
-            this.revealButtonTarget.classList.add('d-none');
+            setHidden(this.revealButtonTarget, true);
         }
 
         if (this.hasPasswordPanelTarget) {
-            this.passwordPanelTarget.classList.add('d-none');
+            setHidden(this.passwordPanelTarget, true);
         }
 
         if (this.hasKeyPanelTarget) {
-            this.keyPanelTarget.classList.add('d-none');
+            setHidden(this.keyPanelTarget, true);
         }
     }
 }

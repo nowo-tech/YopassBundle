@@ -17,7 +17,6 @@ describe('yopass entry', () => {
         expect(log).toHaveBeenCalledTimes(1);
         expect(log.mock.calls[0][0]).toContain('[yopass] script loaded, build: %c2026-04-14T12:42:34.906Z');
         expect(register.mock.calls.map((call) => call[0])).toEqual([
-            'nowo-yopass-confirm',
             'nowo-yopass-create',
             'nowo-yopass-created',
             'nowo-yopass-manage-preview',

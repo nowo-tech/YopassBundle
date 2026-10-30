@@ -1,0 +1,103 @@
+{#
+  Preview / extend dialog of the manage page (REQ-UI-001 modals: native <dialog> through the UiKit `dialog` partial,
+  header / body / footer). Opened by the View / Extend row actions (Action::dialogId = YopassPageFactory::PREVIEW_DIALOG_ID,
+  data-nowo-ui-dialog-open) and filled by the nowo-yopass-manage-preview controller (metadata, in-browser decryption,
+  access log, extend). REQ-TWIG-005: the controls are SharePreviewType fields without a name (never submitted).
+  Variables: preview_form (FormView of SharePreviewType), can_extend, bundle.
+#}
+{% trans_default_domain 'NowoYopassBundle' %}
+{% set _b = bundle|default('NowoYopassBundle') %}
+{% set _body %}
+    {{ form_start(preview_form, {attr: {
+        class: nowo_ui_class('form', _b),
+        autocomplete: 'off',
+        'data-action': 'submit->nowo-yopass-manage-preview#decryptFromForm:prevent',
+    }}) }}
+        <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.preview.intro'|trans }}</p>
+        <p><span class="{{ nowo_ui_class('badge_neutral', _b) }}" data-nowo-yopass-manage-preview-target="availability"></span></p>
+
+        {{ form_row(preview_form.password) }}
+        {{ form_row(preview_form.key) }}
+
+        <div class="{{ nowo_ui_class('toolbar', _b) }}">
+            <button type="button" class="{{ nowo_ui_class('btn_primary', _b) }}" data-action="nowo-yopass-manage-preview#decryptFromForm" data-nowo-yopass-manage-preview-target="decryptButton">
+                {{ 'yopass.preview.decrypt'|trans }}
+            </button>
+        </div>
+
+        <pre class="{{ nowo_ui_class('code_block', _b) }} nowo-yopass-secret" hidden data-nowo-yopass-manage-preview-target="output"></pre>
+        <a href="#" class="{{ nowo_ui_class('btn_primary', _b) }}" hidden download data-nowo-yopass-manage-preview-target="downloadLink"></a>
+
+        <div class="{{ nowo_ui_class('form_row', _b) }}">
+            {{ form_label(preview_form.publicLink) }}
+            <div class="{{ nowo_ui_class('toolbar', _b) }} nowo-yopass-copy-field">
+                {{ form_widget(preview_form.publicLink) }}
+                <button type="button" class="{{ nowo_ui_class('btn_secondary', _b) }}" data-action="nowo-yopass-manage-preview#copyPublicLink">
+                    {{ 'yopass.link.copy'|trans }}
+                </button>
+            </div>
+        </div>
+
+        <div class="{{ nowo_ui_class('flash_error', _b) }}" role="alert" hidden data-nowo-yopass-manage-preview-target="error"></div>
+
+        <section class="{{ nowo_ui_class('section', _b) }}" hidden data-nowo-yopass-manage-preview-target="accessLogPanel">
+            <h3 class="{{ nowo_ui_class('card_title', _b) }}">{{ 'yopass.preview.access_log.title'|trans }}</h3>
+            <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.preview.access_log.intro'|trans }}</p>
+            <p class="{{ nowo_ui_class('muted', _b) }}" hidden data-nowo-yopass-manage-preview-target="accessLogEmpty">
+                {{ 'yopass.preview.access_log.empty'|trans }}
+            </p>
+            <div class="{{ nowo_ui_class('table_wrap', _b) }}">
+                <table class="{{ nowo_ui_class('table', _b) }}" hidden data-nowo-yopass-manage-preview-target="accessLogTable">
+                    <thead class="{{ nowo_ui_class('table_head', _b) }}">
+                        <tr class="{{ nowo_ui_class('table_head_row', _b) }}">
+                            <th scope="col" class="{{ nowo_ui_class('table_head_cell', _b) }}">{{ 'yopass.preview.access_log.when'|trans }}</th>
+                            <th scope="col" class="{{ nowo_ui_class('table_head_cell', _b) }}">{{ 'yopass.preview.access_log.read'|trans }}</th>
+                            <th scope="col" class="{{ nowo_ui_class('table_head_cell', _b) }}">{{ 'yopass.preview.access_log.ip'|trans }}</th>
+                            <th scope="col" class="{{ nowo_ui_class('table_head_cell', _b) }}">{{ 'yopass.preview.access_log.user_agent'|trans }}</th>
+                        </tr>
+                    </thead>
+                    <tbody data-nowo-yopass-manage-preview-target="accessLogBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        {% if can_extend %}
+            <section class="{{ nowo_ui_class('section', _b) }}" hidden data-nowo-yopass-manage-preview-target="extendPanel">
+                <h3 class="{{ nowo_ui_class('card_title', _b) }}">{{ 'yopass.extend.title'|trans }}</h3>
+                <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.extend.intro'|trans }}</p>
+                <p>
+                    <span class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.extend.current'|trans }}:</span>
+                    <span data-nowo-yopass-manage-preview-target="extendSummary"></span>
+                </p>
+                {{ form_row(preview_form.extendExpiresIn) }}
+                {{ form_row(preview_form.extendMaxReads) }}
+                <div class="{{ nowo_ui_class('toolbar', _b) }}">
+                    <button type="button" class="{{ nowo_ui_class('btn_primary', _b) }}" data-action="nowo-yopass-manage-preview#submitExtend">
+                        {{ 'yopass.extend.submit'|trans }}
+                    </button>
+                </div>
+                <div class="{{ nowo_ui_class('flash_success', _b) }}" role="status" hidden data-nowo-yopass-manage-preview-target="extendSuccess"></div>
+            </section>
+        {% endif %}
+        {% for child in preview_form %}
+            {% if not child.rendered %}
+                {{ form_row(child) }}
+            {% endif %}
+        {% endfor %}
+    {{ form_end(preview_form) }}
+{% endset %}
+{% set _footer %}
+    <button type="button" class="{{ nowo_ui_class('btn_secondary', _b) }}" data-nowo-ui-dialog-close data-action="nowo-yopass-manage-preview#close">
+        {{ 'yopass.preview.close'|trans }}
+    </button>
+{% endset %}
+{{ include(nowo_ui_partial('dialog', _b), {
+    id: constant('Nowo\\YopassBundle\\Ui\\YopassPageFactory::PREVIEW_DIALOG_ID'),
+    title: 'yopass.preview.title'|trans,
+    body: _body,
+    footer: _footer,
+    size: 'lg',
+    attr: {'data-nowo-yopass-manage-preview-target': 'modal', 'data-testid': 'yopass-preview'},
+    close_label: 'yopass.preview.close'|trans,
+    bundle: _b,
+}, with_context: false) }}

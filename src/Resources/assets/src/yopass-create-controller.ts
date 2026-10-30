@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { setHidden, isHidden, syncHidden } from './visibility';
 import {
     countSecretCharactersForSubmit,
     encryptPayload,
@@ -35,6 +36,10 @@ export default class extends Controller {
         maxFileBytes: { type: Number, default: 0 },
         maxSecretChars: { type: Number, default: 512 * 1024 },
         counterFormat: { type: String, default: '%count% / %limit%' },
+        counterClass: { type: String, default: '' },
+        counterLimitClass: { type: String, default: '' },
+        tabClass: { type: String, default: '' },
+        tabActiveClass: { type: String, default: '' },
         errors: { type: Object, default: {} },
     };
 
@@ -57,6 +62,10 @@ export default class extends Controller {
     declare readonly maxFileBytesValue: number;
     declare readonly maxSecretCharsValue: number;
     declare readonly counterFormatValue: string;
+    declare readonly counterClassValue: string;
+    declare readonly counterLimitClassValue: string;
+    declare readonly tabClassValue: string;
+    declare readonly tabActiveClassValue: string;
     declare readonly errorsValue: Record<string, string>;
     declare readonly hasTextPanelTarget: boolean;
     declare readonly hasFilePanelTarget: boolean;
@@ -74,6 +83,7 @@ export default class extends Controller {
     };
 
     connect(): void {
+        syncHidden(this.element as HTMLElement, this.identifier);
         this.syncKeyMode();
         this.secretTarget.addEventListener('input', this.onSecretInput);
         this.secretTarget.addEventListener('paste', this.onSecretInput);
@@ -93,12 +103,21 @@ export default class extends Controller {
             return;
         }
 
+        this.element.querySelectorAll<HTMLElement>('[data-yopass-tab]').forEach((tabButton) => {
+            const active = (tabButton.dataset.yopassTab ?? 'text') === tab;
+            tabButton.setAttribute('aria-selected', active ? 'true' : 'false');
+            const className = active ? this.tabActiveClassValue : this.tabClassValue;
+            if (className !== '') {
+                tabButton.className = className;
+            }
+        });
+
         if (this.hasTextPanelTarget) {
-            this.textPanelTarget.classList.toggle('d-none', tab !== 'text');
+            setHidden(this.textPanelTarget, tab !== 'text');
         }
 
         if (this.hasFilePanelTarget) {
-            this.filePanelTarget.classList.toggle('d-none', tab !== 'file');
+            setHidden(this.filePanelTarget, tab !== 'file');
         }
 
         this.syncSecretCounter();
@@ -108,7 +127,7 @@ export default class extends Controller {
         const passwordMode = this.isPasswordMode();
 
         if (this.hasCustomPasswordPanelTarget) {
-            this.customPasswordPanelTarget.classList.toggle('d-none', !passwordMode);
+            setHidden(this.customPasswordPanelTarget, !passwordMode);
         }
     }
 
@@ -122,11 +141,15 @@ export default class extends Controller {
         const overLimit = count > this.maxSecretCharsValue;
 
         this.secretCounterTarget.textContent = this.formatCounterLabel(count);
-        this.secretCounterTarget.classList.toggle('text-danger', atLimit);
-        this.secretCounterTarget.classList.toggle('text-secondary', !atLimit);
+        // Theme slot classes (muted / form_error) from the template; data-limit-reached is the styling hook.
+        const counterClass = atLimit ? this.counterLimitClassValue : this.counterClassValue;
+        if (counterClass !== '') {
+            this.secretCounterTarget.className = counterClass;
+        }
+        this.secretCounterTarget.toggleAttribute('data-limit-reached', atLimit);
 
         if (this.hasSecretLimitHelpTarget) {
-            this.secretLimitHelpTarget.classList.toggle('d-none', !atLimit);
+            setHidden(this.secretLimitHelpTarget, !atLimit);
         }
 
         if (this.hasSubmitTarget) {
@@ -189,7 +212,7 @@ export default class extends Controller {
     private async buildPayload(): Promise<YopassPayload> {
         const activeFile = this.fileEnabledValue
             && this.hasFilePanelTarget
-            && !this.filePanelTarget.classList.contains('d-none');
+            && !isHidden(this.filePanelTarget);
 
         if (activeFile) {
             const file = this.fileInputTarget.files?.[0];
@@ -221,7 +244,7 @@ export default class extends Controller {
     private isTextTabActive(): boolean {
         return !this.fileEnabledValue
             || !this.hasFilePanelTarget
-            || this.filePanelTarget.classList.contains('d-none');
+            || isHidden(this.filePanelTarget);
     }
 
     private isSecretWithinLimit(): boolean {
@@ -270,12 +293,12 @@ export default class extends Controller {
         }
 
         this.errorTarget.textContent = this.errorsValue[code] ?? code;
-        this.errorTarget.classList.remove('d-none');
+        setHidden(this.errorTarget, false);
     }
 
     private hideError(): void {
         if (this.hasErrorTarget) {
-            this.errorTarget.classList.add('d-none');
+            setHidden(this.errorTarget, true);
         }
     }
 }

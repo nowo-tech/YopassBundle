@@ -43,29 +43,25 @@ final class SharePreviewType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('password', PasswordType::class, [
-            'mapped'     => false,
-            'required'   => false,
-            'label'      => 'yopass.public.password_field',
-            'label_attr' => ['class' => 'form-label'],
-            'row_attr'   => ['class' => 'mb-3', self::TARGET => 'passwordPanel'],
-            'attr'       => ['class' => 'form-control', self::TARGET => 'password', 'autocomplete' => 'off'],
+            'mapped'   => false,
+            'required' => false,
+            'label'    => 'yopass.public.password_field',
+            'row_attr' => [self::TARGET => 'passwordPanel'],
+            'attr'     => ['class' => 'nowo-ui-input nowo-ui-input--wide', self::TARGET => 'password', 'autocomplete' => 'off'],
         ]);
         $builder->add('key', TextType::class, [
-            'mapped'     => false,
-            'required'   => false,
-            'label'      => 'yopass.preview.key_field',
-            'label_attr' => ['class' => 'form-label'],
-            'help'       => 'yopass.preview.key_help',
-            'help_attr'  => ['class' => 'text-secondary small mt-1 mb-0'],
-            'row_attr'   => ['class' => 'mb-3 d-none', self::TARGET => 'keyPanel'],
-            'attr'       => ['class' => 'form-control', self::TARGET => 'key', 'autocomplete' => 'off'],
+            'mapped'   => false,
+            'required' => false,
+            'label'    => 'yopass.preview.key_field',
+            'help'     => 'yopass.preview.key_help',
+            'row_attr' => ['hidden' => true, self::TARGET => 'keyPanel'],
+            'attr'     => ['class' => 'nowo-ui-input nowo-ui-input--wide', self::TARGET => 'key', 'autocomplete' => 'off'],
         ]);
         $builder->add('publicLink', TextType::class, [
-            'mapped'     => false,
-            'required'   => false,
-            'label'      => 'yopass.preview.public_link',
-            'label_attr' => ['class' => 'form-label'],
-            'attr'       => ['class' => 'form-control', 'readonly' => true, self::TARGET => 'publicLink'],
+            'mapped'   => false,
+            'required' => false,
+            'label'    => 'yopass.preview.public_link',
+            'attr'     => ['class' => 'nowo-ui-input nowo-ui-input--full', 'readonly' => true, self::TARGET => 'publicLink'],
         ]);
 
         if ($options['extend_enabled'] !== true) {
@@ -82,21 +78,19 @@ final class SharePreviewType extends AbstractType
             'mapped'       => false,
             'required'     => false,
             'label'        => 'yopass.extend.expiration_field',
-            'label_attr'   => ['class' => 'form-label'],
             'placeholder'  => 'yopass.extend.keep_expiration',
             'choices'      => $expirationIds === [] ? [] : array_combine($expirationIds, $expirationIds),
             'choice_label' => static fn (string $value): string => 'yopass.expires.' . $value,
-            'attr'         => ['class' => 'form-select', self::TARGET => 'extendExpiresIn'],
+            'attr'         => ['class' => 'nowo-ui-input', self::TARGET => 'extendExpiresIn'],
         ]);
         $builder->add('extendMaxReads', ChoiceType::class, [
             'mapped'                    => false,
             'required'                  => false,
             'label'                     => 'yopass.extend.reads_field',
-            'label_attr'                => ['class' => 'form-label'],
             'placeholder'               => 'yopass.extend.keep_reads',
             'choices'                   => $maxReadsOptions === [] ? [] : array_combine($maxReadsOptions, $maxReadsOptions),
             'choice_translation_domain' => false,
-            'attr'                      => ['class' => 'form-select', self::TARGET => 'extendMaxReads'],
+            'attr'                      => ['class' => 'nowo-ui-input', self::TARGET => 'extendMaxReads'],
         ]);
     }
 

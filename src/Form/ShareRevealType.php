@@ -37,26 +37,23 @@ final class ShareRevealType extends AbstractType
     {
         if ($options['decryption_mode'] === 'password') {
             $builder->add('password', PasswordType::class, [
-                'mapped'     => false,
-                'required'   => false,
-                'label'      => 'yopass.public.password_field',
-                'label_attr' => ['class' => 'form-label'],
-                'row_attr'   => ['class' => 'mb-3', 'data-nowo-share-reveal-target' => 'passwordPanel'],
-                'attr'       => ['class' => 'form-control', 'data-nowo-share-reveal-target' => 'password', 'autocomplete' => 'off'],
+                'mapped'   => false,
+                'required' => false,
+                'label'    => 'yopass.public.password_field',
+                'row_attr' => ['data-nowo-share-reveal-target' => 'passwordPanel'],
+                'attr'     => ['class' => 'nowo-ui-input nowo-ui-input--wide', 'data-nowo-share-reveal-target' => 'password', 'autocomplete' => 'off'],
             ]);
 
             return;
         }
 
         $builder->add('key', TextType::class, [
-            'mapped'     => false,
-            'required'   => false,
-            'label'      => 'yopass.public.key_field',
-            'label_attr' => ['class' => 'form-label'],
-            'help'       => 'yopass.public.key_help',
-            'help_attr'  => ['class' => 'text-secondary small mt-1 mb-0'],
-            'row_attr'   => ['class' => 'mb-3 d-none', 'data-nowo-share-reveal-target' => 'keyPanel'],
-            'attr'       => ['class' => 'form-control', 'data-nowo-share-reveal-target' => 'key', 'autocomplete' => 'off'],
+            'mapped'   => false,
+            'required' => false,
+            'label'    => 'yopass.public.key_field',
+            'help'     => 'yopass.public.key_help',
+            'row_attr' => ['hidden' => true, 'data-nowo-share-reveal-target' => 'keyPanel'],
+            'attr'     => ['class' => 'nowo-ui-input nowo-ui-input--wide', 'data-nowo-share-reveal-target' => 'key', 'autocomplete' => 'off'],
         ]);
     }
 

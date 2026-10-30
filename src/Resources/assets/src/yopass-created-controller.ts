@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { setHidden, syncHidden } from './visibility';
 import { consumePendingShareKey } from './yopass-share-keys';
 import {
     buildShareUrlWithKey,
@@ -47,6 +48,7 @@ export default class extends Controller {
     declare readonly hasContentTarget: boolean;
 
     connect(): void {
+        syncHidden(this.element as HTMLElement, this.identifier);
         const resolved = this.resolveKeyMaterial();
 
         if (!resolved) {
@@ -57,6 +59,11 @@ export default class extends Controller {
 
         this.renderLinks(resolved.material, resolved.mode);
         stripShareKeyFromUrl();
+    }
+
+    /** The links form only holds read-only fields: never submit it (Enter in a field). */
+    preventSubmit(event: Event): void {
+        event.preventDefault();
     }
 
     copyOneClickLink(): void {
@@ -114,18 +121,18 @@ export default class extends Controller {
         this.resultKeyTarget.value = keyMaterial;
 
         if (this.hasRememberNoticeTarget) {
-            this.rememberNoticeTarget.classList.toggle('d-none', !this.showRememberNoticeValue);
+            setHidden(this.rememberNoticeTarget, !this.showRememberNoticeValue);
         }
     }
 
     private showKeyUnavailable(): void {
         if (this.hasContentTarget) {
-            this.contentTarget.classList.add('d-none');
+            setHidden(this.contentTarget, true);
         }
 
         if (this.hasErrorTarget) {
             this.errorTarget.textContent = this.keyUnavailableMessageValue;
-            this.errorTarget.classList.remove('d-none');
+            setHidden(this.errorTarget, false);
         }
     }
 }

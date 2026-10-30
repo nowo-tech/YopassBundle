@@ -23,4 +23,13 @@ final class YopassTwigExtensionTest extends TestCase
             'nowo_yopass_icon_set'        => 'bootstrap-icons',
         ], $extension->getGlobals());
     }
+
+    public function testDefaultsWhenNothingIsConfigured(): void
+    {
+        self::assertSame([
+            'nowo_yopass_layout_template' => YopassTwigExtension::DEFAULT_LAYOUT,
+            'nowo_yopass_css_framework'   => 'tabler',
+            'nowo_yopass_icon_set'        => 'tabler-icons',
+        ], (new YopassTwigExtension())->getGlobals());
+    }
 }
