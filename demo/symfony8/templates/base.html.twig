@@ -1,17 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ app.request.locale|default('en') }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Yopass Demo{% endblock %}</title>
+    {# Demo app assets: the host (not the bundle) loads the CSS framework (REQ-UI-001 / REQ-UI-003). #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
     <link rel="stylesheet" href="{{ asset('css/demo.css') }}">
+    {% block stylesheets %}{% endblock %}
 </head>
 <body>
 <div class="page">
-    <div class="container py-4">
-        {% block body %}{% endblock %}
+    <header class="navbar navbar-expand-md d-print-none demo-masthead">
+        <div class="container">
+            <a class="navbar-brand" href="{{ path('nowo_yopass_index') }}">
+                <i class="ti ti-lock-square-rounded me-2" aria-hidden="true"></i>Yopass Bundle demo
+            </a>
+            <div class="navbar-nav flex-row gap-3">
+                <a class="nav-link" href="{{ path('nowo_yopass_index') }}">My shares</a>
+                <span class="nav-link text-secondary">Symfony 8 · FrankenPHP · UiKit page contract</span>
+            </div>
+        </div>
+    </header>
+    <div class="page-wrapper">
+        <div class="container py-4">
+            {% block body %}{% endblock %}
+        </div>
     </div>
 </div>
+{% block javascripts %}{% endblock %}
 </body>
 </html>

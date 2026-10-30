@@ -1,2 +1,4 @@
 twig:
     file_name_pattern: '*.twig'
+    # Host form theme (REQ-UI-003: the bundle markup has no framework classes; the host theme styles the fields).
+    form_themes: ['bootstrap_5_layout.html.twig']

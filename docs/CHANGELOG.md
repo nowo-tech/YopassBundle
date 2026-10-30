@@ -46,6 +46,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Yopass on the UiKit page contract (REQ-UI-003): list / show scaffolds fed by view models, public reveal page on the UiKit guest layout, canonical `web_ui.*` / `security.roles.*` keys with deprecated aliases. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Template contract
+
+- **Manage page** `manage/index.html.twig` extends `@NowoUiKit/page/list.html.twig` (`View\ListPage` from `Ui\YopassPageFactory::managePage()`); data block `nowo_ui_list_row`; `nowo_ui_content` adds the create panel (`manage/_create_panel.html.twig`) and the preview dialog (`manage/_preview_dialog.html.twig`, UiKit `dialog` partial, native `<dialog>`). Header, back link, Delete all, pagination, empty state, row actions (View, Extend, Revoke, Delete) and confirm dialogs come from UiKit.
+- **Share created page** `manage/created.html.twig` extends `@NowoUiKit/page/show.html.twig` (`View\ShowPage`); data block `nowo_ui_show_sections`.
+- **Public reveal page** `public/reveal.html.twig` is a unique page on the UiKit guest layout (`nowo_ui_layout.guest` or `web_ui.public_layout_template`); it no longer prints its own `<html>` document nor loads Tabler from a CDN.
+- **Removed:** `layout.html.twig` (default shell loading Tabler / Bootstrap / icon fonts from CDNs; the 1.x value of `web_ui.layout_template` maps to the UiKit layout) and `_action_icons.html.twig` (row actions are UiKit `Action`s with canonical kinds `view`, `restore`, `cancel`, `delete`). The 1.x Bootstrap `div.modal` preview and the `nowo-yopass-confirm` controller (`window.confirm()`) are gone (UiKit dialog / confirm contracts).
+- No framework utility classes in bundle markup, form types or scripts: theme slots (`nowo_ui_class()`), `nowo-ui-*` and `nowo-yopass-*` hooks only; toggled elements use the `hidden` attribute instead of `d-none`. Form fields carry `nowo-ui-input` (FormKit profile `yopass` without framework classes); the host form theme styles them.
+- New `docs/TEMPLATES.md` (pages → scaffolds, view models, data blocks, unique pages) and the shared contract test `tests/Integration/Contract/PageContractTest.php` (UiKit `PageContractTestCase`, strict missing-translation rule).
+
+### Added
+
+- `web_ui.path_prefix`, `web_ui.public_layout_template`, `web_ui.templates.{manage,created,public}` and `security.roles.{admin,create,list,revoke}` (REQ-UI-003 vocabulary).
+- `Ui\YopassPages` (layouts, per-page templates, deprecated 1.x layout bridge `_legacy_layout.html.twig`) and `Ui\YopassPageFactory` (UiKit view models).
+- Translation key `yopass.list.actions` (7 locales).
+- Container compile error when the built-in role checker is used and every role list is empty (nobody could open the manage UI).
+
+### Changed
+
+- Requires `nowo-tech/ui-kit-bundle` `^2.15.4` (was `^1.4 || ^2.2`).
+- `web_ui.layout_template` defaults to `null` (UiKit `nowo_ui_kit.layouts.admin`); `web_ui.css_framework` / `icon_set` default to `null` and, when set, are only copied to `nowo_ui_kit` (the CSS stack is inherited from UiKit).
+- The FormKit profile `yopass` seeded by the bundle no longer adds Bootstrap classes (`form-control`, `form-select`, `mb-2`, …); it sets `nowo-ui-input` and `convention_requires_translation: true`.
+- `ShareManageController` / `PublicShareController` take `Ui\YopassPageFactory` instead of the `$templates` array.
+
+### Deprecated
+
+- `route_prefix` (use `web_ui.path_prefix`), `templates.layout` / `templates.{manage,created,public}` (use `web_ui.layout_template` / `web_ui.templates.<page>`), `security.{admin,create,list,revoke}_roles` (use `security.roles.<action>`), `web_ui.css_framework` / `web_ui.icon_set` (use `nowo_ui_kit`), the Twig globals `nowo_yopass_layout_template` / `nowo_yopass_css_framework` / `nowo_yopass_icon_set`, `layout_integrate_host.html.twig` and 1.x layouts without the UiKit canonical blocks (bridged). All removed in 2.0.
+
 ## [1.9.0] - 2026-10-29
 
 Yopass: decryption key kept in the URL fragment (never sent to the server), recipe APP_SECRET removed, password mode works (libsodium sumo) See [UPGRADING](UPGRADING.md#to-190).

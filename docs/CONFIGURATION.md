@@ -21,9 +21,8 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
   - [Share list and per-share access events](#share-list-and-per-share-access-events)
   - [Public rate limiting](#public-rate-limiting)
   - [Custom access checker interface](#custom-access-checker-interface)
-- [Web UI (manage pages)](#web-ui-manage-pages)
+- [Web UI (UiKit page contract)](#web-ui-uikit-page-contract)
   - [Host layout integration](#host-layout-integration)
-- [Templates](#templates)
 - [Other options](#other-options)
 - [Assets](#assets)
 - [DevKit integration (future)](#devkit-integration-future)
@@ -211,7 +210,7 @@ When enabled, successful public consumes are logged for the share creator (previ
 
 ## Routes
 
-Each route has `path` and `name`. Optional `route_prefix` is prepended to every path (e.g. `/admin`).
+Each route has `path` and `name`. Optional `web_ui.path_prefix` (deprecated alias: `route_prefix`) is prepended to every path, manage and public (e.g. `/{_locale}`).
 
 | Key | Default path | Default name |
 |-----|--------------|--------------|
@@ -264,16 +263,25 @@ nowo_yopass:
         access_checker: App\Security\DevKitYopassAccessChecker
 ```
 
-Default role configuration:
+Default role configuration (REQ-UI-002 / REQ-UI-003 vocabulary):
 
 | Option | Default | Purpose |
 |--------|---------|---------|
-| `security.admin_roles` | `[ROLE_ADMIN]` | Full access bypass |
-| `security.access_roles` | `[ROLE_ADMIN]` | Open manage UI |
-| `security.create_roles` | `[ROLE_ADMIN]` | Create shares |
-| `security.list_roles` | `[ROLE_ADMIN]` | List own shares |
-| `security.revoke_roles` | `[ROLE_ADMIN]` | Revoke own shares |
+| `security.access_roles` | `[ROLE_ADMIN]` | Open the manage UI |
+| `security.roles.admin` | `[ROLE_ADMIN]` | Full access bypass (every feature) |
+| `security.roles.create` | `[ROLE_ADMIN]` | Create shares |
+| `security.roles.list` | `[ROLE_ADMIN]` | List and preview own shares |
+| `security.roles.revoke` | `[ROLE_ADMIN]` | Revoke, extend and delete own shares |
+| `security.access_checker` | `null` | Service implementing `YopassAccessCheckerInterface` (replaces the role checker) |
 | `security.allow_unauthenticated` | `false` | DEV/DEMO only: skip SecurityBundle requirement (never enable in production) |
+
+An empty list grants that permission to nobody (only `security.roles.admin` bypasses it). With the built-in role checker
+and the Web UI on, the container refuses to compile when **every** list (`access_roles` and all `roles.*`) is empty,
+because nobody could ever open the manage UI.
+
+**Deprecated since 1.10** (mapped, removed in 2.0): `security.admin_roles` → `security.roles.admin`,
+`security.create_roles` → `security.roles.create`, `security.list_roles` → `security.roles.list`,
+`security.revoke_roles` → `security.roles.revoke`. When both are set, the canonical key wins.
 
 When `allow_unauthenticated` is `false` (default), the bundle requires **Symfony SecurityBundle** at compile time. Set it to `true` only in local demos without authentication.
 
@@ -329,87 +337,99 @@ interface YopassAccessCheckerInterface
 }
 ```
 
-## Web UI (manage pages)
+## Web UI (UiKit page contract)
 
-Configure look-and-feel and host layout integration (REQ-UI-001):
+The pages are on the **UiKit page contract** (REQ-UI-003, [UiKitBundle](https://github.com/nowo-tech/UiKitBundle)
+`^2.15.4`): the manage page extends the UiKit **list scaffold**, the "share created" page the **show scaffold**, and the
+public reveal page is a unique page on the UiKit **guest layout**. The bundle ships no layout, no CSS framework and no
+CDN: the host theme (UiKit `nowo_ui_kit.theme`, the host layout and the host form theme) styles every page. See
+[Templates](TEMPLATES.md) for pages, view models and data blocks.
 
 ```yaml
+nowo_ui_kit:
+    css_framework: bootstrap5            # bootstrap5 | bootstrap4 | tailwind | foundation | tabler | custom | none
+    icon_set: bootstrap-icons            # bootstrap-icons | tabler-icons | ux_icon | svg_inline | none
+    row_actions_display: icon            # icon | text | icon_text
+    layouts:
+        admin: 'layouts/admin.html.twig' # your admin layout or bridge (renders the canonical nowo_ui_* blocks)
+        guest: 'layouts/guest.html.twig' # your public layout or bridge (the reveal page)
+
 nowo_yopass:
     web_ui:
         enabled: true
-        layout_template: 'base.html.twig'   # your project layout
-        css_framework: bootstrap5           # bootstrap | bootstrap4 | bootstrap5 | tailwind | foundation | custom | tabler | none
-        icon_set: bootstrap-icons           # bootstrap-icons | tabler-icons | ux_icon | svg_inline | none
+        path_prefix: ''                  # prefix of every bundle route (e.g. /{_locale})
+        layout_template: ~               # null = nowo_ui_kit.layouts.admin
+        public_layout_template: ~        # null = nowo_ui_kit.layouts.guest
+        templates:
+            manage: ~                    # null = @NowoYopassBundle/manage/index.html.twig
+            created: ~                   # null = @NowoYopassBundle/manage/created.html.twig
+            public: ~                    # null = @NowoYopassBundle/public/reveal.html.twig
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `web_ui.enabled` | `true` | Manage Web UI feature flag. When false, only the public routes (`/share/{id}`, `/share/{id}/consume`) are registered and the CSRF / SecurityBundle compile checks of the manage UI are skipped. When true, access is enforced by `security.access_roles` and the host firewall. |
-| `web_ui.layout_template` | `@NowoYopassBundle/layout.html.twig` | Layout extended by manage pages (Twig global `nowo_yopass_layout_template`). |
-| `web_ui.css_framework` | `tabler` | CSS stack for macros and optional CDN in the bundle default layout. |
-| `web_ui.icon_set` | `tabler-icons` | Icon set for row actions when using bundle markup. |
+| `web_ui.enabled` | `true` | Manage Web UI feature flag. When false, only the public routes (`/share/{id}`, `/share/{id}/consume`) are registered and the CSRF / SecurityBundle compile checks of the manage UI are skipped. When true, access is enforced by `security.*` and the host firewall. |
+| `web_ui.path_prefix` | `''` | Prefix prepended to every bundle route path (manage and public). Replaces `route_prefix`. |
+| `web_ui.layout_template` | `null` | Layout the manage pages extend (`page.layout`). Null = `nowo_ui_kit.layouts.admin`. **Set the project admin layout in UiKit once** (`nowo_ui_kit.layouts.admin`); use this key only for a Yopass-specific layout. A 1.x layout without the UiKit canonical blocks (e.g. a `base.html.twig` with `body`) is wrapped in the deprecated `_legacy_layout.html.twig` bridge. The 1.x default `@NowoYopassBundle/layout.html.twig` maps to null. |
+| `web_ui.public_layout_template` | `null` | Layout of the public reveal page. Null = `nowo_ui_kit.layouts.guest`. |
+| `web_ui.templates.<page>` | `null` | Per-page template override (`manage`, `created`, `public`): a host template that `{% extends '@!NowoYopassBundle/...' %}` and overrides one data block. |
+| `web_ui.css_framework` | `null` | **Deprecated since 1.10**: set `nowo_ui_kit.css_framework`. When set (and `nowo_ui_kit.css_framework` is not), it is copied to UiKit (`bootstrap` → `bootstrap5`). |
+| `web_ui.icon_set` | `null` | **Deprecated since 1.10**: set `nowo_ui_kit.icon_set`. When set (and `nowo_ui_kit.icon_set` is not), it is copied to UiKit. |
 
-**Canonical key:** `web_ui.layout_template`. The legacy `templates.layout` key remains as a BC alias: if you only customize `templates.layout`, it is used when `web_ui.layout_template` is still the bundle default.
+**Deprecated root keys (1.10, removed in 2.0):** `route_prefix` → `web_ui.path_prefix`; `templates.layout` →
+`web_ui.layout_template`; `templates.manage` / `templates.created` / `templates.public` → `web_ui.templates.<page>`.
+The canonical key wins when both are set.
 
 ### Host layout integration
 
-Manage pages extend `nowo_yopass_layout_template` and call `{{ parent() }}` in `stylesheets` / `javascripts` so host assets stack with bundle assets.
+Point `nowo_ui_kit.layouts.admin` / `guest` at your layouts **once** for every Nowo bundle. A host layout either
+extends `@NowoUiKit/layout/admin.html.twig` / `guest.html.twig`, or `{% use '@NowoUiKit/layout/_bridge.html.twig' %}`
+inside the project shell (reference: `demo/symfony8/templates/layouts/admin.html.twig`):
 
-**Bootstrap 5 host app:**
+```twig
+{# templates/layouts/admin.html.twig #}
+{% extends 'base.html.twig' %}
+{% use '@NowoUiKit/layout/_bridge.html.twig' %}
 
-```yaml
-nowo_yopass:
-    web_ui:
-        layout_template: 'base.html.twig'
-        css_framework: bootstrap5
-        icon_set: bootstrap-icons
+{% block title %}{{ block('nowo_ui_bridge_title') }}{% endblock %}
+{% block stylesheets %}{{ parent() }}<link rel="stylesheet" href="{{ asset('css/nowo-ui.css', 'nowo_ui_kit') }}">{{ nowo_ui_tokens() }}{{ block('nowo_ui_bridge_assets') }}{% endblock %}
+{% block body %}{{ block('nowo_ui_bridge_body') }}{% endblock %}
+{% block javascripts %}{{ parent() }}{{ include(nowo_ui_partial('scripts')) }}{{ block('nowo_ui_bridge_end') }}{% endblock %}
 ```
 
-**Tailwind host app:**
+The pages fill `nowo_ui_document_title`, `nowo_ui_page_header`, `nowo_ui_content`, `nowo_ui_modals` and stack the
+bundle script in `nowo_ui_scripts` with `{{ parent() }}` (asset package `nowo_yopass`, `js/yopass.js`), so host and
+UiKit scripts keep loading. The UiKit runtime scripts (`dialog`, `confirm`, …) must be loaded by the layout (the UiKit
+layouts and the `scripts` partial do it): the View / Extend row actions open the preview `<dialog>` and Revoke /
+Delete / Delete all open the UiKit confirm `<dialog>`.
+
+**CSS stack examples** (the bundle markup carries only `nowo-ui-*` semantic classes, bundle hooks `nowo-yopass-*` and
+UiKit theme slots, so switching the stack is one UiKit key):
 
 ```yaml
-nowo_yopass:
-    web_ui:
-        layout_template: 'layouts/admin.html.twig'
-        css_framework: tailwind
-        icon_set: svg_inline
+# Bootstrap 5 (or Tabler) host
+nowo_ui_kit: { css_framework: bootstrap5, icon_set: bootstrap-icons }
+twig: { form_themes: ['bootstrap_5_layout.html.twig'] }   # host form theme for the fields
+
+# Tailwind host
+nowo_ui_kit: { css_framework: tailwind, icon_set: svg_inline }
+
+# Foundation host
+nowo_ui_kit: { css_framework: foundation, icon_set: none }
+
+# Own design system: nowo-ui-* classes + --nowo-ui-* tokens only
+nowo_ui_kit:
+    css_framework: custom
+    icon_set: svg_inline
+    row_actions_display: text
+    theme:
+        tokens: { primary: 'var(--brand)', radius: '0.25rem' }
+        bundles:
+            NowoYopassBundle: { classes: { table: 'data-table data-table--dense' } }
 ```
 
-**Foundation host app:**
-
-```yaml
-nowo_yopass:
-    web_ui:
-        layout_template: 'admin.html.twig'
-        css_framework: foundation
-        icon_set: none
-```
-
-**Custom design system (`nowo-ui-*` semantic classes only):**
-
-```yaml
-nowo_yopass:
-    web_ui:
-        layout_template: 'base.html.twig'
-        css_framework: custom
-        icon_set: svg_inline
-```
-
-When your project layout uses a different content block name, add a thin bridge template (see `@NowoYopassBundle/layout_integrate_host.html.twig`) and point `layout_template` at it.
-
-The public reveal page (`public/reveal.html.twig`) stays standalone and does not use the manage layout.
-
-## Templates
-
-Override via `templates/bundles/NowoYopassBundle/` or config:
-
-```yaml
-nowo_yopass:
-    templates:
-        layout: '@NowoYopassBundle/layout.html.twig'   # BC alias for web_ui.layout_template
-        manage: '@NowoYopassBundle/manage/index.html.twig'
-        public: '@NowoYopassBundle/public/reveal.html.twig'
-```
+Form fields carry the `nowo-ui-input` hook (FormKit profile `yopass`, which the host may redefine); the host form
+theme (`twig.form_themes` or the FormKit `css_framework`) adds the framework classes.
 
 ## Other options
 
