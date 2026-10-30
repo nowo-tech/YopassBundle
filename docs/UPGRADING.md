@@ -3,6 +3,8 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Template contract (UiKit page contract, REQ-UI-003)](#template-contract-uikit-page-contract-req-ui-003)
+  - [Configuration keys](#configuration-keys)
 - [To 1.9.0](#to-190)
   - [Remove the recipe `APP_SECRET` and rotate it (security)](#remove-the-recipe-app_secret-and-rotate-it-security)
   - [One-click links: key in the URL fragment, embed options honoured (security)](#one-click-links-key-in-the-url-fragment-embed-options-honoured-security)
@@ -65,6 +67,67 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+```bash
+composer update nowo-tech/yopass-bundle nowo-tech/ui-kit-bundle --with-dependencies
+php bin/console assets:install public
+php bin/console cache:clear
+```
+
+### Template contract (UiKit page contract, REQ-UI-003)
+
+The pages render inside the **UiKit layouts** and the **UiKit theme**, configured once for every Nowo bundle:
+
+```yaml
+nowo_ui_kit:
+    css_framework: bootstrap5            # was nowo_yopass.web_ui.css_framework (default tabler)
+    icon_set: bootstrap-icons            # was nowo_yopass.web_ui.icon_set (default tabler-icons)
+    layouts:
+        admin: 'layouts/admin.html.twig' # renders the canonical nowo_ui_* blocks (extend @NowoUiKit/layout/admin.html.twig or use @NowoUiKit/layout/_bridge.html.twig)
+        guest: 'layouts/guest.html.twig' # the public reveal page
+twig:
+    form_themes: ['bootstrap_5_layout.html.twig']   # the field classes now come from your form theme
+```
+
+| 1.9 | 1.10 |
+| --- | --- |
+| Pages extend `nowo_yopass_layout_template` (default `@NowoYopassBundle/layout.html.twig`, Tabler from a CDN) and fill `title` / `body` / `stylesheets` / `javascripts` | `manage/index.html.twig` extends the UiKit **list** scaffold, `manage/created.html.twig` the **show** scaffold; canonical blocks `nowo_ui_document_title`, `nowo_ui_page_header`, `nowo_ui_flashes`, `nowo_ui_content`, `nowo_ui_modals`, `nowo_ui_scripts` |
+| `public/reveal.html.twig`: standalone `<html>` with Tabler from a CDN | unique page on `nowo_ui_kit.layouts.guest` (or `web_ui.public_layout_template`) |
+| `layout.html.twig` | **removed** — the value `@NowoYopassBundle/layout.html.twig` maps to null (UiKit layout); load your CSS framework in your layout |
+| `_action_icons.html.twig` macro | **removed** — row actions are UiKit `Action`s (`row_actions_display` / `icon_set` from `nowo_ui_kit`) |
+| Bootstrap `div.modal` preview, `window.confirm()` on revoke / delete | native `<dialog>` (UiKit `dialog` partial) and the UiKit confirm `<dialog>`; the layout must load the UiKit runtime scripts (`{{ include(nowo_ui_partial('scripts')) }}`, done by the UiKit layouts) |
+| Framework classes in markup / form types (`btn`, `card`, `alert`, `form-control`, `d-none`, …) | theme slots + `nowo-ui-*` / `nowo-yopass-*` hooks; `hidden` attribute; FormKit profile `yopass` sets only `nowo-ui-input` |
+
+- **Host layout still a 1.x layout?** If `web_ui.layout_template` points at a layout that renders `body` (e.g. your
+  `base.html.twig` or `@NowoYopassBundle/layout_integrate_host.html.twig`), the pages keep rendering through the
+  deprecated `@NowoYopassBundle/_legacy_layout.html.twig` bridge (a deprecation is logged). Move the layout to
+  `nowo_ui_kit.layouts.admin` and set `web_ui.layout_template` back to null before 2.0.
+- **Template overrides** of `manage/index.html.twig`, `manage/created.html.twig` or `public/reveal.html.twig` written
+  for 1.x must be redone: prefer theming UiKit (`nowo_ui_kit.theme`, scaffolds under
+  `templates/bundles/NowoUiKitBundle/page/`), or `web_ui.templates.<page>` with a thin
+  `{% extends '@!NowoYopassBundle/...' %}` overriding one data block (`nowo_ui_list_row`, `nowo_ui_show_sections`,
+  `nowo_ui_content`). Pages, view models and data blocks: [Templates](TEMPLATES.md).
+- **Controller wiring** (only if you decorate or instantiate the controllers yourself): `ShareManageController` and
+  `PublicShareController` take `Nowo\YopassBundle\Ui\YopassPageFactory` instead of the `$templates` array.
+- **Security is unchanged**: one-click links keep the key in the URL fragment, legacy `?decrypt_key=` links are still
+  redirected (`303`), the manage routes are registered only with `web_ui.enabled`, and the browser crypto still uses
+  libsodium sumo.
+
+### Configuration keys
+
+Old keys keep working in 1.x (deprecation notices) and are removed in 2.0; the canonical key wins when both are set.
+
+| Deprecated | Use |
+| --- | --- |
+| `route_prefix` | `web_ui.path_prefix` |
+| `templates.layout` | `web_ui.layout_template` (null = `nowo_ui_kit.layouts.admin`) |
+| `templates.manage` / `templates.created` / `templates.public` | `web_ui.templates.manage` / `.created` / `.public` |
+| `security.admin_roles` / `create_roles` / `list_roles` / `revoke_roles` | `security.roles.admin` / `.create` / `.list` / `.revoke` |
+| `web_ui.css_framework` / `web_ui.icon_set` | `nowo_ui_kit.css_framework` / `nowo_ui_kit.icon_set` (copied there while set) |
+| Twig globals `nowo_yopass_layout_template`, `nowo_yopass_css_framework`, `nowo_yopass_icon_set` | `nowo_ui_layout`, `nowo_ui_kit_css_framework`, `nowo_ui_kit_icon_set` |
+
+New: `web_ui.public_layout_template` (null = `nowo_ui_kit.layouts.guest`). With the built-in role checker and the Web
+UI on, the container now refuses to compile when **every** role list is empty (nobody could open the manage UI).
 
 ## To 1.9.0
 

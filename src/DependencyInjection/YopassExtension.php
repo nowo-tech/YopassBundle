@@ -41,6 +41,9 @@ use function sprintf;
  */
 final class YopassExtension extends Extension implements PrependExtensionInterface
 {
+    /** 1.x default layout (removed in 1.10: it loaded CSS frameworks from CDNs); mapped to null = the UiKit layout. */
+    public const LEGACY_DEFAULT_LAYOUT = '@NowoYopassBundle/layout.html.twig';
+
     /**
      * Loads the bundle configuration and registers the bundle services.
      */
@@ -48,7 +51,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
     {
         $configuration = new Configuration();
         $config        = $this->processConfiguration($configuration, $configs);
-        $config        = $this->resolveWebUiLayout($config);
+        $webUi         = $this->resolveWebUi($config['web_ui']);
 
         $storageName = rtrim((string) $config['table_prefix'], '_') . '_secure_shares';
         $database    = $config['database'];
@@ -63,14 +66,18 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.database', $database);
         $container->setParameter('nowo_yopass.max_ciphertext_bytes', $config['max_ciphertext_bytes']);
         $container->setParameter('nowo_yopass.max_secret_chars', $config['max_secret_chars']);
-        $container->setParameter('nowo_yopass.route_prefix', $config['route_prefix']);
+        // REQ-UI-003: web_ui.path_prefix is the canonical prefix (route_prefix is mapped onto it by Configuration).
+        $container->setParameter('nowo_yopass.route_prefix', $webUi['path_prefix']);
         $container->setParameter('nowo_yopass.dashboard_route', $config['dashboard_route']);
         $container->setParameter('nowo_yopass.routes', $config['routes']);
-        $container->setParameter('nowo_yopass.templates', $config['templates']);
-        $container->setParameter('nowo_yopass.web_ui.enabled', $config['web_ui']['enabled']);
-        $container->setParameter('nowo_yopass.web_ui.layout_template', $config['web_ui']['layout_template']);
-        $container->setParameter('nowo_yopass.web_ui.css_framework', $config['web_ui']['css_framework']);
-        $container->setParameter('nowo_yopass.web_ui.icon_set', $config['web_ui']['icon_set']);
+        $container->setParameter('nowo_yopass.templates', $webUi['templates']);
+        $container->setParameter('nowo_yopass.web_ui.enabled', $webUi['enabled']);
+        $container->setParameter('nowo_yopass.web_ui.path_prefix', $webUi['path_prefix']);
+        $container->setParameter('nowo_yopass.web_ui.layout_template', $webUi['layout_template']);
+        $container->setParameter('nowo_yopass.web_ui.public_layout_template', $webUi['public_layout_template']);
+        $container->setParameter('nowo_yopass.web_ui.templates', $webUi['templates']);
+        $container->setParameter('nowo_yopass.web_ui.css_framework', $webUi['css_framework']);
+        $container->setParameter('nowo_yopass.web_ui.icon_set', $webUi['icon_set']);
         $container->setParameter('nowo_yopass.firewall', $config['firewall']);
         $container->setParameter('nowo_yopass.public_firewall_paths', $config['public_firewall_paths']);
         $container->setParameter('nowo_yopass.security', $config['security']);
@@ -104,11 +111,11 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             $accessCheckerId = 'nowo_yopass.access_checker.default';
             $container->setDefinition($accessCheckerId, (new Definition(ConfigurableYopassAccessChecker::class))
                 ->setAutowired(true)
-                ->setArgument('$adminRoles', $config['security']['admin_roles'])
+                ->setArgument('$adminRoles', $config['security']['roles']['admin'])
                 ->setArgument('$accessRoles', $config['security']['access_roles'])
-                ->setArgument('$createRoles', $config['security']['create_roles'])
-                ->setArgument('$listRoles', $config['security']['list_roles'])
-                ->setArgument('$revokeRoles', $config['security']['revoke_roles']));
+                ->setArgument('$createRoles', $config['security']['roles']['create'])
+                ->setArgument('$listRoles', $config['security']['roles']['list'])
+                ->setArgument('$revokeRoles', $config['security']['roles']['revoke']));
         }
 
         $container->setAlias(YopassAccessCheckerInterface::class, $accessCheckerId);
@@ -120,26 +127,47 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
     }
 
     /**
-     * Resolves layout_template and keeps templates.layout in sync (BC alias).
+     * Resolved web_ui settings (REQ-UI-003): the 1.x default layout value (removed bundle layout) maps to null (UiKit
+     * layout), empty strings to null, and every per-page template id is present (null = bundle template).
      *
-     * @param array<string, mixed> $config
+     * @param array<string, mixed> $webUi
      *
-     * @return array<string, mixed>
+     * @return array{
+     *     enabled: bool,
+     *     path_prefix: string,
+     *     layout_template: string|null,
+     *     public_layout_template: string|null,
+     *     templates: array{manage: string|null, created: string|null, public: string|null},
+     *     css_framework: string|null,
+     *     icon_set: string|null
+     * }
      */
-    private function resolveWebUiLayout(array $config): array
+    private function resolveWebUi(array $webUi): array
     {
-        $defaultLayout  = '@NowoYopassBundle/layout.html.twig';
-        $layoutTemplate = (string) $config['web_ui']['layout_template'];
-        $legacyLayout   = (string) $config['templates']['layout'];
-
-        if ($layoutTemplate === $defaultLayout && $legacyLayout !== $defaultLayout) {
-            $layoutTemplate = $legacyLayout;
+        $layout = is_string($webUi['layout_template'] ?? null) ? $webUi['layout_template'] : null;
+        if ($layout === '' || $layout === self::LEGACY_DEFAULT_LAYOUT) {
+            $layout = null;
         }
 
-        $config['web_ui']['layout_template'] = $layoutTemplate;
-        $config['templates']['layout']       = $layoutTemplate;
+        $publicLayout = is_string($webUi['public_layout_template'] ?? null) && $webUi['public_layout_template'] !== ''
+            ? $webUi['public_layout_template']
+            : null;
 
-        return $config;
+        $templates = [];
+        foreach (['manage', 'created', 'public'] as $page) {
+            $template         = $webUi['templates'][$page] ?? null;
+            $templates[$page] = is_string($template) && $template !== '' ? $template : null;
+        }
+
+        return [
+            'enabled'                => (bool) $webUi['enabled'],
+            'path_prefix'            => (string) ($webUi['path_prefix'] ?? ''),
+            'layout_template'        => $layout,
+            'public_layout_template' => $publicLayout,
+            'templates'              => $templates,
+            'css_framework'          => is_string($webUi['css_framework'] ?? null) ? $webUi['css_framework'] : null,
+            'icon_set'               => is_string($webUi['icon_set'] ?? null) ? $webUi['icon_set'] : null,
+        ];
     }
 
     private function registerFileHandler(ContainerBuilder $container, mixed $fileHandlerId): void
@@ -214,10 +242,6 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
     }
 
     /**
-     * Seed nowo_ui_kit from web_ui when the host has not set UiKit (REQ-UI-001-kit).
-     */
-
-    /**
      * When FormKit is installed, register the yopass profile. Forms select it via #[FormKitConfig].
      */
     private function prependFormKitDefaults(ContainerBuilder $container): void
@@ -246,31 +270,16 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         }
 
         if (!$hostHasProfile) {
+            // REQ-UI-003: no framework utility classes in bundle markup; the host form theme (FormKit css_framework,
+            // or this profile, which the host may redefine) styles the fields. `nowo-ui-input` is the UiKit hook.
             $seed['profiles'] = [
                 'yopass' => [
-                    'alias'              => 'yopass',
-                    'translation_domain' => 'NowoYopassBundle',
-                    'defaults'           => [
-                        'attr'     => ['class' => 'nowo-ui-input form-control'],
-                        'row_attr' => ['class' => 'mb-2'],
-                    ],
-                    'field_types' => [
-                        'checkbox' => [
-                            'attr'     => ['class' => 'form-check-input'],
-                            'row_attr' => ['class' => 'form-check mb-2'],
-                        ],
-                        'choice' => [
-                            'attr' => ['class' => 'form-select'],
-                        ],
-                        'entity' => [
-                            'attr' => ['class' => 'form-select'],
-                        ],
-                        'file' => [
-                            'attr' => ['class' => 'nowo-ui-input form-control'],
-                        ],
-                        'textarea' => [
-                            'attr' => ['class' => 'nowo-ui-input form-control'],
-                        ],
+                    'alias'                           => 'yopass',
+                    'translation_domain'              => 'NowoYopassBundle',
+                    'convention_requires_translation' => true,
+                    'defaults'                        => [
+                        'attr'     => ['class' => 'nowo-ui-input'],
+                        'row_attr' => [],
                     ],
                 ],
             ];
@@ -281,6 +290,10 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         }
     }
 
+    /**
+     * REQ-UI-003: the CSS stack and icon set are inherited from nowo_ui_kit. When the host still sets the deprecated
+     * web_ui.css_framework / icon_set, copy them to nowo_ui_kit unless the host set those keys there.
+     */
     private function prependUiKitDefaults(ContainerBuilder $container): void
     {
         if (!$container->hasExtension('nowo_ui_kit')) {
@@ -299,24 +312,22 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             }
         }
 
-        if ($hostHasCssFramework && $hostHasIconSet) {
-            return;
-        }
-
         $config   = $this->processConfiguration(new Configuration(), $container->getExtensionConfig(Configuration::ALIAS));
         $webUi    = is_array($config['web_ui'] ?? null) ? $config['web_ui'] : [];
         $defaults = [];
 
-        if (!$hostHasCssFramework) {
-            $fw                        = (string) ($webUi['css_framework'] ?? 'tabler');
-            $defaults['css_framework'] = $fw === 'bootstrap' ? 'bootstrap5' : $fw;
+        $framework = $webUi['css_framework'] ?? null;
+        if (!$hostHasCssFramework && is_string($framework)) {
+            $defaults['css_framework'] = $framework === 'bootstrap' ? 'bootstrap5' : $framework;
         }
-        if (!$hostHasIconSet) {
-            $defaults['icon_set'] = (string) ($webUi['icon_set'] ?? 'tabler-icons');
+        $iconSet = $webUi['icon_set'] ?? null;
+        if (!$hostHasIconSet && is_string($iconSet)) {
+            $defaults['icon_set'] = $iconSet;
         }
 
-        // After the early-return above, at least one of css_framework / icon_set is always seeded.
-        $container->prependExtensionConfig('nowo_ui_kit', $defaults);
+        if ($defaults !== []) {
+            $container->prependExtensionConfig('nowo_ui_kit', $defaults);
+        }
     }
 
     /**

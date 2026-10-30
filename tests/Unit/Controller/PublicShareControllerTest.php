@@ -14,6 +14,8 @@ use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\ControllerContainerBuilder;
+use Nowo\YopassBundle\Ui\YopassPageFactory;
+use Nowo\YopassBundle\Ui\YopassPages;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,19 +23,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 final class PublicShareControllerTest extends TestCase
 {
-    /** @var array{layout: string, manage: string, public: string} */
-    private array $templates;
-
     /** @var array<string, array{path: string, name: string}> */
     private array $routes;
 
     protected function setUp(): void
     {
-        $this->templates = [
-            'layout' => '@NowoYopassBundle/layout.html.twig',
-            'manage' => '@NowoYopassBundle/manage/index.html.twig',
-            'public' => '@NowoYopassBundle/public/reveal.html.twig',
-        ];
         $this->routes = [
             'manage'         => ['path' => '/tools/yopass', 'name' => 'nowo_yopass_index'],
             'create'         => ['path' => '/tools/yopass/create', 'name' => 'nowo_yopass_create'],
@@ -87,7 +81,7 @@ final class PublicShareControllerTest extends TestCase
             new ShareRetriever($shareRepository),
             $this->accessLogger(),
             $this->rateLimiter(),
-            $this->templates,
+            new YopassPageFactory(new YopassPages()),
             $this->routes,
         );
         ControllerContainerBuilder::bind($controller);
@@ -113,7 +107,7 @@ final class PublicShareControllerTest extends TestCase
             new ShareRetriever($shareRepository),
             $this->accessLogger(),
             $this->rateLimiter(),
-            $this->templates,
+            new YopassPageFactory(new YopassPages()),
             $this->routes,
         );
 
@@ -136,7 +130,7 @@ final class PublicShareControllerTest extends TestCase
             new ShareRetriever($shareRepository),
             $this->accessLogger(),
             $this->rateLimiter(),
-            $this->templates,
+            new YopassPageFactory(new YopassPages()),
             $this->routes,
         );
     }

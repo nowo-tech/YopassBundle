@@ -105,21 +105,23 @@ final class ShareCreateType extends AbstractType
                 ],
             ]);
             $this->addChoiceField('expiresIn', [
-                'label'        => 'yopass.expires.field',
-                'row_attr'     => ['class' => 'mb-3'],
-                'label_attr'   => ['class' => 'form-label'],
-                'choices'      => $expirationChoices,
-                'choice_label' => fn (string $value): string => $this->translator->trans(
+                'label'   => 'yopass.expires.field',
+                'help'    => false,
+                'choices' => $expirationChoices,
+                // Labels translated here (bundle domain); the form theme must not translate them a second time.
+                'choice_translation_domain' => false,
+                'choice_label'              => fn (string $value): string => $this->translator->trans(
                     'yopass.expires.' . $value,
                     [],
                     YopassBundle::TRANSLATION_DOMAIN,
                 ),
             ]);
             $this->addChoiceField('maxReads', [
-                'label'      => 'yopass.reads.field',
-                'row_attr'   => ['class' => 'mb-3'],
-                'label_attr' => ['class' => 'form-label'],
-                'choices'    => $maxReadsChoices,
+                'label' => 'yopass.reads.field',
+                'help'  => false,
+                // Plain numbers: nothing to translate.
+                'choice_translation_domain' => false,
+                'choices'                   => $maxReadsChoices,
             ]);
         });
 
@@ -194,12 +196,11 @@ final class ShareCreateType extends AbstractType
     private function addClientOnlyFields(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('secret', TextareaType::class, [
-            'mapped'     => false,
-            'required'   => false,
-            'label'      => 'yopass.secret.field',
-            'label_attr' => ['class' => 'form-label'],
-            'attr'       => [
-                'class'                          => 'form-control',
+            'mapped'   => false,
+            'required' => false,
+            'label'    => 'yopass.secret.field',
+            'attr'     => [
+                'class'                          => 'nowo-ui-input nowo-ui-input--full',
                 'rows'                           => 5,
                 'placeholder'                    => 'yopass.secret.placeholder',
                 'data-nowo-yopass-create-target' => 'secret',
@@ -209,12 +210,11 @@ final class ShareCreateType extends AbstractType
 
         if ($options['file_shares_enabled'] === true) {
             $builder->add('file', FileType::class, [
-                'mapped'     => false,
-                'required'   => false,
-                'label'      => 'yopass.file.field',
-                'label_attr' => ['class' => 'form-label'],
-                'attr'       => [
-                    'class'                          => 'form-control mb-3',
+                'mapped'   => false,
+                'required' => false,
+                'label'    => 'yopass.file.field',
+                'attr'     => [
+                    'class'                          => 'nowo-ui-input nowo-ui-input--wide',
                     'data-nowo-yopass-create-target' => 'fileInput',
                 ],
             ]);
@@ -233,10 +233,11 @@ final class ShareCreateType extends AbstractType
             'expanded'    => true,
             'multiple'    => false,
             'label'       => 'yopass.key.mode_field',
+            'help'        => 'yopass.key.mode_help',
             'data'        => $default,
             'choices'     => $modes,
             'choice_attr' => static fn (string $value): array => [
-                'class'                          => 'form-check-input',
+                'class'                          => 'nowo-ui-check__input',
                 'data-nowo-yopass-create-target' => $value === 'password' ? 'encryptionPassword' : 'encryptionAuto',
                 'data-action'                    => 'change->nowo-yopass-create#syncKeyMode',
             ],
@@ -244,12 +245,11 @@ final class ShareCreateType extends AbstractType
 
         if ($allowPassword) {
             $builder->add('customPassword', PasswordType::class, [
-                'mapped'     => false,
-                'required'   => false,
-                'label'      => 'yopass.key.custom',
-                'label_attr' => ['class' => 'form-label'],
-                'attr'       => [
-                    'class'                          => 'form-control',
+                'mapped'   => false,
+                'required' => false,
+                'label'    => 'yopass.key.custom',
+                'attr'     => [
+                    'class'                          => 'nowo-ui-input nowo-ui-input--wide',
                     'data-nowo-yopass-create-target' => 'customPassword',
                     'autocomplete'                   => 'new-password',
                 ],

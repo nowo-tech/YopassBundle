@@ -33,12 +33,12 @@ function markup(options: Options = {}): string {
     const optional = options.optionalTargets === false
         ? ''
         : `
-            <div data-reveal-target="error" class="d-none"></div>
-            <pre data-reveal-target="output" class="d-none"></pre>
-            <a data-reveal-target="downloadLink" class="d-none"></a>
+            <div data-reveal-target="error" hidden></div>
+            <pre data-reveal-target="output" hidden></pre>
+            <a data-reveal-target="downloadLink" hidden></a>
             <div data-reveal-target="passwordPanel"></div>
-            <div data-reveal-target="passwordFromLinkHint" class="d-none"></div>
-            <div data-reveal-target="keyPanel" class="d-none"></div>
+            <div data-reveal-target="passwordFromLinkHint" hidden></div>
+            <div data-reveal-target="keyPanel" hidden></div>
             <div data-reveal-target="keyFromLinkHint"></div>
             <button data-reveal-target="revealButton" data-action="reveal#reveal">Reveal</button>`;
 
@@ -73,7 +73,7 @@ function target<T extends HTMLElement = HTMLElement>(name: string): T {
 }
 
 function visible(name: string): boolean {
-    return !target(name).classList.contains('d-none');
+    return !target(name).hidden;
 }
 
 function respondWith(body: unknown): void {

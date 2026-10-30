@@ -1,0 +1,24 @@
+{#
+  Demo host admin layout (REQ-UI-003, nowo_ui_kit.layouts.admin): the demo shell (base.html.twig: masthead, Tabler)
+  with the UiKit canonical blocks through the UiKit bridge. Every Yopass manage page renders here.
+#}
+{% extends 'base.html.twig' %}
+{% use '@NowoUiKit/layout/_bridge.html.twig' %}
+{% set nowo_ui_document_title_suffix = 'Yopass Bundle demo' %}
+
+{% block title %}{{ block('nowo_ui_bridge_title') }}{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="{{ asset('css/nowo-ui.css', 'nowo_ui_kit') }}">
+    {{ nowo_ui_tokens() }}
+    {{ block('nowo_ui_bridge_assets') }}
+{% endblock %}
+
+{% block body %}
+    <div class="demo-admin">{{ block('nowo_ui_bridge_body') }}</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ include(nowo_ui_partial('scripts', nowo_ui_bundle|default(null))) }}
+    {{ block('nowo_ui_bridge_end') }}
+{% endblock %}

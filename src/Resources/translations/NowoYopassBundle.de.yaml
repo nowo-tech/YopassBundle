@@ -118,6 +118,7 @@ yopass:
         expires: Läuft ab
         reads: Lesungen
         status: Zustand
+        actions: Aktionen
         empty: Sie haben noch keine Shares erstellt.
         retention_notice: Shares älter als %max_age% werden automatisch gelöscht.
         summary: '%from%–%to% von %total%'

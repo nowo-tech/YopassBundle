@@ -33,6 +33,10 @@ function markup(options: Options = {}): string {
              data-create-file-enabled-value="${options.fileEnabled ? 'true' : 'false'}"
              data-create-max-file-bytes-value="1024"
              data-create-max-secret-chars-value="${options.maxSecretChars ?? 10}"
+             data-create-counter-class-value="muted"
+             data-create-counter-limit-class-value="limit"
+             data-create-tab-class-value="tab"
+             data-create-tab-active-class-value="tab tab--active"
              data-create-errors-value='${ERRORS}'>
             <form data-create-target="form" data-action="submit->create#submit">
                 <input type="hidden" data-create-target="ciphertext">
@@ -41,18 +45,18 @@ function markup(options: Options = {}): string {
                 <button type="button" id="tab-file" data-yopass-tab="file" data-action="create#switchTab">File</button>
                 <div data-create-target="textPanel">
                     <textarea data-create-target="secret"></textarea>
-                    <span data-create-target="secretCounter" class="text-secondary"></span>
-                    <span data-create-target="secretLimitHelp" class="d-none">limit</span>
+                    <span data-create-target="secretCounter"></span>
+                    <span data-create-target="secretLimitHelp" hidden>limit</span>
                 </div>
-                <div data-create-target="filePanel" class="d-none">
+                <div data-create-target="filePanel" hidden>
                     <input type="file" data-create-target="fileInput">
                 </div>
                 <input type="radio" name="enc" data-create-target="encryptionAuto" data-action="create#syncKeyMode" checked>
                 <input type="radio" name="enc" data-create-target="encryptionPassword" data-action="create#syncKeyMode">
-                <div data-create-target="customPasswordPanel" class="d-none">
+                <div data-create-target="customPasswordPanel" hidden>
                     <input type="password" data-create-target="customPassword">
                 </div>
-                <div data-create-target="error" class="d-none"></div>
+                <div data-create-target="error" hidden></div>
                 <button type="submit" data-create-target="submit">Create</button>
             </form>
         </div>`;
@@ -92,7 +96,7 @@ function submitForm(): void {
 function errorText(): string | null {
     const error = target('error');
 
-    return error.classList.contains('d-none') ? null : error.textContent;
+    return error.hidden ? null : error.textContent;
 }
 
 describe('yopass-create-controller', () => {
@@ -116,7 +120,8 @@ describe('yopass-create-controller', () => {
 
             typeSecret('  abc  ');
             expect(target('secretCounter').textContent).toBe('3 / 10');
-            expect(target('secretCounter').classList.contains('text-secondary')).toBe(true);
+            expect(target('secretCounter').className).toBe('muted');
+            expect(target('secretCounter').hasAttribute('data-limit-reached')).toBe(false);
             expect(target<HTMLButtonElement>('submit').disabled).toBe(false);
         });
 
@@ -124,8 +129,9 @@ describe('yopass-create-controller', () => {
             await mount();
 
             typeSecret('a'.repeat(10));
-            expect(target('secretCounter').classList.contains('text-danger')).toBe(true);
-            expect(target('secretLimitHelp').classList.contains('d-none')).toBe(false);
+            expect(target('secretCounter').className).toBe('limit');
+            expect(target('secretCounter').hasAttribute('data-limit-reached')).toBe(true);
+            expect(target('secretLimitHelp').hidden).toBe(false);
             expect(target<HTMLButtonElement>('submit').disabled).toBe(false);
 
             typeSecret('a'.repeat(11));
@@ -135,7 +141,7 @@ describe('yopass-create-controller', () => {
             secret.value = 'ok';
             secret.dispatchEvent(new Event('paste'));
             expect(target<HTMLButtonElement>('submit').disabled).toBe(false);
-            expect(target('secretLimitHelp').classList.contains('d-none')).toBe(true);
+            expect(target('secretLimitHelp').hidden).toBe(true);
         });
 
         it('counts code points, not UTF-16 units', async () => {
@@ -179,24 +185,30 @@ describe('yopass-create-controller', () => {
 
             el<HTMLButtonElement>('#tab-file').click();
 
-            expect(target('textPanel').classList.contains('d-none')).toBe(false);
-            expect(target('filePanel').classList.contains('d-none')).toBe(true);
+            expect(target('textPanel').hidden).toBe(false);
+            expect(target('filePanel').hidden).toBe(true);
         });
 
         it('switches between text and file panels when files are enabled', async () => {
             await mount({ fileEnabled: true });
 
             el<HTMLButtonElement>('#tab-file').click();
-            expect(target('textPanel').classList.contains('d-none')).toBe(true);
-            expect(target('filePanel').classList.contains('d-none')).toBe(false);
+            expect(target('textPanel').hidden).toBe(true);
+            expect(target('filePanel').hidden).toBe(false);
+            expect(target('filePanel').style.display).toBe('');
+            expect(target('textPanel').style.getPropertyValue('display')).toBe('none');
+            expect(el('#tab-file').className).toBe('tab tab--active');
+            expect(el('#tab-file').getAttribute('aria-selected')).toBe('true');
+            expect(el('#tab-text').className).toBe('tab');
+            expect(el('#tab-text').getAttribute('aria-selected')).toBe('false');
 
             // Counter is not re-synced while on the file tab.
             typeSecret('abc');
             expect(target('secretCounter').textContent).toBe('0 / 10');
 
             el<HTMLButtonElement>('#tab-text').click();
-            expect(target('textPanel').classList.contains('d-none')).toBe(false);
-            expect(target('filePanel').classList.contains('d-none')).toBe(true);
+            expect(target('textPanel').hidden).toBe(false);
+            expect(target('filePanel').hidden).toBe(true);
             expect(target('secretCounter').textContent).toBe('3 / 10');
         });
 
@@ -210,17 +222,17 @@ describe('yopass-create-controller', () => {
             await new Promise((resolve) => setTimeout(resolve, 0));
             bare.click();
 
-            expect(target('textPanel').classList.contains('d-none')).toBe(false);
+            expect(target('textPanel').hidden).toBe(false);
         });
 
         it('shows the custom password panel only in password mode', async () => {
             await mount();
 
             target<HTMLInputElement>('encryptionPassword').click();
-            expect(target('customPasswordPanel').classList.contains('d-none')).toBe(false);
+            expect(target('customPasswordPanel').hidden).toBe(false);
 
             target<HTMLInputElement>('encryptionAuto').click();
-            expect(target('customPasswordPanel').classList.contains('d-none')).toBe(true);
+            expect(target('customPasswordPanel').hidden).toBe(true);
         });
     });
 
@@ -364,7 +376,7 @@ describe('yopass-create-controller', () => {
         });
 
         it('works without the optional error target', async () => {
-            const html = markup().replace('<div data-create-target="error" class="d-none"></div>', '');
+            const html = markup().replace('<div data-create-target="error" hidden></div>', '');
             await mount({}, html);
             typeSecret('   ');
 

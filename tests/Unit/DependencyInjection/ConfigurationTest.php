@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Tests\Unit\DependencyInjection;
 
 use Nowo\YopassBundle\DependencyInjection\Configuration;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 
 final class ConfigurationTest extends TestCase
@@ -27,16 +28,22 @@ final class ConfigurationTest extends TestCase
         self::assertSame('/tools/yopass/{id}/extend', $config['routes']['extend']['path']);
         self::assertSame('/tools/yopass/{id}/created', $config['routes']['created']['path']);
         self::assertSame('/share/{id}', $config['routes']['public_show']['path']);
-        self::assertSame(['ROLE_ADMIN'], $config['security']['admin_roles']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['roles']['admin']);
         self::assertSame(['ROLE_ADMIN'], $config['security']['access_roles']);
-        self::assertSame(['ROLE_ADMIN'], $config['security']['create_roles']);
-        self::assertSame(['ROLE_ADMIN'], $config['security']['list_roles']);
-        self::assertSame(['ROLE_ADMIN'], $config['security']['revoke_roles']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['roles']['create']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['roles']['list']);
+        self::assertSame(['ROLE_ADMIN'], $config['security']['roles']['revoke']);
+        self::assertNull($config['security']['create_roles']);
         self::assertFalse($config['security']['allow_unauthenticated']);
         self::assertTrue($config['web_ui']['enabled']);
-        self::assertSame('@NowoYopassBundle/layout.html.twig', $config['web_ui']['layout_template']);
-        self::assertSame('tabler', $config['web_ui']['css_framework']);
-        self::assertSame('tabler-icons', $config['web_ui']['icon_set']);
+        self::assertSame('', $config['web_ui']['path_prefix']);
+        self::assertNull($config['web_ui']['layout_template']);
+        self::assertNull($config['web_ui']['public_layout_template']);
+        self::assertSame(['manage' => null, 'created' => null, 'public' => null], $config['web_ui']['templates']);
+        self::assertNull($config['web_ui']['css_framework']);
+        self::assertNull($config['web_ui']['icon_set']);
+        self::assertNull($config['route_prefix']);
+        self::assertSame(['layout' => null, 'manage' => null, 'created' => null, 'public' => null], $config['templates']);
         self::assertNull($config['file_handler']);
         self::assertSame(512 * 1024, $config['max_secret_chars']);
         self::assertSame('1h', $config['shares']['default_expiration']);
@@ -49,6 +56,72 @@ final class ConfigurationTest extends TestCase
         self::assertSame('auto', $config['sharing']['default_encryption']);
         self::assertTrue($config['sharing']['allow_custom_password']);
         self::assertFalse($config['sharing']['default_embed_in_url']);
+    }
+
+    public function testDeprecatedKeysAreMappedOntoTheCanonicalOnes(): void
+    {
+        $config = $this->process([
+            'user_class'   => 'App\\Entity\\User',
+            'route_prefix' => '/{_locale}',
+            'templates'    => [
+                'layout'  => 'base.html.twig',
+                'manage'  => 'yopass/manage.html.twig',
+                'created' => 'yopass/created.html.twig',
+                'public'  => 'yopass/public.html.twig',
+            ],
+            'security' => [
+                'admin_roles'  => ['ROLE_SUPER'],
+                'create_roles' => ['ROLE_USER'],
+                'list_roles'   => ['ROLE_USER'],
+                'revoke_roles' => [],
+            ],
+        ]);
+
+        self::assertSame('/{_locale}', $config['web_ui']['path_prefix']);
+        self::assertSame('base.html.twig', $config['web_ui']['layout_template']);
+        self::assertSame([
+            'manage'  => 'yopass/manage.html.twig',
+            'created' => 'yopass/created.html.twig',
+            'public'  => 'yopass/public.html.twig',
+        ], $config['web_ui']['templates']);
+        self::assertSame(['ROLE_SUPER'], $config['security']['roles']['admin']);
+        self::assertSame(['ROLE_USER'], $config['security']['roles']['create']);
+        self::assertSame(['ROLE_USER'], $config['security']['roles']['list']);
+        self::assertSame([], $config['security']['roles']['revoke']);
+    }
+
+    public function testCanonicalKeysWinOverDeprecatedOnes(): void
+    {
+        $config = $this->process([
+            'user_class'   => 'App\\Entity\\User',
+            'route_prefix' => '/legacy',
+            'templates'    => ['layout' => 'legacy.html.twig', 'manage' => 'legacy/manage.html.twig'],
+            'web_ui'       => [
+                'path_prefix'     => '/canonical',
+                'layout_template' => 'canonical.html.twig',
+                'templates'       => ['manage' => 'canonical/manage.html.twig'],
+                'css_framework'   => 'tailwind',
+                'icon_set'        => 'svg_inline',
+            ],
+            'security' => [
+                'create_roles' => ['ROLE_LEGACY'],
+                'roles'        => ['create' => ['ROLE_CANONICAL']],
+            ],
+        ]);
+
+        self::assertSame('/canonical', $config['web_ui']['path_prefix']);
+        self::assertSame('canonical.html.twig', $config['web_ui']['layout_template']);
+        self::assertSame('canonical/manage.html.twig', $config['web_ui']['templates']['manage']);
+        self::assertSame('tailwind', $config['web_ui']['css_framework']);
+        self::assertSame('svg_inline', $config['web_ui']['icon_set']);
+        self::assertSame(['ROLE_CANONICAL'], $config['security']['roles']['create']);
+    }
+
+    public function testRejectsUnknownCssFramework(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+
+        $this->process(['user_class' => 'App\\Entity\\User', 'web_ui' => ['css_framework' => 'bulma']]);
     }
 
     public function testCustomShareOptions(): void

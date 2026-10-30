@@ -1275,7 +1275,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     access_log?: array{ // Records successful public link opens (consume) for the share creator audit trail. Requires Doctrine ORM.
  *         enabled?: bool|Param, // When false, opens are not persisted and the history UI stays hidden. // Default: true
  *     },
- *     route_prefix?: scalar|Param|null, // Optional prefix prepended to all bundle route paths (e.g. /{_locale}). // Default: ""
+ *     route_prefix?: scalar|Param|null, // Deprecated: The "route_prefix" option at "nowo_yopass.route_prefix" is deprecated, use "nowo_yopass.web_ui.path_prefix" instead (REQ-UI-003). // Deprecated since 1.10: use web_ui.path_prefix. // Default: null
  *     dashboard_route?: scalar|Param|null, // Optional route name for the back link in the manage UI. Null hides the button. // Default: null
  *     shares?: array{ // Default and allowed expiration / max-read options for new shares.
  *         default_expiration?: scalar|Param|null, // Default expiration option id (must match an expiration_options entry). // Default: "1h"
@@ -1300,18 +1300,31 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     },
  *     security?: array{ // Access control. Replace access_checker with a custom service implementing YopassAccessCheckerInterface.
  *         access_checker?: scalar|Param|null, // Service id implementing YopassAccessCheckerInterface. Null uses role-based defaults. // Default: null
- *         admin_roles?: list<scalar|Param|null>,
  *         access_roles?: list<scalar|Param|null>,
- *         create_roles?: list<scalar|Param|null>,
- *         list_roles?: list<scalar|Param|null>,
- *         revoke_roles?: list<scalar|Param|null>,
+ *         roles?: array{ // Roles per action (REQ-UI-003 security.roles.<action>). An empty list grants that action to nobody (only security.roles.admin).
+ *             admin?: list<scalar|Param|null>,
+ *             create?: list<scalar|Param|null>,
+ *             list?: list<scalar|Param|null>,
+ *             revoke?: list<scalar|Param|null>,
+ *         },
+ *         admin_roles?: mixed, // Deprecated: The "admin_roles" option at "nowo_yopass.security.admin_roles" is deprecated, use "security.roles.admin" instead (REQ-UI-003). // Deprecated since 1.10: use security.roles.admin. // Default: null
+ *         create_roles?: mixed, // Deprecated: The "create_roles" option at "nowo_yopass.security.create_roles" is deprecated, use "security.roles.create" instead (REQ-UI-003). // Deprecated since 1.10: use security.roles.create. // Default: null
+ *         list_roles?: mixed, // Deprecated: The "list_roles" option at "nowo_yopass.security.list_roles" is deprecated, use "security.roles.list" instead (REQ-UI-003). // Deprecated since 1.10: use security.roles.list. // Default: null
+ *         revoke_roles?: mixed, // Deprecated: The "revoke_roles" option at "nowo_yopass.security.revoke_roles" is deprecated, use "security.roles.revoke" instead (REQ-UI-003). // Deprecated since 1.10: use security.roles.revoke. // Default: null
  *         allow_unauthenticated?: bool|Param, // DEV/DEMO only: allow the manage UI without SecurityBundle or login. Never enable in production. // Default: false
  *     },
- *     web_ui?: array{ // Manage Web UI look-and-feel (REQ-UI-001). Canonical layout key is web_ui.layout_template; templates.layout is kept as a BC alias.
- *         enabled?: bool|Param, // Manage Web UI feature flag (default true). Access is still enforced by security.access_roles and the host firewall. // Default: true
- *         layout_template?: scalar|Param|null, // Twig layout extended by manage pages. Host apps set this to their project layout. // Default: "@NowoYopassBundle/layout.html.twig"
- *         css_framework?: "bootstrap"|"bootstrap4"|"bootstrap5"|"tailwind"|"foundation"|"custom"|"tabler"|"none"|Param, // Host-chosen CSS stack: bootstrap, bootstrap4, bootstrap5, tailwind, foundation, custom, tabler, none. // Default: "tabler"
- *         icon_set?: "bootstrap-icons"|"tabler-icons"|"ux_icon"|"svg_inline"|"none"|Param, // Icon set: bootstrap-icons, tabler-icons, ux_icon, svg_inline, none. // Default: "tabler-icons"
+ *     web_ui?: array{ // Web UI on the UiKit page contract (REQ-UI-001 / REQ-UI-003). The CSS stack, icon set and row-action display are inherited from nowo_ui_kit.
+ *         enabled?: bool|Param, // Manage Web UI feature flag (default true). Access is still enforced by security.access_roles and the host firewall. The public share routes are always registered. // Default: true
+ *         path_prefix?: scalar|Param|null, // Prefix prepended to every bundle route path, manage and public (e.g. /{_locale}). Replaces route_prefix. // Default: ""
+ *         layout_template?: scalar|Param|null, // Layout the manage pages extend (page.layout). Null = nowo_ui_kit.layouts.admin. A 1.x layout without the UiKit canonical blocks is wrapped in a deprecated bridge. // Default: null
+ *         public_layout_template?: scalar|Param|null, // Layout of the public reveal page. Null = nowo_ui_kit.layouts.guest. // Default: null
+ *         templates?: array{ // Per-page template overrides (a host template extending @!NowoYopassBundle/... and overriding a data block). Null = the bundle template.
+ *             manage?: scalar|Param|null, // Manage page (list scaffold). Default @NowoYopassBundle/manage/index.html.twig. // Default: null
+ *             created?: scalar|Param|null, // Share created page (show scaffold). Default @NowoYopassBundle/manage/created.html.twig. // Default: null
+ *             public?: scalar|Param|null, // Public reveal page (unique page on the guest layout). Default @NowoYopassBundle/public/reveal.html.twig. // Default: null
+ *         },
+ *         css_framework?: null|"bootstrap"|"bootstrap4"|"bootstrap5"|"tailwind"|"foundation"|"custom"|"tabler"|"none"|Param, // Deprecated: The "css_framework" option at "nowo_yopass.web_ui.css_framework" is deprecated, set "nowo_ui_kit.css_framework" instead (REQ-UI-003). // Deprecated since 1.10: set nowo_ui_kit.css_framework. When set (and nowo_ui_kit.css_framework is not), it is copied to nowo_ui_kit. // Default: null
+ *         icon_set?: null|"bootstrap-icons"|"tabler-icons"|"ux_icon"|"svg_inline"|"none"|Param, // Deprecated: The "icon_set" option at "nowo_yopass.web_ui.icon_set" is deprecated, set "nowo_ui_kit.icon_set" instead (REQ-UI-003). // Deprecated since 1.10: set nowo_ui_kit.icon_set. When set (and nowo_ui_kit.icon_set is not), it is copied to nowo_ui_kit. // Default: null
  *     },
  *     routes?: array{
  *         manage?: array{
@@ -1355,11 +1368,11 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             name?: scalar|Param|null, // Default: "nowo_yopass_public_consume"
  *         },
  *     },
- *     templates?: array{
- *         layout?: scalar|Param|null, // BC alias for web_ui.layout_template. Prefer web_ui.layout_template going forward. // Default: "@NowoYopassBundle/layout.html.twig"
- *         manage?: scalar|Param|null, // Default: "@NowoYopassBundle/manage/index.html.twig"
- *         created?: scalar|Param|null, // Default: "@NowoYopassBundle/manage/created.html.twig"
- *         public?: scalar|Param|null, // Default: "@NowoYopassBundle/public/reveal.html.twig"
+ *     templates?: array{ // Deprecated since 1.10: use web_ui.layout_template and web_ui.templates.<page>.
+ *         layout?: scalar|Param|null, // Deprecated: The "layout" option at "nowo_yopass.templates.layout" is deprecated, use "nowo_yopass.web_ui.layout_template" instead (REQ-UI-003). // Default: null
+ *         manage?: scalar|Param|null, // Deprecated: The "manage" option at "nowo_yopass.templates.manage" is deprecated, use "nowo_yopass.web_ui.templates.manage" instead (REQ-UI-003). // Default: null
+ *         created?: scalar|Param|null, // Deprecated: The "created" option at "nowo_yopass.templates.created" is deprecated, use "nowo_yopass.web_ui.templates.created" instead (REQ-UI-003). // Default: null
+ *         public?: scalar|Param|null, // Deprecated: The "public" option at "nowo_yopass.templates.public" is deprecated, use "nowo_yopass.web_ui.templates.public" instead (REQ-UI-003). // Default: null
  *     },
  *     firewall?: scalar|Param|null, // Symfony firewall name where manage routes require authentication (documented for security.yaml). // Default: "main"
  *     public_firewall_paths?: list<scalar|Param|null>,
@@ -1499,6 +1512,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         tokens_dark?: array<string, mixed>,
  *         confirm_message_in_header?: bool|Param, // Confirm dialogs and the full-page confirm render the message inside the header, under the title (hosts whose dialog header is title + message). View\Confirm::messageInHeader wins when set. // Default: false
  *         popover_menus?: bool|Param, // 2.4: menu / kebab / row-action menus render their panel as a native [popover] (browser top layer: never clipped by table scrollers or cards; nowo-ui-popover.js places it). The partial option `popover` wins. // Default: false
+ *         form_errors_after_widget?: bool|Param, // 2.10: the UiKit form theme (form/nowo_ui_layout.html.twig) prints a field's errors after its widget (and before the help), instead of Symfony's order (label, errors, widget, help). // Default: false
  *         bundles?: array<string, array{ // Default: []
  *             framework_defaults?: bool|Param, // Override of theme.framework_defaults for this bundle (unset = inherit).
  *             classes?: array<string, mixed>,
@@ -1518,6 +1532,35 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             attributes?: array<string, array<string, mixed>>,
  *             header_actions_in_filters?: bool|Param, // list only: render the page-header actions at the end of the filter row instead of the page header (ListPage::headerActionsInFilters wins when set; unset = false).
  *         }>,
+ *     },
+ *     error_pages?: array{ // Kit error pages (2.6): templates/bundles/TwigBundle/Exception/error.html.twig = {% extends '@NowoUiKit/error/status.html.twig' %}.
+ *         layout_template?: scalar|Param|null, // Document the status template extends: the kit layout, or a host template extending it (own <head> assets, brand, chat dock…). // Default: "@NowoUiKit/error/layout.html.twig"
+ *         translation_domain?: scalar|Param|null, // Domain of the page texts (e.g. messages). Keys missing there fall back to UiKit's own NowoUiKitBundle error.* texts. // Default: "NowoUiKitBundle"
+ *         translation_prefix?: scalar|Param|null, // Key prefix: <prefix>.<code>.title|lead|hint|image_alt, <prefix>.generic.*, <prefix>.home|retry|back|retry_after|auto_retry|skip_to_content. // Default: "error"
+ *         home_path?: scalar|Param|null, // Href of the "Back to home" button. // Default: "/"
+ *         illustrations?: array<string, Param|string|array{ // Default: []
+ *             path?: scalar|Param|null,
+ *             width?: int|Param, // Default: null
+ *             height?: int|Param, // Default: null
+ *             webp?: bool|Param|null, // Default: null
+ *             extension?: scalar|Param|null, // Default: null
+ *         }>,
+ *         illustration_width?: int|Param, // Default intrinsic width of the illustrations. // Default: 1024
+ *         illustration_height?: int|Param, // Default intrinsic height of the illustrations. // Default: 683
+ *         webp?: bool|Param, // Illustrations ship a .webp next to the fallback image (<source type="image/webp">). // Default: true
+ *         retry_statuses?: list<int|Param>,
+ *         back_link_statuses?: list<int|Param>,
+ *         auto_retry_seconds?: int|Param, // A 5xx on GET reloads itself after this many seconds (REQ-ERROR-001 item 10; 0 = never). Never on POST. // Default: 600
+ *         theme_storage?: scalar|Param|null, // localStorage key of the theme (data-nowo-ui-theme-storage on <html> and the toggle), e.g. the host's beacon-theme. // Default: "nowo-ui-theme"
+ *         theme_toggle?: bool|Param, // Render the light / dark toggle in the top controls. // Default: true
+ *         html_attributes?: array<string, mixed>,
+ *     },
+ *     shell?: array{ // Signed-in app shell (2.6, @NowoUiKit/shell/_open|_close|_shell|_burger.html.twig; Twig global nowo_ui_kit_shell).
+ *         kit_styles?: bool|Param, // Add the kit shell classes (nowo-ui-shell, nowo-ui-header, nowo-ui-aside…) painted by nowo-ui.css and driven by nowo-ui-shell.js. false: only the app_* slot classes (host shell CSS / JS). // Default: true
+ *         sidebar_cookie?: scalar|Param|null, // Cookie holding the desktop aside mode (e.g. beacon_sidebar), read server-side so the first paint is already collapsed / rail; null = expanded unless the template passes collapsed. // Default: null
+ *         sidebar_hidden_value?: scalar|Param|null, // Cookie value of the hidden aside. // Default: "collapsed"
+ *         sidebar_rail_value?: scalar|Param|null, // Cookie value of the icons-only rail. // Default: "rail"
+ *         sidebar_storage?: scalar|Param|null, // localStorage key of the aside mode (data-nowo-ui-sidebar-storage on the shell root; kit_styles + rail only). // Default: null
  *     },
  * }
  * @psalm-type NowoFormKitConfig = array{

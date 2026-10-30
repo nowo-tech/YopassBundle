@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\Controller;
 
 use DateTimeImmutable;
+use Nowo\UiKitBundle\View\ListPage;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
@@ -21,6 +22,8 @@ use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\ControllerContainerBuilder;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
+use Nowo\YopassBundle\Ui\YopassPageFactory;
+use Nowo\YopassBundle\Ui\YopassPages;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Symfony\Component\DependencyInjection\Container;
@@ -43,9 +46,6 @@ final class ShareManageControllerTest extends TestCase
     /** @var array<string, array{path: string, name: string}> */
     private array $routes;
 
-    /** @var array{layout: string, manage: string, created: string, public: string} */
-    private array $templates;
-
     protected function setUp(): void
     {
         $this->routes = [
@@ -59,12 +59,6 @@ final class ShareManageControllerTest extends TestCase
             'created'        => ['path' => '/tools/yopass/{id}/created', 'name' => 'nowo_yopass_created'],
             'public_show'    => ['path' => '/share/{id}', 'name' => 'nowo_yopass_public_share'],
             'public_consume' => ['path' => '/share/{id}/consume', 'name' => 'nowo_yopass_public_consume'],
-        ];
-        $this->templates = [
-            'layout'  => '@NowoYopassBundle/layout.html.twig',
-            'manage'  => '@NowoYopassBundle/manage/index.html.twig',
-            'created' => '@NowoYopassBundle/manage/created.html.twig',
-            'public'  => '@NowoYopassBundle/public/reveal.html.twig',
         ];
     }
 
@@ -85,6 +79,45 @@ final class ShareManageControllerTest extends TestCase
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertStringContainsString('@NowoYopassBundle/manage/index.html.twig', (string) $response->getContent());
+    }
+
+    public function testIndexPassesTheListPageWithPagination(): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-000000000001', $user);
+        $share->setCiphertext('x')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('countByCreator')->willReturn(45);
+        $shareRepository->method('findByCreatorPaginated')->willReturn([$share]);
+
+        $twig = new class {
+            /** @var array<string, mixed> */
+            public array $captured = [];
+
+            /** @param array<string, mixed> $context */
+            public function render(string $name, array $context = []): string
+            {
+                $this->captured = $context;
+
+                return $name;
+            }
+        };
+
+        $controller = $this->controller(accessChecker: $this->accessChecker(), shareRepository: $shareRepository);
+        ControllerContainerBuilder::bind($controller, $user, ['twig' => $twig]);
+
+        $controller->index(Request::create('/tools/yopass', 'GET', ['page' => 2]));
+
+        $page = $twig->captured['page'];
+        self::assertInstanceOf(ListPage::class, $page);
+        self::assertNotNull($page->pagination);
+        self::assertSame(2, $page->pagination->page);
+        self::assertSame(3, $page->pagination->totalPages);
+        self::assertSame('nowo_yopass_index', $page->pagination->route);
+        self::assertSame('/generated/demo_home', $page->header->back?->href);
+        self::assertCount(1, $page->header->actions);
+        self::assertNull($twig->captured['nowo_yopass_legacy_layout']);
     }
 
     public function testIndexPurgesOldSharesBeforeListing(): void
@@ -309,6 +342,7 @@ final class ShareManageControllerTest extends TestCase
 
         $routes = new RouteCollection();
         $routes->add('nowo_yopass_public_share', new Route('/{_locale}/share/{id}'));
+        $routes->add('nowo_yopass_index', new Route('/{_locale}/tools/yopass'));
         $context = new RequestContext('/sub');
         $context->setParameter('_locale', 'es');
 
@@ -652,7 +686,7 @@ final class ShareManageControllerTest extends TestCase
             $retentionPurger,
             $translator,
             $this->routes,
-            $this->templates,
+            new YopassPageFactory(new YopassPages()),
             $maxCiphertextBytes,
             512 * 1024,
             'demo_home',

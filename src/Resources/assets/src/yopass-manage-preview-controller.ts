@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { setHidden, syncHidden } from './visibility';
 import { decryptPayload, payloadToDisplayAsync } from './yopass-crypto';
 import { loadShareKey } from './yopass-share-keys';
 import { buildFullShareUrlWithKey, type ShareUrlKeyMode } from './yopass-share-url';
@@ -70,7 +71,7 @@ export default class extends Controller {
         allowEmbedInUrl: { type: Boolean, default: false },
     };
 
-    declare readonly modalTarget: HTMLElement;
+    declare readonly modalTarget: HTMLDialogElement;
     declare readonly outputTarget: HTMLElement;
     declare readonly errorTarget: HTMLElement;
     declare readonly passwordPanelTarget: HTMLElement;
@@ -116,6 +117,20 @@ export default class extends Controller {
     private activeShareId: string | null = null;
     private previewData: PreviewResponse | null = null;
     private focusExtendOnOpen = false;
+
+    /** The dialog may also be closed by UiKit (close button, Escape, backdrop): reset the preview state then. */
+    private readonly onDialogClose = (): void => {
+        this.resetState();
+    };
+
+    connect(): void {
+        syncHidden(this.element as HTMLElement, this.identifier);
+        this.modalTarget.addEventListener('close', this.onDialogClose);
+    }
+
+    disconnect(): void {
+        this.modalTarget.removeEventListener('close', this.onDialogClose);
+    }
 
     async open(event: Event): Promise<void> {
         this.focusExtendOnOpen = false;
@@ -203,9 +218,7 @@ export default class extends Controller {
 
     close(): void {
         this.hideModal();
-        this.activeShareId = null;
-        this.previewData = null;
-        this.focusExtendOnOpen = false;
+        this.resetState();
     }
 
     private async loadShare(event: Event): Promise<void> {
@@ -250,30 +263,30 @@ export default class extends Controller {
                 }
 
                 if (this.hasPasswordPanelTarget) {
-                    this.passwordPanelTarget.classList.remove('d-none');
+                    setHidden(this.passwordPanelTarget, false);
                 }
 
                 if (this.hasKeyPanelTarget) {
-                    this.keyPanelTarget.classList.add('d-none');
+                    setHidden(this.keyPanelTarget, true);
                 }
             } else if (storedKey?.mode === 'key') {
                 if (this.hasKeyPanelTarget) {
                     this.keyTarget.value = storedKey.material;
-                    this.keyPanelTarget.classList.add('d-none');
+                    setHidden(this.keyPanelTarget, true);
                 }
 
                 if (this.hasPasswordPanelTarget) {
-                    this.passwordPanelTarget.classList.add('d-none');
+                    setHidden(this.passwordPanelTarget, true);
                 }
 
                 await this.decrypt(storedKey.material);
             } else {
                 if (this.hasKeyPanelTarget) {
-                    this.keyPanelTarget.classList.remove('d-none');
+                    setHidden(this.keyPanelTarget, false);
                 }
 
                 if (this.hasPasswordPanelTarget) {
-                    this.passwordPanelTarget.classList.add('d-none');
+                    setHidden(this.passwordPanelTarget, true);
                 }
             }
         } catch {
@@ -303,22 +316,22 @@ export default class extends Controller {
             if (display.type === 'text') {
                 if (this.hasOutputTarget) {
                     this.outputTarget.textContent = display.text;
-                    this.outputTarget.classList.remove('d-none');
+                    setHidden(this.outputTarget, false);
                 }
 
                 if (this.hasDownloadLinkTarget) {
-                    this.downloadLinkTarget.classList.add('d-none');
+                    setHidden(this.downloadLinkTarget, true);
                 }
             } else {
                 if (this.hasOutputTarget) {
-                    this.outputTarget.classList.add('d-none');
+                    setHidden(this.outputTarget, true);
                 }
 
                 if (this.hasDownloadLinkTarget) {
                     this.downloadLinkTarget.href = URL.createObjectURL(display.blob);
                     this.downloadLinkTarget.download = display.filename;
                     this.downloadLinkTarget.textContent = display.filename;
-                    this.downloadLinkTarget.classList.remove('d-none');
+                    setHidden(this.downloadLinkTarget, false);
                 }
             }
 
@@ -356,7 +369,7 @@ export default class extends Controller {
     private renderAccessLog(data: PreviewResponse): void {
         if (!this.hasAccessLogPanelTarget || data.accessLog === undefined) {
             if (this.hasAccessLogPanelTarget) {
-                this.accessLogPanelTarget.classList.add('d-none');
+                setHidden(this.accessLogPanelTarget, true);
             }
 
             return;
@@ -365,14 +378,14 @@ export default class extends Controller {
         const entries = data.accessLog;
 
         if (entries.length === 0) {
-            this.accessLogPanelTarget.classList.remove('d-none');
+            setHidden(this.accessLogPanelTarget, false);
 
             if (this.hasAccessLogEmptyTarget) {
-                this.accessLogEmptyTarget.classList.remove('d-none');
+                setHidden(this.accessLogEmptyTarget, false);
             }
 
             if (this.hasAccessLogTableTarget) {
-                this.accessLogTableTarget.classList.add('d-none');
+                setHidden(this.accessLogTableTarget, true);
             }
 
             if (this.hasAccessLogBodyTarget) {
@@ -382,10 +395,10 @@ export default class extends Controller {
             return;
         }
 
-        this.accessLogPanelTarget.classList.remove('d-none');
+        setHidden(this.accessLogPanelTarget, false);
 
         if (this.hasAccessLogEmptyTarget) {
-            this.accessLogEmptyTarget.classList.add('d-none');
+            setHidden(this.accessLogEmptyTarget, true);
         }
 
         if (!this.hasAccessLogBodyTarget || !this.hasAccessLogTableTarget) {
@@ -411,13 +424,13 @@ export default class extends Controller {
 
             const uaCell = document.createElement('td');
             uaCell.textContent = entry.userAgent ?? '—';
-            uaCell.classList.add('text-break');
+            uaCell.style.overflowWrap = 'anywhere';
             row.appendChild(uaCell);
 
             this.accessLogBodyTarget.appendChild(row);
         }
 
-        this.accessLogTableTarget.classList.remove('d-none');
+        setHidden(this.accessLogTableTarget, false);
     }
 
     private renderExtendPanel(data: PreviewResponse): void {
@@ -426,12 +439,12 @@ export default class extends Controller {
         }
 
         if (!data.extendable) {
-            this.extendPanelTarget.classList.add('d-none');
+            setHidden(this.extendPanelTarget, true);
 
             return;
         }
 
-        this.extendPanelTarget.classList.remove('d-none');
+        setHidden(this.extendPanelTarget, false);
 
         if (this.hasExtendSummaryTarget) {
             const expires = data.expiresAt ? this.formatDateTime(data.expiresAt) : '—';
@@ -481,20 +494,20 @@ export default class extends Controller {
     private resetDisplay(): void {
         if (this.hasOutputTarget) {
             this.outputTarget.textContent = '';
-            this.outputTarget.classList.add('d-none');
+            setHidden(this.outputTarget, true);
         }
 
         if (this.hasDownloadLinkTarget) {
-            this.downloadLinkTarget.classList.add('d-none');
+            setHidden(this.downloadLinkTarget, true);
         }
 
         if (this.hasPasswordPanelTarget) {
-            this.passwordPanelTarget.classList.add('d-none');
+            setHidden(this.passwordPanelTarget, true);
             this.passwordTarget.value = '';
         }
 
         if (this.hasKeyPanelTarget) {
-            this.keyPanelTarget.classList.add('d-none');
+            setHidden(this.keyPanelTarget, true);
             this.keyTarget.value = '';
         }
 
@@ -507,15 +520,15 @@ export default class extends Controller {
         }
 
         if (this.hasExtendPanelTarget) {
-            this.extendPanelTarget.classList.add('d-none');
+            setHidden(this.extendPanelTarget, true);
         }
 
         if (this.hasAccessLogPanelTarget) {
-            this.accessLogPanelTarget.classList.add('d-none');
+            setHidden(this.accessLogPanelTarget, true);
         }
 
         if (this.hasAccessLogTableTarget) {
-            this.accessLogTableTarget.classList.add('d-none');
+            setHidden(this.accessLogTableTarget, true);
         }
 
         if (this.hasAccessLogBodyTarget) {
@@ -523,7 +536,7 @@ export default class extends Controller {
         }
 
         if (this.hasAccessLogEmptyTarget) {
-            this.accessLogEmptyTarget.classList.add('d-none');
+            setHidden(this.accessLogEmptyTarget, true);
         }
 
         this.showDecryptControls();
@@ -533,36 +546,41 @@ export default class extends Controller {
 
     private hideDecryptControls(): void {
         if (this.hasDecryptButtonTarget) {
-            this.decryptButtonTarget.classList.add('d-none');
+            setHidden(this.decryptButtonTarget, true);
         }
 
         if (this.hasPasswordPanelTarget) {
-            this.passwordPanelTarget.classList.add('d-none');
+            setHidden(this.passwordPanelTarget, true);
         }
 
         if (this.hasKeyPanelTarget) {
-            this.keyPanelTarget.classList.add('d-none');
+            setHidden(this.keyPanelTarget, true);
         }
     }
 
     private showDecryptControls(): void {
         if (this.hasDecryptButtonTarget) {
-            this.decryptButtonTarget.classList.remove('d-none');
+            setHidden(this.decryptButtonTarget, false);
         }
     }
 
+    /** Native <dialog> (REQ-UI-001 modals); the UiKit dialog runtime may already have opened it. */
     private showModal(): void {
-        this.modalTarget.classList.add('show');
-        this.modalTarget.style.display = 'block';
-        this.modalTarget.removeAttribute('aria-hidden');
-        document.body.classList.add('modal-open');
+        if (!this.modalTarget.open) {
+            this.modalTarget.showModal();
+        }
     }
 
     private hideModal(): void {
-        this.modalTarget.classList.remove('show');
-        this.modalTarget.style.display = 'none';
-        this.modalTarget.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('modal-open');
+        if (this.modalTarget.open) {
+            this.modalTarget.close();
+        }
+    }
+
+    private resetState(): void {
+        this.activeShareId = null;
+        this.previewData = null;
+        this.focusExtendOnOpen = false;
     }
 
     private showError(code: string): void {
@@ -571,12 +589,12 @@ export default class extends Controller {
         }
 
         this.errorTarget.textContent = this.errorsValue[code] ?? code;
-        this.errorTarget.classList.remove('d-none');
+        setHidden(this.errorTarget, false);
     }
 
     private hideError(): void {
         if (this.hasErrorTarget) {
-            this.errorTarget.classList.add('d-none');
+            setHidden(this.errorTarget, true);
         }
     }
 
@@ -586,12 +604,12 @@ export default class extends Controller {
         }
 
         this.extendSuccessTarget.textContent = this.extendSuccessMessageValue;
-        this.extendSuccessTarget.classList.remove('d-none');
+        setHidden(this.extendSuccessTarget, false);
     }
 
     private hideExtendSuccess(): void {
         if (this.hasExtendSuccessTarget) {
-            this.extendSuccessTarget.classList.add('d-none');
+            setHidden(this.extendSuccessTarget, true);
             this.extendSuccessTarget.textContent = '';
         }
     }

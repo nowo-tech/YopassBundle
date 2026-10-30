@@ -44,7 +44,7 @@ Nowo\YopassBundle\YopassBundle::class => ['all' => true],
 ```yaml
 # config/routes/nowo_yopass.yaml
 # Thin loader: imports #[Route] attributes from ShareManageController / PublicShareController
-# and applies nowo_yopass.routes + route_prefix overrides (do not also attribute-import the controllers).
+# and applies nowo_yopass.routes + web_ui.path_prefix overrides (do not also attribute-import the controllers).
 nowo_yopass:
     resource: .
     type: nowo_yopass

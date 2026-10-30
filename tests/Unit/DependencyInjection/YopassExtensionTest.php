@@ -100,9 +100,13 @@ final class YopassExtensionTest extends TestCase
         self::assertTrue($this->container->hasDefinition(ShareManageController::class));
         self::assertTrue($this->container->hasDefinition(PublicEndpointRateLimiter::class));
         self::assertTrue($this->container->getParameter('nowo_yopass.web_ui.enabled'));
-        self::assertSame('@NowoYopassBundle/layout.html.twig', $this->container->getParameter('nowo_yopass.web_ui.layout_template'));
-        self::assertSame('tabler', $this->container->getParameter('nowo_yopass.web_ui.css_framework'));
-        self::assertSame('tabler-icons', $this->container->getParameter('nowo_yopass.web_ui.icon_set'));
+        self::assertNull($this->container->getParameter('nowo_yopass.web_ui.layout_template'));
+        self::assertNull($this->container->getParameter('nowo_yopass.web_ui.public_layout_template'));
+        self::assertSame(['manage' => null, 'created' => null, 'public' => null], $this->container->getParameter('nowo_yopass.web_ui.templates'));
+        self::assertSame('', $this->container->getParameter('nowo_yopass.web_ui.path_prefix'));
+        self::assertSame('', $this->container->getParameter('nowo_yopass.route_prefix'));
+        self::assertNull($this->container->getParameter('nowo_yopass.web_ui.css_framework'));
+        self::assertNull($this->container->getParameter('nowo_yopass.web_ui.icon_set'));
     }
 
     public function testLoadRegistersTwigExtensionArguments(): void
@@ -116,17 +120,39 @@ final class YopassExtensionTest extends TestCase
         self::assertSame('%nowo_yopass.web_ui.icon_set%', $definition->getArgument('$iconSet'));
     }
 
-    public function testLoadPrefersLegacyTemplatesLayoutWhenWebUiLayoutIsDefault(): void
+    public function testLoadMapsTheDeprecatedTemplatesLayout(): void
     {
         $this->extension->load([[
-            'user_class' => 'App\\Entity\\User',
-            'templates'  => [
+            'user_class'   => 'App\\Entity\\User',
+            'route_prefix' => '/{_locale}',
+            'templates'    => [
                 'layout' => 'admin/base.html.twig',
+                'public' => 'yopass/public.html.twig',
             ],
         ]], $this->container);
 
         self::assertSame('admin/base.html.twig', $this->container->getParameter('nowo_yopass.web_ui.layout_template'));
-        self::assertSame('admin/base.html.twig', $this->container->getParameter('nowo_yopass.templates')['layout']);
+        self::assertSame('yopass/public.html.twig', $this->container->getParameter('nowo_yopass.templates')['public']);
+        self::assertSame('/{_locale}', $this->container->getParameter('nowo_yopass.route_prefix'));
+    }
+
+    public function testLoadMapsThe1xDefaultLayoutAndEmptyValuesToNull(): void
+    {
+        $this->extension->load([[
+            'user_class' => 'App\\Entity\\User',
+            'web_ui'     => [
+                'layout_template'        => '@NowoYopassBundle/layout.html.twig',
+                'public_layout_template' => '',
+                'templates'              => ['manage' => '', 'created' => 'host/created.html.twig'],
+            ],
+        ]], $this->container);
+
+        self::assertNull($this->container->getParameter('nowo_yopass.web_ui.layout_template'));
+        self::assertNull($this->container->getParameter('nowo_yopass.web_ui.public_layout_template'));
+        self::assertSame(
+            ['manage' => null, 'created' => 'host/created.html.twig', 'public' => null],
+            $this->container->getParameter('nowo_yopass.web_ui.templates'),
+        );
     }
 
     public function testLoadUsesWebUiLayoutTemplateOverLegacyTemplatesLayout(): void
@@ -134,7 +160,8 @@ final class YopassExtensionTest extends TestCase
         $this->extension->load([[
             'user_class' => 'App\\Entity\\User',
             'web_ui'     => [
-                'layout_template' => 'platform/layout.html.twig',
+                'layout_template'        => 'platform/layout.html.twig',
+                'public_layout_template' => 'platform/guest.html.twig',
             ],
             'templates' => [
                 'layout' => 'admin/base.html.twig',
@@ -142,7 +169,7 @@ final class YopassExtensionTest extends TestCase
         ]], $this->container);
 
         self::assertSame('platform/layout.html.twig', $this->container->getParameter('nowo_yopass.web_ui.layout_template'));
-        self::assertSame('platform/layout.html.twig', $this->container->getParameter('nowo_yopass.templates')['layout']);
+        self::assertSame('platform/guest.html.twig', $this->container->getParameter('nowo_yopass.web_ui.public_layout_template'));
     }
 
     public function testManageWebUiSecurityPassFailsWithoutSecurityBundle(): void
@@ -466,6 +493,17 @@ final class YopassExtensionTest extends TestCase
             }
         }
         self::assertSame(0, $reseeds);
+    }
+
+    public function testPrependDoesNotSeedUiKitWhenTheDeprecatedKeysAreUnset(): void
+    {
+        $this->registerStubExtension($this->container, 'nowo_ui_kit');
+        $this->container->registerExtension($this->extension);
+        $this->container->prependExtensionConfig('nowo_yopass', ['user_class' => 'App\\Entity\\User']);
+
+        $this->extension->prepend($this->container);
+
+        self::assertSame([], $this->container->getExtensionConfig('nowo_ui_kit'));
     }
 
     private function registerStubExtension(ContainerBuilder $container, string $alias): void

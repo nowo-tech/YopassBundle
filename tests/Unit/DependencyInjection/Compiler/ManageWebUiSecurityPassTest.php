@@ -8,6 +8,7 @@ use Nowo\YopassBundle\DependencyInjection\Compiler\ManageWebUiSecurityPass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
+use Symfony\Component\DependencyInjection\Extension\Extension;
 
 final class ManageWebUiSecurityPassTest extends TestCase
 {
@@ -45,11 +46,54 @@ final class ManageWebUiSecurityPassTest extends TestCase
     {
         $container = new ContainerBuilder();
         $container->setParameter('nowo_yopass.web_ui.enabled', true);
-        $container->setParameter('nowo_yopass.security', ['allow_unauthenticated' => false]);
+        $container->setParameter('nowo_yopass.security', ['allow_unauthenticated' => false, 'access_roles' => ['ROLE_ADMIN']]);
 
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('SecurityBundle');
 
         (new ManageWebUiSecurityPass())->process($container);
+    }
+
+    public function testFailsWhenEveryRoleListIsEmpty(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter('nowo_yopass.web_ui.enabled', true);
+        $container->setParameter('nowo_yopass.security', [
+            'allow_unauthenticated' => false,
+            'access_checker'        => null,
+            'access_roles'          => [],
+            'roles'                 => ['admin' => [], 'create' => [], 'list' => [], 'revoke' => []],
+        ]);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('role list');
+
+        (new ManageWebUiSecurityPass())->process($container);
+    }
+
+    public function testEmptyRoleListsAreAcceptedWithACustomAccessChecker(): void
+    {
+        $container = new ContainerBuilder();
+        $container->registerExtension(new class extends Extension {
+            public function load(array $configs, ContainerBuilder $container): void
+            {
+            }
+
+            public function getAlias(): string
+            {
+                return 'security';
+            }
+        });
+        $container->setParameter('nowo_yopass.web_ui.enabled', true);
+        $container->setParameter('nowo_yopass.security', [
+            'allow_unauthenticated' => false,
+            'access_checker'        => 'app.yopass_checker',
+            'access_roles'          => [],
+            'roles'                 => ['admin' => [], 'create' => [], 'list' => [], 'revoke' => []],
+        ]);
+
+        (new ManageWebUiSecurityPass())->process($container);
+
+        $this->addToAssertionCount(1);
     }
 }

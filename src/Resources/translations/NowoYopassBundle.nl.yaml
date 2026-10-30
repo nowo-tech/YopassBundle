@@ -118,6 +118,7 @@ yopass:
         expires: Verloopt
         reads: Lezingen
         status: Toestand
+        actions: Acties
         empty: U heeft nog geen shares aangemaakt.
         retention_notice: Shares ouder dan %max_age% worden automatisch verwijderd.
         summary: '%from%–%to% van %total%'

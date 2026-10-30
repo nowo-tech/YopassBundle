@@ -1,70 +1,77 @@
-{# Public reveal page — standalone HTML; macros still honor css_framework (REQ-UI-001). #}
-{% import '@NowoUiKitBundle/macros/ui.html.twig' as ui %}
-<!DOCTYPE html>
-<html lang="{{ app.request.locale|default('en') }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ 'yopass.public.title'|trans({}, 'NowoYopassBundle') }}</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
-    <style>body { background: #f6f8fb; }</style>
-</head>
-<body class="layout-fluid">
-<div class="page page-center">
-    <div class="container container-tight py-4">
-        <div class="{{ ui.card(nowo_yopass_css_framework|default('tabler')) }} card-md shadow-sm">
-            <div class="card-body"
-                 data-controller="nowo-share-reveal"
-                 data-nowo-share-reveal-consume-url-value="{{ path(routes.public_consume.name, { id: share.id }) }}"
-                 data-nowo-share-reveal-share-id-value="{{ share.id }}"
-                 data-nowo-share-reveal-mode-value="{{ decryption_mode }}"
-                 data-nowo-share-reveal-errors-value="{{ {
-                     'KEY_REQUIRED': 'yopass.public.key_required'|trans({}, 'NowoYopassBundle'),
-                     'PASSWORD_REQUIRED': 'yopass.public.password_required'|trans({}, 'NowoYopassBundle'),
-                     'INVALID_KEY': 'yopass.public.invalid_key'|trans({}, 'NowoYopassBundle'),
-                     'expired': 'yopass.public.unavailable'|trans({}, 'NowoYopassBundle'),
-                     'revoked': 'yopass.public.unavailable'|trans({}, 'NowoYopassBundle'),
-                     'consumed': 'yopass.public.unavailable'|trans({}, 'NowoYopassBundle'),
-                 }|json_encode|e('html_attr') }}">
-                <h1 class="h2 mb-3">{{ 'yopass.public.title'|trans({}, 'NowoYopassBundle') }}</h1>
+{#
+  Public reveal page (REQ-UI-003 unique page, declared in docs/TEMPLATES.md): the recipient's page, not an admin screen.
+  Extends web_ui.public_layout_template (page_layout), else the UiKit guest layout (nowo_ui_layout.guest), and fills
+  the canonical blocks. The ciphertext is fetched (one read) and decrypted in the browser by the nowo-share-reveal
+  controller; the key / password comes from the URL fragment or the form and is never sent to the server
+  (REQ-SEC-004 M1). REQ-TWIG-005: ShareRevealType renders the password (password mode) or key (key mode) input
+  without a name (never submitted).
+  Variables: header (View\PageHeader), page_layout (?string), share (SecureShare), decryption_mode (key|password),
+  routes, reveal_form (FormView of ShareRevealType).
+#}
+{% extends page_layout ?? nowo_ui_layout.guest %}
+{% trans_default_domain 'NowoYopassBundle' %}
+{% set nowo_ui_bundle = 'NowoYopassBundle' %}
+{% set nowo_ui_page_type = 'form' %}
 
-                {% if not share.isAvailable %}
-                    <div class="{{ ui.flash('warning', nowo_yopass_css_framework|default('tabler')) }} mb-0">{{ 'yopass.public.unavailable'|trans({}, 'NowoYopassBundle') }}</div>
-                {% else %}
-                    <p class="text-secondary">{{ 'yopass.public.intro'|trans({}, 'NowoYopassBundle') }}</p>
-                    <p class="text-secondary small">{{ 'yopass.public.e2e_notice'|trans({}, 'NowoYopassBundle') }}</p>
+{% block nowo_ui_document_title %}{{ header.title|nowo_ui_trans }}{% endblock %}
 
-                    {% if decryption_mode == 'password' %}
-                        <p class="text-secondary small d-none mb-3" data-nowo-share-reveal-target="passwordFromLinkHint">
-                            {{ 'yopass.public.password_from_link'|trans({}, 'NowoYopassBundle') }}
-                        </p>
-                    {% else %}
-                        <p class="text-secondary small d-none mb-3" data-nowo-share-reveal-target="keyFromLinkHint">
-                            {{ 'yopass.public.key_from_link'|trans({}, 'NowoYopassBundle') }}
-                        </p>
+{% block nowo_ui_page_header %}{{ nowo_ui_page_header(header, nowo_ui_bundle) }}{% endblock %}
+
+{% block nowo_ui_content %}
+    {% set _b = nowo_ui_bundle %}
+    <section class="{{ nowo_ui_class('form_panel', _b) }} nowo-yopass-reveal" data-testid="yopass-reveal"{{ nowo_ui_attrs('form_panel', _b) }}
+             data-controller="nowo-share-reveal"
+             data-nowo-share-reveal-consume-url-value="{{ path(routes.public_consume.name, {id: share.id}) }}"
+             data-nowo-share-reveal-share-id-value="{{ share.id }}"
+             data-nowo-share-reveal-mode-value="{{ decryption_mode }}"
+             data-nowo-share-reveal-errors-value="{{ {
+                 KEY_REQUIRED: 'yopass.public.key_required'|trans,
+                 PASSWORD_REQUIRED: 'yopass.public.password_required'|trans,
+                 INVALID_KEY: 'yopass.public.invalid_key'|trans,
+                 expired: 'yopass.public.unavailable'|trans,
+                 revoked: 'yopass.public.unavailable'|trans,
+                 consumed: 'yopass.public.unavailable'|trans,
+             }|json_encode }}">
+        {% if not share.isAvailable %}
+            <div class="{{ nowo_ui_class('flash_warning', _b) }}" role="status">{{ 'yopass.public.unavailable'|trans }}</div>
+        {% else %}
+            <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.public.e2e_notice'|trans }}</p>
+
+            {% if decryption_mode == 'password' %}
+                <p class="{{ nowo_ui_class('muted', _b) }}" hidden data-nowo-share-reveal-target="passwordFromLinkHint">
+                    {{ 'yopass.public.password_from_link'|trans }}
+                </p>
+            {% else %}
+                <p class="{{ nowo_ui_class('muted', _b) }}" hidden data-nowo-share-reveal-target="keyFromLinkHint">
+                    {{ 'yopass.public.key_from_link'|trans }}
+                </p>
+            {% endif %}
+
+            {{ form_start(reveal_form, {attr: {
+                class: nowo_ui_class('form', _b),
+                autocomplete: 'off',
+                'data-action': 'submit->nowo-share-reveal#reveal:prevent',
+            }}) }}
+                {% for child in reveal_form %}
+                    {% if not child.rendered %}
+                        {{ form_row(child) }}
                     {% endif %}
-
-                    {# REQ-TWIG-005: ShareRevealType renders the password (password mode) or key (key mode) input; browser-only, never submitted. #}
-                    {{ form_start(reveal_form, { attr: { autocomplete: 'off', onsubmit: 'return false;' } }) }}
-                        {% for child in reveal_form %}
-                            {% if not child.rendered %}
-                                {{ form_row(child) }}
-                            {% endif %}
-                        {% endfor %}
-                    {{ form_end(reveal_form) }}
-
-                    <button type="button" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-share-reveal#reveal" data-nowo-share-reveal-target="revealButton">
-                        {{ 'yopass.public.reveal'|trans({}, 'NowoYopassBundle') }}
+                {% endfor %}
+                <div class="{{ nowo_ui_class('form_actions', _b) }}"{{ nowo_ui_attrs('form_actions', _b) }}>
+                    <button type="submit" class="{{ nowo_ui_class('btn_primary', _b) }}" data-nowo-share-reveal-target="revealButton">
+                        {{ 'yopass.public.reveal'|trans }}
                     </button>
+                </div>
+            {{ form_end(reveal_form) }}
 
-                    <pre class="{{ ui.flash('success', nowo_yopass_css_framework|default('tabler')) }} mt-3 mb-0 d-none text-wrap" data-nowo-share-reveal-target="output"></pre>
-                    <a href="#" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }} mt-3 d-none" download data-nowo-share-reveal-target="downloadLink"></a>
-                    <div class="{{ ui.flash('danger', nowo_yopass_css_framework|default('tabler')) }} mt-3 d-none" data-nowo-share-reveal-target="error"></div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-<script type="module" src="{{ asset('js/yopass.js', 'nowo_yopass') }}"></script>
-</body>
-</html>
+            <pre class="{{ nowo_ui_class('code_block', _b) }} nowo-yopass-secret" hidden data-nowo-share-reveal-target="output"></pre>
+            <a href="#" class="{{ nowo_ui_class('btn_primary', _b) }}" hidden download data-nowo-share-reveal-target="downloadLink"></a>
+            <div class="{{ nowo_ui_class('flash_error', _b) }}" role="alert" hidden data-nowo-share-reveal-target="error"></div>
+        {% endif %}
+    </section>
+{% endblock %}
+
+{% block nowo_ui_scripts %}
+    {{ parent() }}
+    <script type="module" src="{{ asset('js/yopass.js', 'nowo_yopass') }}"></script>
+{% endblock %}

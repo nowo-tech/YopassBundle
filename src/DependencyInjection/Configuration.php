@@ -11,7 +11,9 @@ use Nowo\YopassBundle\Ui\IconSet;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
+use function array_key_exists;
 use function in_array;
+use function is_array;
 
 /**
  * Configuration tree for YopassBundle.
@@ -29,6 +31,10 @@ final class Configuration implements ConfigurationInterface
         $root        = $treeBuilder->getRootNode();
 
         $root
+            ->beforeNormalization()
+                ->ifArray()
+                ->then(static fn (array $config): array => self::mapDeprecatedRootKeys($config))
+            ->end()
             ->children()
                 ->scalarNode('user_class')
                     ->info('FQCN of the application user entity (must implement UserInterface and expose getId()).')
@@ -102,8 +108,9 @@ final class Configuration implements ConfigurationInterface
                     ->end()
                 ->end()
                 ->scalarNode('route_prefix')
-                    ->info('Optional prefix prepended to all bundle route paths (e.g. /{_locale}).')
-                    ->defaultValue('')
+                    ->info('Deprecated since 1.10: use web_ui.path_prefix.')
+                    ->defaultNull()
+                    ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.path_prefix" instead (REQ-UI-003).')
                 ->end()
                 ->scalarNode('dashboard_route')
                     ->info('Optional route name for the back link in the manage UI. Null hides the button.')
@@ -221,32 +228,65 @@ final class Configuration implements ConfigurationInterface
                 ->arrayNode('security')
                     ->addDefaultsIfNotSet()
                     ->info('Access control. Replace access_checker with a custom service implementing YopassAccessCheckerInterface.')
+                    ->beforeNormalization()
+                        ->ifArray()
+                        ->then(static fn (array $security): array => self::mapDeprecatedRoleKeys($security))
+                    ->end()
                     ->children()
                         ->scalarNode('access_checker')
                             ->info('Service id implementing YopassAccessCheckerInterface. Null uses role-based defaults.')
                             ->defaultNull()
                         ->end()
-                        ->arrayNode('admin_roles')
-                            ->scalarPrototype()->end()
-                            ->defaultValue(['ROLE_ADMIN'])
-                            ->info('Roles that bypass feature checks (full access).')
-                        ->end()
                         ->arrayNode('access_roles')
                             ->scalarPrototype()->end()
                             ->defaultValue(['ROLE_ADMIN'])
-                            ->info('Roles required to open the manage UI.')
+                            ->info('Roles required to open the manage UI (an empty list denies everyone but security.roles.admin).')
                         ->end()
-                        ->arrayNode('create_roles')
-                            ->scalarPrototype()->end()
-                            ->defaultValue(['ROLE_ADMIN'])
+                        ->arrayNode('roles')
+                            ->addDefaultsIfNotSet()
+                            ->info('Roles per action (REQ-UI-003 security.roles.<action>). An empty list grants that action to nobody (only security.roles.admin).')
+                            ->children()
+                                ->arrayNode('admin')
+                                    ->scalarPrototype()->end()
+                                    ->defaultValue(['ROLE_ADMIN'])
+                                    ->info('Roles that bypass the feature checks (full access).')
+                                ->end()
+                                ->arrayNode('create')
+                                    ->scalarPrototype()->end()
+                                    ->defaultValue(['ROLE_ADMIN'])
+                                    ->info('Create shares.')
+                                ->end()
+                                ->arrayNode('list')
+                                    ->scalarPrototype()->end()
+                                    ->defaultValue(['ROLE_ADMIN'])
+                                    ->info('List and preview own shares.')
+                                ->end()
+                                ->arrayNode('revoke')
+                                    ->scalarPrototype()->end()
+                                    ->defaultValue(['ROLE_ADMIN'])
+                                    ->info('Revoke, extend and delete own shares.')
+                                ->end()
+                            ->end()
                         ->end()
-                        ->arrayNode('list_roles')
-                            ->scalarPrototype()->end()
-                            ->defaultValue(['ROLE_ADMIN'])
+                        ->variableNode('admin_roles')
+                            ->defaultNull()
+                            ->info('Deprecated since 1.10: use security.roles.admin.')
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "security.roles.admin" instead (REQ-UI-003).')
                         ->end()
-                        ->arrayNode('revoke_roles')
-                            ->scalarPrototype()->end()
-                            ->defaultValue(['ROLE_ADMIN'])
+                        ->variableNode('create_roles')
+                            ->defaultNull()
+                            ->info('Deprecated since 1.10: use security.roles.create.')
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "security.roles.create" instead (REQ-UI-003).')
+                        ->end()
+                        ->variableNode('list_roles')
+                            ->defaultNull()
+                            ->info('Deprecated since 1.10: use security.roles.list.')
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "security.roles.list" instead (REQ-UI-003).')
+                        ->end()
+                        ->variableNode('revoke_roles')
+                            ->defaultNull()
+                            ->info('Deprecated since 1.10: use security.roles.revoke.')
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "security.roles.revoke" instead (REQ-UI-003).')
                         ->end()
                         ->booleanNode('allow_unauthenticated')
                             ->defaultFalse()
@@ -256,26 +296,44 @@ final class Configuration implements ConfigurationInterface
                 ->end()
                 ->arrayNode('web_ui')
                     ->addDefaultsIfNotSet()
-                    ->info('Manage Web UI look-and-feel (REQ-UI-001). Canonical layout key is web_ui.layout_template; templates.layout is kept as a BC alias.')
+                    ->info('Web UI on the UiKit page contract (REQ-UI-001 / REQ-UI-003). The CSS stack, icon set and row-action display are inherited from nowo_ui_kit.')
                     ->children()
                         ->booleanNode('enabled')
                             ->defaultTrue()
-                            ->info('Manage Web UI feature flag (default true). Access is still enforced by security.access_roles and the host firewall.')
+                            ->info('Manage Web UI feature flag (default true). Access is still enforced by security.access_roles and the host firewall. The public share routes are always registered.')
+                        ->end()
+                        ->scalarNode('path_prefix')
+                            ->defaultValue('')
+                            ->info('Prefix prepended to every bundle route path, manage and public (e.g. /{_locale}). Replaces route_prefix.')
                         ->end()
                         ->scalarNode('layout_template')
-                            ->defaultValue('@NowoYopassBundle/layout.html.twig')
-                            ->cannotBeEmpty()
-                            ->info('Twig layout extended by manage pages. Host apps set this to their project layout.')
+                            ->defaultNull()
+                            ->info('Layout the manage pages extend (page.layout). Null = nowo_ui_kit.layouts.admin. A 1.x layout without the UiKit canonical blocks is wrapped in a deprecated bridge.')
+                        ->end()
+                        ->scalarNode('public_layout_template')
+                            ->defaultNull()
+                            ->info('Layout of the public reveal page. Null = nowo_ui_kit.layouts.guest.')
+                        ->end()
+                        ->arrayNode('templates')
+                            ->addDefaultsIfNotSet()
+                            ->info('Per-page template overrides (a host template extending @!NowoYopassBundle/... and overriding a data block). Null = the bundle template.')
+                            ->children()
+                                ->scalarNode('manage')->defaultNull()->info('Manage page (list scaffold). Default @NowoYopassBundle/manage/index.html.twig.')->end()
+                                ->scalarNode('created')->defaultNull()->info('Share created page (show scaffold). Default @NowoYopassBundle/manage/created.html.twig.')->end()
+                                ->scalarNode('public')->defaultNull()->info('Public reveal page (unique page on the guest layout). Default @NowoYopassBundle/public/reveal.html.twig.')->end()
+                            ->end()
                         ->end()
                         ->enumNode('css_framework')
-                            ->values(CssFramework::values())
-                            ->defaultValue(CssFramework::Tabler->value)
-                            ->info('Host-chosen CSS stack: bootstrap, bootstrap4, bootstrap5, tailwind, foundation, custom, tabler, none.')
+                            ->values([null, ...CssFramework::values()])
+                            ->defaultNull()
+                            ->info('Deprecated since 1.10: set nowo_ui_kit.css_framework. When set (and nowo_ui_kit.css_framework is not), it is copied to nowo_ui_kit.')
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, set "nowo_ui_kit.css_framework" instead (REQ-UI-003).')
                         ->end()
                         ->enumNode('icon_set')
-                            ->values(IconSet::values())
-                            ->defaultValue(IconSet::TablerIcons->value)
-                            ->info('Icon set: bootstrap-icons, tabler-icons, ux_icon, svg_inline, none.')
+                            ->values([null, ...IconSet::values()])
+                            ->defaultNull()
+                            ->info('Deprecated since 1.10: set nowo_ui_kit.icon_set. When set (and nowo_ui_kit.icon_set is not), it is copied to nowo_ui_kit.')
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, set "nowo_ui_kit.icon_set" instead (REQ-UI-003).')
                         ->end()
                     ->end()
                 ->end()
@@ -356,19 +414,23 @@ final class Configuration implements ConfigurationInterface
                 ->end()
                 ->arrayNode('templates')
                     ->addDefaultsIfNotSet()
+                    ->info('Deprecated since 1.10: use web_ui.layout_template and web_ui.templates.<page>.')
                     ->children()
                         ->scalarNode('layout')
-                            ->defaultValue('@NowoYopassBundle/layout.html.twig')
-                            ->info('BC alias for web_ui.layout_template. Prefer web_ui.layout_template going forward.')
+                            ->defaultNull()
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.layout_template" instead (REQ-UI-003).')
                         ->end()
                         ->scalarNode('manage')
-                            ->defaultValue('@NowoYopassBundle/manage/index.html.twig')
+                            ->defaultNull()
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.templates.manage" instead (REQ-UI-003).')
                         ->end()
                         ->scalarNode('created')
-                            ->defaultValue('@NowoYopassBundle/manage/created.html.twig')
+                            ->defaultNull()
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.templates.created" instead (REQ-UI-003).')
                         ->end()
                         ->scalarNode('public')
-                            ->defaultValue('@NowoYopassBundle/public/reveal.html.twig')
+                            ->defaultNull()
+                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.templates.public" instead (REQ-UI-003).')
                         ->end()
                     ->end()
                 ->end()
@@ -393,5 +455,67 @@ final class Configuration implements ConfigurationInterface
             ->end();
 
         return $treeBuilder;
+    }
+
+    /**
+     * Maps the deprecated root keys onto the canonical REQ-UI-003 keys (the canonical key wins when both are set):
+     * route_prefix → web_ui.path_prefix, templates.layout → web_ui.layout_template, templates.<page> →
+     * web_ui.templates.<page>. The deprecated nodes stay in the tree so their use still triggers a deprecation.
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, mixed>
+     */
+    private static function mapDeprecatedRootKeys(array $config): array
+    {
+        $webUi = is_array($config['web_ui'] ?? null) ? $config['web_ui'] : [];
+
+        if (isset($config['route_prefix']) && !array_key_exists('path_prefix', $webUi)) {
+            $webUi['path_prefix'] = $config['route_prefix'];
+        }
+
+        $templates = is_array($config['templates'] ?? null) ? $config['templates'] : [];
+        if (isset($templates['layout']) && !array_key_exists('layout_template', $webUi)) {
+            $webUi['layout_template'] = $templates['layout'];
+        }
+
+        $pages = is_array($webUi['templates'] ?? null) ? $webUi['templates'] : [];
+        foreach (['manage', 'created', 'public'] as $page) {
+            if (isset($templates[$page]) && !array_key_exists($page, $pages)) {
+                $pages[$page] = $templates[$page];
+            }
+        }
+        if ($pages !== []) {
+            $webUi['templates'] = $pages;
+        }
+
+        if ($webUi !== []) {
+            $config['web_ui'] = $webUi;
+        }
+
+        return $config;
+    }
+
+    /**
+     * Maps the deprecated security.<action>_roles keys onto security.roles.<action> (the canonical key wins).
+     *
+     * @param array<string, mixed> $security
+     *
+     * @return array<string, mixed>
+     */
+    private static function mapDeprecatedRoleKeys(array $security): array
+    {
+        $roles = is_array($security['roles'] ?? null) ? $security['roles'] : [];
+        foreach (['admin', 'create', 'list', 'revoke'] as $action) {
+            $legacy = $security[$action . '_roles'] ?? null;
+            if ($legacy !== null && !array_key_exists($action, $roles)) {
+                $roles[$action] = $legacy;
+            }
+        }
+        if ($roles !== []) {
+            $security['roles'] = $roles;
+        }
+
+        return $security;
     }
 }

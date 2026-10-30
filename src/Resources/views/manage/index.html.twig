@@ -1,439 +1,87 @@
-{% extends nowo_yopass_layout_template %}
-{% import '@NowoUiKitBundle/macros/ui.html.twig' as ui %}
-{% import '@NowoYopassBundle/_action_icons.html.twig' as yopass_icons %}
+{#
+  Manage page (REQ-UI-003): UiKit list scaffold. Variable: page (View\ListPage from YopassPageFactory::managePage():
+  header yopass.title / yopass.intro with the back link (dashboard_route) and the "Delete all" action (POST + CSRF-only
+  FormView behind the UiKit confirm dialog); columns type, created, expires, reads, status; rows = list<SecureShare>;
+  row actions View / Extend (open the preview <dialog>), Revoke and Delete (POST + CSRF behind the confirm dialog);
+  Pagination (shares.list_page_size); EmptyState yopass.list.empty).
+  Data blocks: nowo_ui_list_row (cells). nowo_ui_content prepends the create panel (manage/_create_panel.html.twig) and
+  wraps the list in the preview controller with the preview dialog (manage/_preview_dialog.html.twig);
+  nowo_ui_scripts stacks the bundle script after the host / UiKit scripts.
+  Other variables (1.x, kept for web_ui.templates overrides and the partials): shares, shares_total, shares_page,
+  shares_pages, list_page_size, can_create, can_revoke, can_extend, can_share_file, max_file_bytes, max_secret_chars,
+  dashboard_route, routes, share_options, sharing_options, create_form, revoke_forms, delete_forms, delete_all_form,
+  preview_form.
+#}
+{% extends '@NowoUiKit/page/list.html.twig' %}
+{% trans_default_domain 'NowoYopassBundle' %}
 
-{% block title %}{{ 'yopass.title'|trans({}, 'NowoYopassBundle') }}{% endblock %}
-
-{% block stylesheets %}
-    {{ parent() }}
+{% block nowo_ui_content %}
+    {% set _b = page.bundle %}
+    {% if can_create and create_form %}
+        {{ include('@NowoYopassBundle/manage/_create_panel.html.twig', {
+            create_form: create_form,
+            can_share_file: can_share_file,
+            max_file_bytes: max_file_bytes,
+            max_secret_chars: max_secret_chars,
+            bundle: _b,
+        }, with_context: false) }}
+    {% endif %}
+    <div class="nowo-yopass-shares"
+         data-controller="nowo-yopass-manage-preview"
+         data-nowo-yopass-manage-preview-preview-path-template-value="{{ path(routes.preview.name, {id: '{id}'}) }}"
+         data-nowo-yopass-manage-preview-allow-embed-in-url-value="{{ sharing_options.allow_embed_in_url|default(false) ? 'true' : 'false' }}"
+         {% if can_extend %}
+         data-nowo-yopass-manage-preview-extend-path-template-value="{{ path(routes.extend.name, {id: '{id}'}) }}"
+         data-nowo-yopass-manage-preview-csrf-token-value="{{ csrf_token('yopass_extend') }}"
+         data-nowo-yopass-manage-preview-extend-success-message-value="{{ 'yopass.extend.success'|trans }}"
+         {% endif %}
+         data-nowo-yopass-manage-preview-errors-value="{{ {
+             KEY_REQUIRED: 'yopass.preview.key_required'|trans,
+             PASSWORD_REQUIRED: 'yopass.public.password_required'|trans,
+             INVALID_KEY: 'yopass.public.invalid_key'|trans,
+             PREVIEW_FAILED: 'yopass.preview.failed'|trans,
+             EXTEND_FAILED: 'yopass.extend.failed'|trans,
+             revoked: 'yopass.extend.revoked'|trans,
+             invalid_expiration: 'yopass.extend.invalid_expiration'|trans,
+             invalid_max_reads: 'yopass.extend.invalid_max_reads'|trans,
+             max_reads_not_increased: 'yopass.extend.max_reads_not_increased'|trans,
+             expiration_not_extended: 'yopass.extend.expiration_not_extended'|trans,
+             nothing_to_extend: 'yopass.extend.nothing_to_extend'|trans,
+         }|json_encode }}"
+         data-nowo-yopass-manage-preview-availability-labels-value="{{ {
+             active: 'yopass.status.active'|trans,
+             revoked: 'yopass.status.revoked'|trans,
+             expired: 'yopass.status.unavailable'|trans,
+             consumed: 'yopass.status.unavailable'|trans,
+         }|json_encode }}">
+        {{ parent() }}
+        {{ include('@NowoYopassBundle/manage/_preview_dialog.html.twig', {
+            preview_form: preview_form,
+            can_extend: can_extend,
+            bundle: _b,
+        }, with_context: false) }}
+    </div>
 {% endblock %}
 
-{% block javascripts %}
+{% block nowo_ui_list_row %}
+    {% set _b = page.bundle %}
+    {% set _cell = nowo_ui_class('table_cell', _b) %}
+    <td class="{{ _cell }}" data-label="{{ 'yopass.list.type'|trans }}" data-required="1">{{ ('yopass.type.' ~ row.payloadKind)|trans }}</td>
+    <td class="{{ _cell }}" data-label="{{ 'yopass.list.created'|trans }}" data-nowo-ui-priority="2">{{ row.createdAt|date('Y-m-d H:i') }}</td>
+    <td class="{{ _cell }}" data-label="{{ 'yopass.list.expires'|trans }}">{{ row.expiresAt|date('Y-m-d H:i') }}</td>
+    <td class="{{ _cell }}" data-label="{{ 'yopass.list.reads'|trans }}" data-nowo-ui-priority="2">{{ row.readsLeft }} / {{ row.maxReads }}</td>
+    <td class="{{ _cell }}" data-label="{{ 'yopass.list.status'|trans }}">
+        {% if row.revokedAt %}
+            <span class="{{ nowo_ui_class('badge_neutral', _b) }}">{{ 'yopass.status.revoked'|trans }}</span>
+        {% elseif row.isAvailable %}
+            <span class="{{ nowo_ui_class('badge_success', _b) }}">{{ 'yopass.status.active'|trans }}</span>
+        {% else %}
+            <span class="{{ nowo_ui_class('badge_warning', _b) }}">{{ 'yopass.status.unavailable'|trans }}</span>
+        {% endif %}
+    </td>
+{% endblock %}
+
+{% block nowo_ui_scripts %}
     {{ parent() }}
     <script type="module" src="{{ asset('js/yopass.js', 'nowo_yopass') }}"></script>
-{% endblock %}
-
-{% block body %}
-    <div class="{{ ui.page_header(nowo_yopass_css_framework|default('tabler')) }}">
-        <div class="row align-items-center">
-            <div class="col">
-                <h1 class="page-title">{{ 'yopass.title'|trans({}, 'NowoYopassBundle') }}</h1>
-                <p class="text-secondary mb-0">{{ 'yopass.intro'|trans({}, 'NowoYopassBundle') }}</p>
-                <p class="text-secondary small mb-0">{{ 'yopass.e2e_notice'|trans({}, 'NowoYopassBundle') }}</p>
-            </div>
-            {% if dashboard_route %}
-                <div class="col-auto">
-                    <a href="{{ path(dashboard_route) }}" class="{{ ui.btn('secondary', null, nowo_yopass_css_framework|default('tabler')) }}">{{ 'yopass.back'|trans({}, 'NowoYopassBundle') }}</a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-
-    {% for label, messages in app.flashes %}
-        {% for message in messages %}
-            <div class="{{ ui.flash(label == 'success' ? 'success' : 'danger', nowo_yopass_css_framework|default('tabler')) }}">{{ message }}</div>
-        {% endfor %}
-    {% endfor %}
-
-    <div class="row row-cards">
-        {% if can_create and create_form %}
-            <div class="col-12 col-lg-5">
-                <div class="{{ ui.card(nowo_yopass_css_framework|default('tabler')) }}">
-                    <div class="card-header">
-                        <h2 class="card-title">{{ 'yopass.create.title'|trans({}, 'NowoYopassBundle') }}</h2>
-                    </div>
-                    <div class="card-body">
-                        {{ form_start(create_form, {
-                            attr: {
-                                'data-controller': 'nowo-yopass-create',
-                                'data-action': 'submit->nowo-yopass-create#submit',
-                                'data-nowo-yopass-create-target': 'form',
-                                'data-nowo-yopass-create-file-enabled-value': can_share_file ? 'true' : 'false',
-                                'data-nowo-yopass-create-max-file-bytes-value': max_file_bytes,
-                                'data-nowo-yopass-create-max-secret-chars-value': max_secret_chars,
-                                'data-nowo-yopass-create-counter-format-value': 'yopass.secret.counter'|trans({}, 'NowoYopassBundle'),
-                                'data-nowo-yopass-create-errors-value': {
-                                    'SECRET_REQUIRED': 'yopass.error.secret'|trans({}, 'NowoYopassBundle'),
-                                    'SECRET_TOO_LARGE': 'yopass.error.secret_too_large'|trans({}, 'NowoYopassBundle'),
-                                    'FILE_REQUIRED': 'yopass.error.file'|trans({}, 'NowoYopassBundle'),
-                                    'FILE_TOO_LARGE': 'yopass.error.file_too_large'|trans({}, 'NowoYopassBundle'),
-                                    'PASSWORD_REQUIRED': 'yopass.error.password'|trans({}, 'NowoYopassBundle'),
-                                    'CREATE_FAILED': 'yopass.error.create'|trans({}, 'NowoYopassBundle'),
-                                }|json_encode|e('html_attr'),
-                            }
-                        }) }}
-
-                        <ul class="nav nav-tabs mb-3" role="tablist">
-                            <li class="nav-item">
-                                <button type="button" class="nav-link active" data-action="nowo-yopass-create#switchTab" data-yopass-tab="text">
-                                    {{ 'yopass.tab.text'|trans({}, 'NowoYopassBundle') }}
-                                </button>
-                            </li>
-                            {% if can_share_file %}
-                                <li class="nav-item">
-                                    <button type="button" class="nav-link" data-action="nowo-yopass-create#switchTab" data-yopass-tab="file">
-                                        {{ 'yopass.tab.file'|trans({}, 'NowoYopassBundle') }}
-                                    </button>
-                                </li>
-                            {% endif %}
-                        </ul>
-
-                        {{ form_widget(create_form.ciphertext, { attr: { 'data-nowo-yopass-create-target': 'ciphertext' } }) }}
-                        {{ form_widget(create_form.payloadKind, { attr: { 'data-nowo-yopass-create-target': 'payloadKind' } }) }}
-
-                        <div data-nowo-yopass-create-target="textPanel">
-                            {{ form_label(create_form.secret) }}
-                            {{ form_widget(create_form.secret) }}
-                            <div class="d-flex justify-content-between align-items-start mt-1 mb-3 gap-2">
-                                <p class="text-secondary small mb-0">{{ 'yopass.secret.help'|trans({'%limit%': max_secret_chars}, 'NowoYopassBundle') }}</p>
-                                <span class="small text-secondary text-nowrap" data-nowo-yopass-create-target="secretCounter" aria-live="polite"></span>
-                            </div>
-                            <p class="text-danger small mb-3 d-none" data-nowo-yopass-create-target="secretLimitHelp">{{ 'yopass.secret.limit_reached'|trans({}, 'NowoYopassBundle') }}</p>
-                        </div>
-
-                        {% if create_form.file is defined %}
-                            <div data-nowo-yopass-create-target="filePanel" class="d-none">
-                                {{ form_label(create_form.file) }}
-                                {{ form_widget(create_form.file) }}
-                                <p class="text-secondary small">{{ 'yopass.file.help'|trans({}, 'NowoYopassBundle') }}</p>
-                            </div>
-                        {% endif %}
-
-                        {{ form_row(create_form.expiresIn) }}
-                        {{ form_row(create_form.maxReads) }}
-
-                        {# REQ-TWIG-005: browser-only controls (unmapped, never posted; see ShareCreateType::finishView()). #}
-                        {% form_theme create_form.encryptionMode 'form_div_layout.html.twig' %}
-                        <div class="mb-3">
-                            {{ form_label(create_form.encryptionMode, null, { element: 'span', label_attr: { class: 'form-label d-block' } }) }}
-                            <p class="text-secondary small mb-2">{{ 'yopass.key.mode_help'|trans({}, 'NowoYopassBundle') }}</p>
-                            {% for mode in create_form.encryptionMode %}
-                                <div class="form-check{% if loop.last and not loop.first %} mb-0{% endif %}">
-                                    {{ form_widget(mode) }}
-                                    {{ form_label(mode, null, { label_attr: { class: 'form-check-label' } }) }}
-                                </div>
-                            {% endfor %}
-                        </div>
-
-                        {% if create_form.customPassword is defined %}
-                            <div data-nowo-yopass-create-target="customPasswordPanel" class="d-none mb-3">
-                                {{ form_label(create_form.customPassword) }}
-                                {{ form_widget(create_form.customPassword) }}
-                                <p class="text-secondary small mt-1 mb-0">{{ 'yopass.key.custom_help'|trans({}, 'NowoYopassBundle') }}</p>
-                            </div>
-                        {% endif %}
-
-                        {# REQ-TWIG-003 rule 3: children with custom markup are rendered above; the loop renders the rest (CSRF, future fields). #}
-                        {% for child in create_form %}
-                            {% if not child.rendered %}
-                                {{ form_row(child) }}
-                            {% endif %}
-                        {% endfor %}
-
-
-                        <div class="alert alert-danger d-none" data-nowo-yopass-create-target="error"></div>
-
-                        <button type="submit" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }} w-100" data-nowo-yopass-create-target="submit">
-                            {{ 'yopass.create.submit'|trans({}, 'NowoYopassBundle') }}
-                        </button>
-
-                        {{ form_end(create_form) }}
-                    </div>
-                </div>
-            </div>
-        {% endif %}
-
-        <div class="col-12 {% if can_create and create_form %}col-lg-7{% endif %}">
-            <div class="{{ ui.card(nowo_yopass_css_framework|default('tabler')) }}"
-                 data-controller="nowo-yopass-manage-preview"
-                 data-nowo-yopass-manage-preview-preview-path-template-value="{{ path(routes.preview.name, { id: '{id}' }) }}"
-                 data-nowo-yopass-manage-preview-allow-embed-in-url-value="{{ sharing_options.allow_embed_in_url|default(false) ? 'true' : 'false' }}"
-                 {% if can_extend %}
-                 data-nowo-yopass-manage-preview-extend-path-template-value="{{ path(routes.extend.name, { id: '{id}' }) }}"
-                 data-nowo-yopass-manage-preview-csrf-token-value="{{ csrf_token('yopass_extend') }}"
-                 data-nowo-yopass-manage-preview-extend-success-message-value="{{ 'yopass.extend.success'|trans({}, 'NowoYopassBundle')|e('html_attr') }}"
-                 {% endif %}
-                 data-nowo-yopass-manage-preview-errors-value="{{ {
-                     'KEY_REQUIRED': 'yopass.preview.key_required'|trans({}, 'NowoYopassBundle'),
-                     'PASSWORD_REQUIRED': 'yopass.public.password_required'|trans({}, 'NowoYopassBundle'),
-                     'INVALID_KEY': 'yopass.public.invalid_key'|trans({}, 'NowoYopassBundle'),
-                     'PREVIEW_FAILED': 'yopass.preview.failed'|trans({}, 'NowoYopassBundle'),
-                     'EXTEND_FAILED': 'yopass.extend.failed'|trans({}, 'NowoYopassBundle'),
-                     'revoked': 'yopass.extend.revoked'|trans({}, 'NowoYopassBundle'),
-                     'invalid_expiration': 'yopass.extend.invalid_expiration'|trans({}, 'NowoYopassBundle'),
-                     'invalid_max_reads': 'yopass.extend.invalid_max_reads'|trans({}, 'NowoYopassBundle'),
-                     'max_reads_not_increased': 'yopass.extend.max_reads_not_increased'|trans({}, 'NowoYopassBundle'),
-                     'expiration_not_extended': 'yopass.extend.expiration_not_extended'|trans({}, 'NowoYopassBundle'),
-                     'nothing_to_extend': 'yopass.extend.nothing_to_extend'|trans({}, 'NowoYopassBundle'),
-                 }|json_encode|e('html_attr') }}"
-                 data-nowo-yopass-manage-preview-availability-labels-value="{{ {
-                     'active': 'yopass.status.active'|trans({}, 'NowoYopassBundle'),
-                     'revoked': 'yopass.status.revoked'|trans({}, 'NowoYopassBundle'),
-                     'expired': 'yopass.status.unavailable'|trans({}, 'NowoYopassBundle'),
-                     'consumed': 'yopass.status.unavailable'|trans({}, 'NowoYopassBundle'),
-                 }|json_encode|e('html_attr') }}">
-                <div class="card-header d-flex align-items-start justify-content-between gap-3">
-                    <div>
-                        <h2 class="card-title mb-0">{{ 'yopass.list.title'|trans({}, 'NowoYopassBundle') }}</h2>
-                        {% if share_options.retention.enabled|default(false) %}
-                            <p class="text-secondary small mb-0 mt-1">{{ 'yopass.list.retention_notice'|trans({'%max_age%': share_options.retention.max_age}, 'NowoYopassBundle') }}</p>
-                        {% endif %}
-                    </div>
-                    {% if can_revoke and shares_total > 0 %}
-                        {% set delete_all_label = 'yopass.delete_all'|trans({}, 'NowoYopassBundle') %}
-                        {{ form_start(delete_all_form, { attr: {
-                            class: 'flex-shrink-0',
-                            'data-controller': 'nowo-yopass-confirm',
-                            'data-nowo-yopass-confirm-message-value': 'yopass.delete_all_confirm'|trans({}, 'NowoYopassBundle'),
-                            'data-action': 'submit->nowo-yopass-confirm#confirm',
-                        } }) }}
-                            {% for child in delete_all_form %}
-                                {% if not child.rendered %}
-                                    {{ form_row(child) }}
-                                {% endif %}
-                            {% endfor %}
-                            <button type="submit"
-                                    class="{{ ui.btn('danger', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
-                                    title="{{ delete_all_label }}"
-                                    aria-label="{{ delete_all_label }}">
-                                {{ yopass_icons.action_icon('delete_all', ' me-1') }}{{ delete_all_label }}
-                            </button>
-                        {{ form_end(delete_all_form) }}
-                    {% endif %}
-                </div>
-                <div class="card-body p-0">
-                    {% if shares is empty %}
-                        <p class="text-secondary p-4 mb-0">{{ 'yopass.list.empty'|trans({}, 'NowoYopassBundle') }}</p>
-                    {% else %}
-                        <div class="table-responsive">
-                            <table class="{{ ui.table(nowo_yopass_css_framework|default('tabler')) }}">
-                                <thead>
-                                    <tr>
-                                        <th>{{ 'yopass.list.type'|trans({}, 'NowoYopassBundle') }}</th>
-                                        <th>{{ 'yopass.list.created'|trans({}, 'NowoYopassBundle') }}</th>
-                                        <th>{{ 'yopass.list.expires'|trans({}, 'NowoYopassBundle') }}</th>
-                                        <th>{{ 'yopass.list.reads'|trans({}, 'NowoYopassBundle') }}</th>
-                                        <th>{{ 'yopass.list.status'|trans({}, 'NowoYopassBundle') }}</th>
-                                        <th class="w-1"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for share in shares %}
-                                        <tr>
-                                            <td>{{ ('yopass.type.' ~ share.payloadKind)|trans({}, 'NowoYopassBundle') }}</td>
-                                            <td>{{ share.createdAt|date('Y-m-d H:i') }}</td>
-                                            <td>{{ share.expiresAt|date('Y-m-d H:i') }}</td>
-                                            <td>{{ share.readsLeft }} / {{ share.maxReads }}</td>
-                                            <td>
-                                                {% if share.revokedAt %}
-                                                    <span class="badge bg-secondary-lt">{{ 'yopass.status.revoked'|trans({}, 'NowoYopassBundle') }}</span>
-                                                {% elseif share.isAvailable %}
-                                                    <span class="badge bg-success-lt">{{ 'yopass.status.active'|trans({}, 'NowoYopassBundle') }}</span>
-                                                {% else %}
-                                                    <span class="badge bg-warning-lt">{{ 'yopass.status.unavailable'|trans({}, 'NowoYopassBundle') }}</span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="text-end text-nowrap">
-                                                <div class="{{ ui.toolbar(nowo_yopass_css_framework|default('tabler')) }}">
-                                                    {% set view_label = 'yopass.view'|trans({}, 'NowoYopassBundle') %}
-                                                    <button type="button"
-                                                            class="{{ ui.btn('primary', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
-                                                            title="{{ view_label }}"
-                                                            aria-label="{{ view_label }}"
-                                                            data-action="nowo-yopass-manage-preview#open"
-                                                            data-share-id="{{ share.id }}">
-                                                        {{ yopass_icons.action_icon('view') }}
-                                                    </button>
-                                                    {% if can_extend and share.revokedAt is null %}
-                                                        {% set extend_label = 'yopass.extend.action'|trans({}, 'NowoYopassBundle') %}
-                                                        <button type="button"
-                                                                class="{{ ui.btn('secondary', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
-                                                                title="{{ extend_label }}"
-                                                                aria-label="{{ extend_label }}"
-                                                                data-action="nowo-yopass-manage-preview#openExtend"
-                                                                data-share-id="{{ share.id }}">
-                                                            {{ yopass_icons.action_icon('extend') }}
-                                                        </button>
-                                                    {% endif %}
-                                                    {% if can_revoke and share.revokedAt is null %}
-                                                        {% set revoke_label = 'yopass.revoke'|trans({}, 'NowoYopassBundle') %}
-                                                        {% set action_form = revoke_forms[share.id] %}
-                                                        {{ form_start(action_form, { attr: {
-                                                            class: 'd-inline',
-                                                            'data-controller': 'nowo-yopass-confirm',
-                                                            'data-nowo-yopass-confirm-message-value': 'yopass.revoke_confirm'|trans({}, 'NowoYopassBundle'),
-                                                            'data-action': 'submit->nowo-yopass-confirm#confirm',
-                                                        } }) }}
-                                                            {% for child in action_form %}
-                                                                {% if not child.rendered %}
-                                                                    {{ form_row(child) }}
-                                                                {% endif %}
-                                                            {% endfor %}
-                                                            <button type="submit"
-                                                                    class="{{ ui.btn('secondary', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
-                                                                    title="{{ revoke_label }}"
-                                                                    aria-label="{{ revoke_label }}">
-                                                                {{ yopass_icons.action_icon('revoke') }}
-                                                            </button>
-                                                        {{ form_end(action_form) }}
-                                                    {% endif %}
-                                                    {% if can_revoke %}
-                                                        {% set delete_label = 'yopass.delete'|trans({}, 'NowoYopassBundle') %}
-                                                        {% set action_form = delete_forms[share.id] %}
-                                                        {{ form_start(action_form, { attr: {
-                                                            class: 'd-inline',
-                                                            'data-controller': 'nowo-yopass-confirm',
-                                                            'data-nowo-yopass-confirm-message-value': 'yopass.delete_confirm'|trans({}, 'NowoYopassBundle'),
-                                                            'data-action': 'submit->nowo-yopass-confirm#confirm',
-                                                        } }) }}
-                                                            {% for child in action_form %}
-                                                                {% if not child.rendered %}
-                                                                    {{ form_row(child) }}
-                                                                {% endif %}
-                                                            {% endfor %}
-                                                            <button type="submit"
-                                                                    class="{{ ui.btn('danger', 'sm', nowo_yopass_css_framework|default('tabler')) }}"
-                                                                    title="{{ delete_label }}"
-                                                                    aria-label="{{ delete_label }}">
-                                                                {{ yopass_icons.action_icon('delete') }}
-                                                            </button>
-                                                        {{ form_end(action_form) }}
-                                                    {% endif %}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% if list_page_size > 0 and shares_pages > 1 %}
-                            <div class="card-footer d-flex align-items-center justify-content-between">
-                                <span class="text-secondary small">
-                                    {{ 'yopass.list.summary'|trans({
-                                        '%from%': ((shares_page - 1) * list_page_size) + 1,
-                                        '%to%': min(shares_page * list_page_size, shares_total),
-                                        '%total%': shares_total,
-                                    }, 'NowoYopassBundle') }}
-                                </span>
-                                <ul class="pagination m-0">
-                                    <li class="page-item{% if shares_page <= 1 %} disabled{% endif %}">
-                                        <a class="page-link" href="{{ path(routes.manage.name, shares_page > 1 ? { page: shares_page - 1 } : {}) }}">
-                                            {{ 'yopass.list.previous'|trans({}, 'NowoYopassBundle') }}
-                                        </a>
-                                    </li>
-                                    <li class="page-item disabled">
-                                        <span class="page-link">{{ 'yopass.list.page'|trans({'%page%': shares_page, '%pages%': shares_pages}, 'NowoYopassBundle') }}</span>
-                                    </li>
-                                    <li class="page-item{% if shares_page >= shares_pages %} disabled{% endif %}">
-                                        <a class="page-link" href="{{ path(routes.manage.name, { page: shares_page + 1 }) }}">
-                                            {{ 'yopass.list.next'|trans({}, 'NowoYopassBundle') }}
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        {% endif %}
-                    {% endif %}
-                </div>
-
-                <div class="modal modal-blur fade" tabindex="-1" role="dialog" aria-hidden="true"
-                     data-nowo-yopass-manage-preview-target="modal">
-                    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h3 class="modal-title">{{ 'yopass.preview.title'|trans({}, 'NowoYopassBundle') }}</h3>
-                                <button type="button" class="btn-close" aria-label="Close" data-action="nowo-yopass-manage-preview#close"></button>
-                            </div>
-                            {# REQ-TWIG-005: browser-only preview / extend controls (SharePreviewType, never submitted). #}
-                            {{ form_start(preview_form, { attr: { class: 'modal-body', autocomplete: 'off', onsubmit: 'return false;' } }) }}
-                                <p class="text-secondary small">{{ 'yopass.preview.intro'|trans({}, 'NowoYopassBundle') }}</p>
-                                <p class="mb-3">
-                                    <span class="badge bg-secondary-lt" data-nowo-yopass-manage-preview-target="availability"></span>
-                                </p>
-
-                                {{ form_row(preview_form.password) }}
-                                {{ form_row(preview_form.key) }}
-
-                                <button type="button" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }} mb-3" data-action="nowo-yopass-manage-preview#decryptFromForm" data-nowo-yopass-manage-preview-target="decryptButton">
-                                    {{ 'yopass.preview.decrypt'|trans({}, 'NowoYopassBundle') }}
-                                </button>
-
-                                <pre class="alert alert-success mb-3 d-none text-wrap" data-nowo-yopass-manage-preview-target="output"></pre>
-                                <a href="#" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }} mb-3 d-none" download data-nowo-yopass-manage-preview-target="downloadLink"></a>
-
-                                {{ form_label(preview_form.publicLink) }}
-                                <div class="input-group mb-3">
-                                    {{ form_widget(preview_form.publicLink) }}
-                                    <button type="button" class="{{ ui.btn('secondary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-yopass-manage-preview#copyPublicLink">
-                                        {{ 'yopass.link.copy'|trans({}, 'NowoYopassBundle') }}
-                                    </button>
-                                </div>
-
-                                <div class="alert alert-danger mt-3 d-none" data-nowo-yopass-manage-preview-target="error"></div>
-
-                                <hr class="my-4">
-                                <div class="d-none" data-nowo-yopass-manage-preview-target="accessLogPanel">
-                                    <h4 class="mb-2">{{ 'yopass.preview.access_log.title'|trans({}, 'NowoYopassBundle') }}</h4>
-                                    <p class="text-secondary small">{{ 'yopass.preview.access_log.intro'|trans({}, 'NowoYopassBundle') }}</p>
-                                    <p class="text-secondary small d-none" data-nowo-yopass-manage-preview-target="accessLogEmpty">
-                                        {{ 'yopass.preview.access_log.empty'|trans({}, 'NowoYopassBundle') }}
-                                    </p>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-striped mb-0 d-none" data-nowo-yopass-manage-preview-target="accessLogTable">
-                                            <thead>
-                                                <tr>
-                                                    <th>{{ 'yopass.preview.access_log.when'|trans({}, 'NowoYopassBundle') }}</th>
-                                                    <th>{{ 'yopass.preview.access_log.read'|trans({}, 'NowoYopassBundle') }}</th>
-                                                    <th>{{ 'yopass.preview.access_log.ip'|trans({}, 'NowoYopassBundle') }}</th>
-                                                    <th>{{ 'yopass.preview.access_log.user_agent'|trans({}, 'NowoYopassBundle') }}</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody data-nowo-yopass-manage-preview-target="accessLogBody"></tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                {% if can_extend %}
-                                    <hr class="my-4">
-                                    <div class="d-none" data-nowo-yopass-manage-preview-target="extendPanel">
-                                        <h4 class="mb-2">{{ 'yopass.extend.title'|trans({}, 'NowoYopassBundle') }}</h4>
-                                        <p class="text-secondary small">{{ 'yopass.extend.intro'|trans({}, 'NowoYopassBundle') }}</p>
-                                        <p class="small mb-3">
-                                            <span class="text-secondary">{{ 'yopass.extend.current'|trans({}, 'NowoYopassBundle') }}:</span>
-                                            <span data-nowo-yopass-manage-preview-target="extendSummary"></span>
-                                        </p>
-
-                                        <div class="row g-3 mb-3">
-                                            <div class="col-md-6">
-                                                {{ form_label(preview_form.extendExpiresIn) }}
-                                                {{ form_widget(preview_form.extendExpiresIn) }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                {{ form_label(preview_form.extendMaxReads) }}
-                                                {{ form_widget(preview_form.extendMaxReads) }}
-                                            </div>
-                                        </div>
-
-                                        <button type="button" class="{{ ui.btn('primary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-yopass-manage-preview#submitExtend">
-                                            {{ 'yopass.extend.submit'|trans({}, 'NowoYopassBundle') }}
-                                        </button>
-                                        <div class="alert alert-success mt-3 d-none" data-nowo-yopass-manage-preview-target="extendSuccess"></div>
-                                    </div>
-                                {% endif %}
-                                {% for child in preview_form %}
-                                    {% if not child.rendered %}
-                                        {{ form_row(child) }}
-                                    {% endif %}
-                                {% endfor %}
-                            {{ form_end(preview_form) }}
-                            <div class="modal-footer">
-                                <button type="button" class="{{ ui.btn('secondary', null, nowo_yopass_css_framework|default('tabler')) }}" data-action="nowo-yopass-manage-preview#close">
-                                    {{ 'yopass.preview.close'|trans({}, 'NowoYopassBundle') }}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 {% endblock %}

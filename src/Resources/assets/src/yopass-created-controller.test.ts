@@ -10,8 +10,8 @@ let app: Application | null = null;
 
 function markup(extraAttrs = '', withOptionalTargets = true): string {
     const optional = withOptionalTargets
-        ? `<div data-created-target="rememberNotice" class="d-none">remember</div>
-           <div data-created-target="error" class="d-none"></div>`
+        ? `<div data-created-target="rememberNotice" hidden>remember</div>
+           <div data-created-target="error" hidden></div>`
         : '';
 
     return `
@@ -21,6 +21,7 @@ function markup(extraAttrs = '', withOptionalTargets = true): string {
              ${extraAttrs}>
             ${optional}
             <div data-created-target="content">
+                <form id="links-form" data-action="submit->created#preventSubmit"></form>
                 <input data-created-target="resultOneClickLink">
                 <button data-action="created#copyOneClickLink">c1</button>
                 <input data-created-target="resultShortLink">
@@ -70,7 +71,7 @@ describe('yopass-created-controller', () => {
         expect(input('resultOneClickLink').value).not.toContain('?');
         expect(input('resultKey').value).toBe(MATERIAL);
         expect(window.location.search).toBe('?x=1');
-        expect(document.querySelector('[data-created-target="rememberNotice"]')!.classList.contains('d-none')).toBe(false);
+        expect(document.querySelector<HTMLElement>('[data-created-target="rememberNotice"]')!.hidden).toBe(false);
     });
 
     it('never builds a key-bearing link when embedding is not allowed (default)', async () => {
@@ -106,7 +107,16 @@ describe('yopass-created-controller', () => {
         expect(input('resultKey').value).toBe(MATERIAL);
         expect(sessionStorage.getItem(PENDING_KEY_STORAGE)).toBeNull();
         expect(loadShareKey('share-1')).toEqual({ mode: 'password', material: MATERIAL });
-        expect(document.querySelector('[data-created-target="rememberNotice"]')!.classList.contains('d-none')).toBe(true);
+        expect(document.querySelector<HTMLElement>('[data-created-target="rememberNotice"]')!.hidden).toBe(true);
+    });
+
+    it('never submits the read-only links form', async () => {
+        await mount(markup());
+
+        const event = new Event('submit', { cancelable: true, bubbles: true });
+        document.getElementById('links-form')!.dispatchEvent(event);
+
+        expect(event.defaultPrevented).toBe(true);
     });
 
     it('copies each value to the clipboard', async () => {
@@ -135,10 +145,10 @@ describe('yopass-created-controller', () => {
     it('hides the content and shows the configured message when no key is available', async () => {
         await mount(markup('data-created-key-unavailable-message-value="No key here"'));
 
-        const error = document.querySelector('[data-created-target="error"]')!;
+        const error = document.querySelector<HTMLElement>('[data-created-target="error"]')!;
         expect(error.textContent).toBe('No key here');
-        expect(error.classList.contains('d-none')).toBe(false);
-        expect(document.querySelector('[data-created-target="content"]')!.classList.contains('d-none')).toBe(true);
+        expect(error.hidden).toBe(false);
+        expect(document.querySelector<HTMLElement>('[data-created-target="content"]')!.hidden).toBe(true);
         expect(input('resultKey').value).toBe('');
     });
 

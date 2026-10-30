@@ -12,11 +12,15 @@ This bundle is **FrankenPHP worker mode friendly**.
 
 <table>
   <tr>
-    <td align="center" width="50%">
-      <img src="docs/images/demo/share-created.webp" alt="Secret stored: one-click link, short link and decryption key generated in the browser" />
-      <br /><sub>Encrypted share created — one-click link, short link and key</sub>
+    <td align="center" width="33%">
+      <img src="docs/images/demo/manage.webp" alt="Manage page on the UiKit list scaffold: create panel and the list of shares with row actions" />
+      <br /><sub>Manage page — create panel, shares list, row actions (UiKit list scaffold)</sub>
     </td>
-    <td align="center" width="50%">
+    <td align="center" width="33%">
+      <img src="docs/images/demo/share-created.webp" alt="Secret stored: short link, decryption key and one-click link generated in the browser" />
+      <br /><sub>Encrypted share created — short link, key and one-click link</sub>
+    </td>
+    <td align="center" width="33%">
       <img src="docs/images/demo/share-revealed.webp" alt="Public reveal page showing the secret decrypted in the recipient's browser" />
       <br /><sub>Recipient reveals the one-time secret, decrypted in the browser</sub>
     </td>
@@ -30,7 +34,7 @@ This bundle is **FrankenPHP worker mode friendly**.
 - Configurable expiration options, max-read limits, list pagination, and retention purge (`nowo:yopass:purge-old-shares`)
 - Auto-generated decryption key or custom password mode
 - One-click links with the key in the URL fragment (`#decrypt_key=`, never sent to the server; `sharing.allow_embed_in_url`); short links with manual key entry
-- Authenticated manage UI + anonymous public reveal/consume routes
+- Authenticated manage UI + anonymous public reveal/consume routes, on the **UiKit page contract** (list / show scaffolds, guest layout, one host theme for every Nowo bundle; no bundle layout, CSS framework or CDN)
 - Configurable routes, table prefix, templates, and pluggable access control
 - **Share events** — customize list queries and per-share access (teams, grants, roles) without built-in ACL
 - **Public rate limiting** — per-IP limits on anonymous `/share/*` routes (requires `cache.app`)
@@ -50,12 +54,16 @@ See [Installation](docs/INSTALLATION.md) for Flex recipe, Doctrine schema, route
 nowo_yopass:
     user_class: App\Entity\User
     table_prefix: yopass_
-    web_ui:
-        layout_template: 'base.html.twig'   # optional: host admin layout
     security:
         # Defaults to ROLE_ADMIN since 1.3.0 — set explicitly if you need ROLE_USER
         access_roles: [ROLE_ADMIN]
+        roles: { create: [ROLE_ADMIN], list: [ROLE_ADMIN], revoke: [ROLE_ADMIN] }
         access_checker: App\Security\CustomYopassAccessChecker  # optional
+
+# Pages render inside your layouts and theme, configured once in UiKit for every Nowo bundle
+nowo_ui_kit:
+    css_framework: bootstrap5
+    layouts: { admin: 'layouts/admin.html.twig', guest: 'layouts/guest.html.twig' }
 ```
 Full reference: [Configuration](docs/CONFIGURATION.md).
 
@@ -63,7 +71,7 @@ Full reference: [Configuration](docs/CONFIGURATION.md).
 
 - Manage UI: `/tools/yopass` (configurable)
 - Public reveal: `/share/{id}` or `/share/{id}#decrypt_key=…` (configurable)
-- Override Twig: `templates/bundles/NowoYopassBundle/`
+- Pages, view models and data blocks: [Templates](docs/TEMPLATES.md); override Twig: `templates/bundles/NowoYopassBundle/` (prefer the UiKit theme)
 
 See [Usage](docs/USAGE.md) and [Access control events](docs/examples/AccessControl.md).
 
@@ -81,6 +89,7 @@ The screenshots at the top of this README come from this demo (fake demo text on
 - [Installation](docs/INSTALLATION.md)
 - [Configuration](docs/CONFIGURATION.md)
 - [Usage](docs/USAGE.md)
+- [Templates (UiKit page contract)](docs/TEMPLATES.md)
 - [Contributing](docs/CONTRIBUTING.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Changelog](docs/CHANGELOG.md)

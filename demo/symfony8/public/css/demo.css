@@ -5,3 +5,33 @@ body {
 code {
     font-size: 0.875em;
 }
+
+/* Demo masthead (screenshots: demo masthead + bundle UI + WebProfiler toolbar, REQ-DEMO-013). */
+.demo-masthead {
+    background: #1d273b;
+}
+
+.demo-masthead .navbar-brand,
+.demo-masthead .nav-link {
+    color: #fff;
+}
+
+/* Guest (public reveal) pages: a narrow centred column. */
+.demo-guest {
+    max-width: 44rem;
+    margin: 0 auto;
+}
+
+/* Yopass bundle-prefixed hooks (no framework classes in bundle markup): copy fields and secret output. */
+.nowo-yopass-copy-field {
+    flex-wrap: nowrap !important; /* the Tabler toolbar slot sets flex-wrap: wrap !important */
+}
+
+.nowo-yopass-copy-field .nowo-ui-input {
+    flex: 1 1 auto;
+}
+
+.nowo-yopass-secret {
+    white-space: pre-wrap;
+}
+

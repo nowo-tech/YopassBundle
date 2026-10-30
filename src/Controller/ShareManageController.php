@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Controller;
 
 use DateTimeInterface;
+use Nowo\UiKitBundle\View\Pagination;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareAccessAction;
@@ -24,6 +25,7 @@ use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Service\ShareRetriever;
+use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\YopassBundle;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -51,13 +53,13 @@ final class ShareManageController extends AbstractController
      * Creates the manage controller with routes, templates, limits and share options.
      *
      * @param array<string, array{path: string, name: string}> $routes
-     * @param array{layout: string, manage: string, created: string, public: string} $templates
      * @param array{
      *     default_expiration: string,
      *     default_max_reads: int,
      *     max_reads_options: list<int>,
      *     expiration_options: list<array{id: string, interval: string}>,
-     *     list_page_size?: int
+     *     list_page_size?: int,
+     *     retention?: array{enabled: bool, max_age: string}
      * } $shareOptions
      * @param array{
      *     default_encryption: string,
@@ -79,7 +81,7 @@ final class ShareManageController extends AbstractController
         private readonly ShareRetentionPurger $retentionPurger,
         private readonly TranslatorInterface $translator,
         private readonly array $routes,
-        private readonly array $templates,
+        private readonly YopassPageFactory $pages,
         private readonly int $maxCiphertextBytes,
         private readonly int $maxSecretChars,
         private readonly ?string $dashboardRoute,
@@ -126,7 +128,29 @@ final class ShareManageController extends AbstractController
             $deleteForms[$shareId] = $this->createCsrfActionForm($this->routes['delete']['name'], 'delete-share-' . $shareId, $shareId)->createView();
         }
 
-        return $this->render($this->templates['manage'], [
+        $deleteAllForm = $this->createCsrfActionForm($this->routes['delete_all']['name'], 'yopass_delete_all')->createView();
+        $canExtend     = $canRevoke;
+        $retention     = $this->shareOptions['retention'] ?? [];
+
+        $listPage = $this->pages->managePage(
+            shares: $shares,
+            pagination: $pageSize > 0 && $totalPages > 1
+                ? new Pagination($page, $pageSize, $total, $totalPages, $this->routes['manage']['name'])
+                : null,
+            canExtend: $canExtend,
+            canRevoke: $canRevoke,
+            revokeForms: $revokeForms,
+            deleteForms: $deleteForms,
+            deleteAllForm: $deleteAllForm,
+            backHref: $this->dashboardRoute !== null && $this->dashboardRoute !== '' ? $this->generateUrl($this->dashboardRoute) : null,
+            retentionEnabled: (bool) ($retention['enabled'] ?? false),
+            retentionMaxAge: (string) ($retention['max_age'] ?? ''),
+        );
+
+        // REQ-UI-003: `page` (View\ListPage) feeds the list scaffold; the other variables stay for web_ui.templates
+        // overrides and the create form / preview dialog regions of the template.
+        return $this->render($this->pages->template('manage'), $this->pages->context([
+            'page'             => $listPage,
             'shares'           => $shares,
             'shares_total'     => $total,
             'shares_page'      => $page,
@@ -134,7 +158,7 @@ final class ShareManageController extends AbstractController
             'list_page_size'   => $pageSize,
             'can_create'       => $this->accessChecker->canCreate($user),
             'can_revoke'       => $canRevoke,
-            'can_extend'       => $canRevoke,
+            'can_extend'       => $canExtend,
             'can_share_file'   => $this->fileSharesEnabled,
             'max_file_bytes'   => $this->fileHandler?->getMaxFileBytes() ?? 0,
             'max_secret_chars' => $this->maxSecretChars,
@@ -145,12 +169,12 @@ final class ShareManageController extends AbstractController
             'create_form'      => $createForm,
             'revoke_forms'     => $revokeForms,
             'delete_forms'     => $deleteForms,
-            'delete_all_form'  => $this->createCsrfActionForm($this->routes['delete_all']['name'], 'yopass_delete_all')->createView(),
+            'delete_all_form'  => $deleteAllForm,
             'preview_form'     => $this->createForm(SharePreviewType::class, null, [
                 'share_options'  => $this->shareOptions,
                 'extend_enabled' => $canRevoke,
             ])->createView(),
-        ]);
+        ]));
     }
 
     /**
@@ -207,7 +231,10 @@ final class ShareManageController extends AbstractController
 
         $publicPath = $this->publicSharePath($share);
 
-        return $this->render($this->templates['created'], [
+        $manageHref = $this->generateUrl($this->routes['manage']['name']);
+
+        return $this->render($this->pages->template('created'), $this->pages->context([
+            'page'            => $this->pages->createdPage($manageHref),
             'share'           => $share,
             'public_path'     => $publicPath,
             'routes'          => $this->routes,
@@ -216,7 +243,7 @@ final class ShareManageController extends AbstractController
             'links_form'      => $this->createForm(ShareCreatedLinksType::class, null, [
                 'allow_embed_in_url' => $this->sharingOptions['allow_embed_in_url'],
             ])->createView(),
-        ]);
+        ]));
     }
 
     /**
