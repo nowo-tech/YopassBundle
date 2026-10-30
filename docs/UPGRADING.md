@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.10.0](#to-1100)
   - [Template contract (UiKit page contract, REQ-UI-003)](#template-contract-uikit-page-contract-req-ui-003)
   - [Configuration keys](#configuration-keys)
 - [To 1.9.0](#to-190)
@@ -67,6 +68,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.10.0
+
+From **1.9.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ```bash
 composer update nowo-tech/yopass-bundle nowo-tech/ui-kit-bundle --with-dependencies

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.10.0] - 2026-10-30](#1100---2026-10-30)
 - [[1.9.0] - 2026-10-29](#190---2026-10-29)
 - [[1.8.0] - 2026-10-29](#180---2026-10-29)
 - [[1.7.0] - 2026-10-28](#170---2026-10-28)
@@ -46,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-30
+
+Yopass: UiKit page contract (guest reveal page, confirm dialogs, no CDN), no-store/no-referrer on secret pages, preview wiped on close See [UPGRADING](UPGRADING.md#to-1100).
+
 Yopass on the UiKit page contract (REQ-UI-003): list / show scaffolds fed by view models, public reveal page on the UiKit guest layout, canonical `web_ui.*` / `security.roles.*` keys with deprecated aliases. See [UPGRADING](UPGRADING.md#unreleased).
 
 ### Template contract
@@ -80,6 +85,8 @@ Yopass on the UiKit page contract (REQ-UI-003): list / show scaffolds fed by vie
 ### Deprecated
 
 - `route_prefix` (use `web_ui.path_prefix`), `templates.layout` / `templates.{manage,created,public}` (use `web_ui.layout_template` / `web_ui.templates.<page>`), `security.{admin,create,list,revoke}_roles` (use `security.roles.<action>`), `web_ui.css_framework` / `web_ui.icon_set` (use `nowo_ui_kit`), the Twig globals `nowo_yopass_layout_template` / `nowo_yopass_css_framework` / `nowo_yopass_icon_set`, `layout_integrate_host.html.twig` and 1.x layouts without the UiKit canonical blocks (bridged). All removed in 2.0.
+
+[1.10.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.10.0
 
 ## [1.9.0] - 2026-10-29
 
@@ -583,7 +590,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.10.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
