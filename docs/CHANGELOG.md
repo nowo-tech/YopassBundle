@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Yopass routes registered without the route loader (REQ-SF-004 rule 7):** on Symfony >= 7.3 `#[AsController]` and the `#[Route]` attributes autoconfigured `ShareManageController` and `PublicShareController` with the `routing.controller` tag, so a host whose `config/routes.yaml` has the default `controllers: { resource: routing.controllers }` got the default `/tools/yopass/...` routes and the anonymous `/share/{id}` reveal / consume endpoints even without importing the `nowo_yopass` loader, bypassing `nowo_yopass.routes`, `route_prefix` and `web_ui.enabled: false`. The controllers are registered explicitly (`autoconfigure: false`, `controller.service_arguments` + `container.service_subscriber`, no `#[AsController]`); the routes exist only where the host imports `type: nowo_yopass`. Regression test with a kernel that only loads `routing.controllers`.
+
 ## [1.10.0] - 2026-10-30
 
 Yopass: UiKit page contract (guest reveal page, confirm dialogs, no CDN), no-store/no-referrer on secret pages, preview wiped on close See [UPGRADING](UPGRADING.md#to-1100).
