@@ -214,6 +214,9 @@ final class ShareManageControllerTest extends TestCase
 
         self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         self::assertStringContainsString('@NowoYopassBundle/manage/created.html.twig', (string) $response->getContent());
+        self::assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
+        self::assertTrue($response->headers->hasCacheControlDirective('no-store'));
+        self::assertTrue($response->headers->hasCacheControlDirective('private'));
     }
 
     public function testCreatedPassesTheEmbedOptionToTheLinksForm(): void

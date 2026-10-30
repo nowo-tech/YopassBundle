@@ -54,6 +54,25 @@ final class PublicShareControllerTest extends TestCase
         self::assertStringContainsString('@NowoYopassBundle/public/reveal.html.twig', (string) $response->getContent());
     }
 
+    public function testShowResponseIsNotCacheableAndSendsNoReferrer(): void
+    {
+        $share = new SecureShare('00000000-0000-4000-8000-000000000009', new TestUser());
+        $share
+            ->setCiphertext('{"mode":"key","box":"abc"}')
+            ->setExpiresAt(new DateTimeImmutable('+1 hour'))
+            ->setMaxReads(1);
+
+        $controller = $this->controllerWithShare($share);
+        ControllerContainerBuilder::bind($controller);
+
+        $response = $controller->show($share->getId(), Request::create('/share/' . $share->getId()));
+
+        self::assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
+        self::assertTrue($response->headers->hasCacheControlDirective('no-store'));
+        self::assertTrue($response->headers->hasCacheControlDirective('private'));
+        self::assertFalse($response->headers->hasCacheControlDirective('public'));
+    }
+
     public function testShowUsesKeyModeForLegacyCiphertext(): void
     {
         $share = new SecureShare('00000000-0000-4000-8000-000000000002', new TestUser());

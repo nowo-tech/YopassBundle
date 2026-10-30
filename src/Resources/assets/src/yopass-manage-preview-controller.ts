@@ -118,8 +118,12 @@ export default class extends Controller {
     private previewData: PreviewResponse | null = null;
     private focusExtendOnOpen = false;
 
-    /** The dialog may also be closed by UiKit (close button, Escape, backdrop): reset the preview state then. */
+    /**
+     * The dialog may also be closed by UiKit (close button, Escape, backdrop): reset the preview state and wipe the
+     * decrypted output / key inputs then, so no plaintext stays in the hidden DOM (REQ-SEC-004).
+     */
     private readonly onDialogClose = (): void => {
+        this.resetDisplay();
         this.resetState();
     };
 
@@ -218,6 +222,7 @@ export default class extends Controller {
 
     close(): void {
         this.hideModal();
+        this.resetDisplay();
         this.resetState();
     }
 
@@ -498,7 +503,7 @@ export default class extends Controller {
         }
 
         if (this.hasDownloadLinkTarget) {
-            setHidden(this.downloadLinkTarget, true);
+            this.clearDownloadLink();
         }
 
         if (this.hasPasswordPanelTarget) {
@@ -542,6 +547,20 @@ export default class extends Controller {
         this.showDecryptControls();
         this.hideExtendSuccess();
         this.hideError();
+    }
+
+    /** Hides the download link and releases the blob URL that holds the decrypted file. */
+    private clearDownloadLink(): void {
+        const href = this.downloadLinkTarget.getAttribute('href');
+
+        if (href !== null && href.startsWith('blob:')) {
+            URL.revokeObjectURL(href);
+        }
+
+        this.downloadLinkTarget.removeAttribute('href');
+        this.downloadLinkTarget.removeAttribute('download');
+        this.downloadLinkTarget.textContent = '';
+        setHidden(this.downloadLinkTarget, true);
     }
 
     private hideDecryptControls(): void {

@@ -36,6 +36,8 @@
 | **Oversized ciphertext** | DoS via huge payloads. | `max_ciphertext_bytes` limit (default 700 KB). |
 | **Tampered payload kind** | A forged `payloadKind` stores shares the reveal page cannot handle, or bypasses the file-share switch. | `ShareCreateType` only accepts `text` / `file` (`Choice` constraint, since 1.5.0); `file` is rejected unless a `file_handler` is configured. |
 | **XSS on reveal page** | Decrypted secret injected unsafely. | Output in `<pre>` via `textContent` in Stimulus controller. |
+| **Third-party scripts in the guest / public layout** | The reveal page extends a **host** layout (`web_ui.public_layout_template`, else `nowo_ui_kit.layouts.guest`). Any script that layout loads (analytics, tag managers, chat widgets, A/B testing, session replay, ad / CDN scripts) runs in the same origin and page as the decrypted secret: it can read the `#decrypt_key=` fragment before the reveal script strips it, the key / password input and the decrypted plaintext or file. The same applies to the admin layout for the "share created" page and the manage preview (stored key, one-click link, decrypted preview). | **Host responsibility.** The guest / public layout used for the reveal page must load **no third-party scripts** (first-party, self-hosted scripts only; no tag manager, no analytics / replay / chat / marketing snippet). Use a dedicated minimal layout through `web_ui.public_layout_template` when the site-wide guest layout carries such scripts, and add a strict `Content-Security-Policy` (`script-src 'self'`). See [Usage — Public reveal page](USAGE.md#public-reveal-page-layout-security) and [Templates](TEMPLATES.md#unique-pages). |
+| **Caching and `Referer` of secret pages** | A shared / browser cache keeps the reveal or created page; a link followed from the page leaks its URL in `Referer`. | The public reveal page (`GET /share/{id}`) and the "share created" page send `Cache-Control: no-store, private` and `Referrer-Policy: no-referrer` (since the Unreleased version), like the `303` redirect of old query-string links. |
 | **Third-party CDN CSS** | Tabler loaded from jsDelivr. | Pin version; use `crossorigin="anonymous"`; self-host in high-security deployments. |
 
 ## E2E encryption model
@@ -64,7 +66,13 @@ Run `composer audit` and Dependabot before releases.
 
 ## AI security audit (REQ-SEC-004)
 
-Static / AI review posture for this package (re-audited 2026-07-27 after public rate limits and manage UI hardening):
+Static / AI review posture for this package (catalog: monorepo `BUNDLES_SECURITY_ANALYSIS.md`, Appendix BD):
+
+| Date | Scope | Grade | Risk | Record | Notes |
+|------|-------|-------|------|--------|-------|
+| 2026-07-27 | 1.3.x | Pass | Low | catalog | Public rate limits, manage UI defaults (`ROLE_ADMIN`, `allow_unauthenticated: false`), ciphertext-only storage, no secrets in demo env examples. |
+| 2026-10-29 | v1.8.0 | Pass (conditional) | Medium | Appendix BD | M1 embed-in-URL options inert (one-click `?decrypt_key=` always offered), M2 Flex recipe wrote `APP_SECRET=ChangeMeInProduction`; Low L1 password mode broken (non-sumo libsodium), L2 `web_ui.enabled: false` kept the manage routes, L3 ciphertext kept after consume, L4 decrypted file blob MIME, L5 per-IP limiter behind proxies. M1, M2, L1, L2 fixed in **1.9.0**. |
+| **2026-10-30** | **delta v1.9.0..1089498** (UiKit page contract, toward 1.10.0) | **Pass (good)** | **Low** | Appendix BD — "Delta re-audit 1.10.0" | Reveal page now extends the host-overridable UiKit guest layout (third-party scripts there could read the fragment key / plaintext) — documented as a host rule, and the reveal / created responses send `Cache-Control: no-store, private` + `Referrer-Policy: no-referrer`; the manage preview wipes decrypted text / key inputs / file blob URL on every dialog close (button, Escape, backdrop). Fixed in Unreleased. |
 
 | Area | Status |
 |------|--------|
@@ -72,10 +80,12 @@ Static / AI review posture for this package (re-audited 2026-07-27 after public 
 | Manage UI defaults (`ROLE_ADMIN`, `allow_unauthenticated: false`) | Pass |
 | Public consume/show rate limits (`public_rate_limit` + hashed IP logs) | Pass |
 | No secrets in committed demo env examples | Pass |
+| Keys only in the URL fragment (never the query string; old links `303`-redirected) | Pass (1.9.0) |
+| Secret pages not cached, no `Referer` (`no-store, private` + `no-referrer`) | Pass (Unreleased) |
+| No decrypted plaintext left in the hidden manage preview after close | Pass (Unreleased) |
+| No third-party scripts on the reveal page layout | Host responsibility (documented) |
 
-**Latest audit:** **Pass (conditional)** / **Medium** — AI re-audit **2026-10-29** of v1.8.0 (catalog Appendix BD). Medium: M1 embed-in-URL options inert (one-click `?decrypt_key=` always offered), M2 Flex recipe wrote `APP_SECRET=ChangeMeInProduction`. Low: L1 password mode broken (non-sumo libsodium), L2 `web_ui.enabled: false` kept the manage routes, L3 ciphertext kept after consume, L4 decrypted file blob MIME, L5 per-IP limiter behind proxies.
-
-**Unreleased:** M1, M2, L1 and L2 are fixed (fragment keys + embed options honoured + server-side redirect of query keys; no recipe `env` block; `libsodium-wrappers-sumo`; manage routes unregistered with the Web UI off). L3–L5 and the Info items remain open. The grade is not updated until an independent re-audit of the release. Residual: host must keep `allow_unauthenticated: false`, `cache.app` and `framework.trusted_proxies` (behind a proxy) for public rate limits.
+**Latest audit:** **Pass (good)** / **Low** — AI delta re-audit **2026-10-30** of v1.9.0..1089498 (catalog Appendix BD, "Delta re-audit 1.10.0"). Open Low from 2026-10-29: L3 ciphertext kept after consume, L4 decrypted file blob MIME, L5 per-IP limiter behind proxies. Residual: the host must keep `allow_unauthenticated: false`, `cache.app` and `framework.trusted_proxies` (behind a proxy) for public rate limits, and keep third-party scripts out of the guest / public layout.
 
 ## Reporting
 
@@ -98,4 +108,4 @@ Before each tag the maintainer confirms every row below (a note in the release P
 | 9 | Permissions / exposure | Manage routes behind the host firewall and `YopassAccessCheckerInterface` (empty role lists grant nothing; owner-only by default via `ShareAccessCheckEvent`); reads are consumed atomically (`consumeReadIfAvailable`) so a one-time share cannot be read twice; revoked / expired shares return no ciphertext. | Maintainer sign-off before tag |
 | 10 | Limits / DoS | `public_rate_limit` (per client IP, needs `cache.app`) on show/consume; `max_ciphertext_bytes` / `max_secret_chars` / file handler size caps; retention purge (`nowo:yopass:purge-old-shares`) bounds stored data. | Maintainer sign-off before tag |
 | 11 | Public routes documented | Public and manage routes listed in [INSTALLATION.md](INSTALLATION.md) with firewall guidance. | Maintainer sign-off before tag |
-| 12 | **AI security audit (REQ-SEC-004)** | Latest recorded grade — see [AI security audit](#ai-security-audit-req-sec-004) and `BUNDLES_SECURITY_ANALYSIS.md`. | **Pass (conditional) / Medium** — AI re-audit 2026-10-29 (v1.8.0), catalog Appendix BD; M1 / M2 / L1 / L2 fixed in Unreleased, pending independent re-audit |
+| 12 | **AI security audit (REQ-SEC-004)** | Latest recorded grade — see [AI security audit](#ai-security-audit-req-sec-004) and `BUNDLES_SECURITY_ANALYSIS.md`. | **Pass (good) / Low** — AI delta re-audit 2026-10-30 (v1.9.0..1089498), catalog Appendix BD "Delta re-audit 1.10.0"; M1 / M2 / L1 / L2 of the 2026-10-29 audit fixed in 1.9.0 |

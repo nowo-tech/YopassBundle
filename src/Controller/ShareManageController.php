@@ -233,7 +233,7 @@ final class ShareManageController extends AbstractController
 
         $manageHref = $this->generateUrl($this->routes['manage']['name']);
 
-        return $this->render($this->pages->template('created'), $this->pages->context([
+        $response = $this->render($this->pages->template('created'), $this->pages->context([
             'page'            => $this->pages->createdPage($manageHref),
             'share'           => $share,
             'public_path'     => $publicPath,
@@ -244,6 +244,9 @@ final class ShareManageController extends AbstractController
                 'allow_embed_in_url' => $this->sharingOptions['allow_embed_in_url'],
             ])->createView(),
         ]));
+
+        // REQ-SEC-004: the created page holds the share links (and possibly the embedded key).
+        return PublicShareController::hardenSecretResponse($response);
     }
 
     /**

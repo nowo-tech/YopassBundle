@@ -71,6 +71,12 @@ Yopass on the UiKit page contract (REQ-UI-003): list / show scaffolds fed by vie
 - The FormKit profile `yopass` seeded by the bundle no longer adds Bootstrap classes (`form-control`, `form-select`, `mb-2`, …); it sets `nowo-ui-input` and `convention_requires_translation: true`.
 - `ShareManageController` / `PublicShareController` take `Ui\YopassPageFactory` instead of the `$templates` array.
 
+### Security
+
+- **Reveal page on a host layout (REQ-SEC-004, delta re-audit 2026-10-30, Low).** The public reveal page now extends the host-overridable UiKit guest layout (`web_ui.public_layout_template`, else `nowo_ui_kit.layouts.guest`), so a third-party script loaded there (analytics, tag manager, session replay, chat widget) could read the `#decrypt_key=` fragment, the key / password input and the decrypted plaintext. USAGE, TEMPLATES, CONFIGURATION and SECURITY now state that the guest / public layout must not load third-party scripts (dedicated minimal layout + strict CSP).
+- The public reveal page (`GET /share/{id}`) and the "share created" page send `Cache-Control: no-store, private` and `Referrer-Policy: no-referrer` (shared `PublicShareController::hardenSecretResponse()`).
+- The manage preview dialog wipes the decrypted text, the key / password inputs, the public link and the decrypted file download link (blob URL revoked) on **every** close — close button, Escape and backdrop (native `close` event) — instead of only resetting its internal state, so no plaintext stays in the hidden DOM. `src/Resources/public/js/yopass.js` rebuilt.
+
 ### Deprecated
 
 - `route_prefix` (use `web_ui.path_prefix`), `templates.layout` / `templates.{manage,created,public}` (use `web_ui.layout_template` / `web_ui.templates.<page>`), `security.{admin,create,list,revoke}_roles` (use `security.roles.<action>`), `web_ui.css_framework` / `web_ui.icon_set` (use `nowo_ui_kit`), the Twig globals `nowo_yopass_layout_template` / `nowo_yopass_css_framework` / `nowo_yopass_icon_set`, `layout_integrate_host.html.twig` and 1.x layouts without the UiKit canonical blocks (bridged). All removed in 2.0.

@@ -69,7 +69,7 @@ final class PublicShareController extends AbstractController
         }
 
         // REQ-UI-003: unique page on the guest layout (page_layout null = nowo_ui_kit.layouts.guest).
-        return $this->render($this->pages->template('public'), [
+        $response = $this->render($this->pages->template('public'), [
             'header'          => $this->pages->publicHeader(),
             'page_layout'     => $this->pages->publicLayout(),
             'share'           => $share,
@@ -77,6 +77,20 @@ final class PublicShareController extends AbstractController
             'routes'          => $this->routes,
             'reveal_form'     => $this->createForm(ShareRevealType::class, null, ['decryption_mode' => $mode])->createView(),
         ]);
+
+        return self::hardenSecretResponse($response);
+    }
+
+    /**
+     * Marks a page that handles secret material (fragment key, decrypted plaintext, share links) as
+     * non-cacheable and stops the browser from leaking its URL through the Referer header (REQ-SEC-004).
+     */
+    public static function hardenSecretResponse(Response $response): Response
+    {
+        $response->headers->set('Cache-Control', 'no-store, private');
+        $response->headers->set('Referrer-Policy', 'no-referrer');
+
+        return $response;
     }
 
     /**
