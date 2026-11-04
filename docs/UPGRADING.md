@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.12.0](#to-1120)
   - [Create in a dialog (opt-in)](#create-in-a-dialog-opt-in)
   - [Per-row actions, revoke / extend events, host columns](#per-row-actions-revoke--extend-events-host-columns)
   - [Template overrides](#template-overrides)
@@ -77,6 +78,8 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.12.0
 
 From **1.11.0** (no breaking change with the default configuration):
 

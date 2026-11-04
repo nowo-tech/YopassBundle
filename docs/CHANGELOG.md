@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.12.0] - 2026-11-04](#1120---2026-11-04)
 - [[1.11.0] - 2026-11-04](#1110---2026-11-04)
 - [[1.10.1] - 2026-10-30](#1101---2026-10-30)
 - [[1.10.0] - 2026-10-30](#1100---2026-10-30)
@@ -49,7 +50,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Create in a dialog (opt-in `web_ui.create_mode: dialog`, async JSON create, result and wipe in the dialog), per-row actions from `SHARE_ACCESS_CHECK`, revoke / extend events, host list columns, "Delete all" only with own shares. See [UPGRADING](UPGRADING.md#unreleased).
+## [1.12.0] - 2026-11-04
+
+Create in a dialog (opt-in `web_ui.create_mode: dialog`, async JSON create, result and wipe in the dialog), per-row actions from `SHARE_ACCESS_CHECK`, revoke / extend events, host list columns, "Delete all" only with own shares. See [UPGRADING](UPGRADING.md#to-1120).
 
 ### Added
 
@@ -69,6 +72,8 @@ Create in a dialog (opt-in `web_ui.create_mode: dialog`, async JSON create, resu
 - **Create form markup:** the form moved to `manage/_create_form.html.twig` (shared by the card and the dialog) and the `nowo-yopass-create` controller now sits on a wrapping `<div class="nowo-yopass-create__root">` instead of the `<form>`. Host overrides of `_create_panel.html.twig` that copied the 1.11 form markup keep working (the controller attributes on the form still work); see UPGRADING.
 - `ShareCreatedLinksType` options `target_controller` / `id_prefix` (defaults unchanged) so the dialog reuses it.
 - `ShareManageController` takes optional `ShareRevoker`, event dispatcher and `$createMode` arguments (autowired / configured; appended with defaults).
+
+[1.12.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.12.0
 
 ## [1.11.0] - 2026-11-04
 
@@ -651,7 +656,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.12.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
