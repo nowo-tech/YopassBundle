@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.12.1](#to-1121)
 - [To 1.12.0](#to-1120)
   - [Create in a dialog (opt-in)](#create-in-a-dialog-opt-in)
   - [Per-row actions, revoke / extend events, host columns](#per-row-actions-revoke--extend-events-host-columns)
@@ -78,6 +79,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.12.1
+
+From **1.12.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ## To 1.12.0
 

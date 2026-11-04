@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.12.1] - 2026-11-04](#1121---2026-11-04)
 - [[1.12.0] - 2026-11-04](#1120---2026-11-04)
 - [[1.11.0] - 2026-11-04](#1110---2026-11-04)
 - [[1.10.1] - 2026-10-30](#1101---2026-10-30)
@@ -50,9 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-11-04
+
 ### Fixed
 
 - **500 on the manage page in dialog create mode with the `ux_icon` icon set.** The "New share" header and empty-state actions passed `icon: 'add'`, which is not a UiKit icon kind (`ux_icon` resolved it to the non-existent `bi:add`). They now use the action kind `create` (UiKit's canonical "add" icon). New regression test `UiKitIconKindsTest`: every icon / kind the bundle hands to UiKit (view builders and Twig literals) must be a canonical UiKit icon kind.
+
+[1.12.1]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.12.1
 
 ## [1.12.0] - 2026-11-04
 
@@ -660,7 +665,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.12.1...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
