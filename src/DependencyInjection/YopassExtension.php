@@ -8,6 +8,7 @@ use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
+use Nowo\YopassBundle\EventListener\WasmCspListener;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
@@ -85,6 +86,10 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.sharing', $config['sharing']);
         $container->setParameter('nowo_yopass.expiration_options', $config['shares']['expiration_options']);
         $container->setParameter('nowo_yopass.access_log_enabled', $config['access_log']['enabled']);
+        // CSP: route names of the pages that load yopass.js (libsodium needs 'wasm-unsafe-eval'); hosts may read this
+        // parameter to scope the keyword. The opt-in listener only edits those routes.
+        $container->setParameter('nowo_yopass.csp.wasm_routes', WasmCspListener::routeNames($config['routes']));
+        $container->setParameter('nowo_yopass.csp.wasm_unsafe_eval', (bool) $config['csp']['wasm_unsafe_eval']);
 
         $publicRateLimit = $config['public_rate_limit'];
         $container->setParameter('nowo_yopass.public_rate_limit.enabled', $publicRateLimit['enabled']);

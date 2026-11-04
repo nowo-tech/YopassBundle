@@ -12,6 +12,7 @@ use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\ManageWebUiSecurityPass;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
+use Nowo\YopassBundle\EventListener\WasmCspListener;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
@@ -532,5 +533,28 @@ final class YopassExtensionTest extends TestCase
                 return $this->extensionAlias;
             }
         });
+    }
+
+    public function testCspParametersDefaultToOptOutWithTheYopassJsRouteNames(): void
+    {
+        $container = new ContainerBuilder();
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User']], $container);
+
+        self::assertFalse($container->getParameter('nowo_yopass.csp.wasm_unsafe_eval'));
+        self::assertSame(['nowo_yopass_index', 'nowo_yopass_created', 'nowo_yopass_public_share'], $container->getParameter('nowo_yopass.csp.wasm_routes'));
+        self::assertSame('%nowo_yopass.csp.wasm_unsafe_eval%', $container->getDefinition(WasmCspListener::class)->getArgument('$enabled'));
+    }
+
+    public function testCspOptInAndRenamedRoutes(): void
+    {
+        $container = new ContainerBuilder();
+        (new YopassExtension())->load([[
+            'user_class' => 'App\\Entity\\User',
+            'csp'        => ['wasm_unsafe_eval' => true],
+            'routes'     => ['public_show' => ['name' => 'app_secret_reveal']],
+        ]], $container);
+
+        self::assertTrue($container->getParameter('nowo_yopass.csp.wasm_unsafe_eval'));
+        self::assertContains('app_secret_reveal', $container->getParameter('nowo_yopass.csp.wasm_routes'));
     }
 }

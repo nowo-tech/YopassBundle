@@ -3,6 +3,10 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Access log table no longer mapped when disabled](#access-log-table-no-longer-mapped-when-disabled)
+  - [CSP: nonce and wasm-unsafe-eval](#csp-nonce-and-wasm-unsafe-eval)
+  - [New events](#new-events)
+  - [Translation wording](#translation-wording)
 - [To 1.10.1](#to-1101)
 - [To 1.10.0](#to-1100)
   - [Template contract (UiKit page contract, REQ-UI-003)](#template-contract-uikit-page-contract-req-ui-003)
@@ -69,6 +73,69 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+From **1.10.1** (no breaking change; every new constructor argument is optional):
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console cache:clear
+```
+
+### Access log table no longer mapped when disabled
+
+With `nowo_yopass.access_log.enabled: false` (and with the MongoDB / custom non-relational backends, which always
+disable it) the `Nowo\YopassBundle\Entity\ShareAccessLog` entity is now excluded from the Doctrine ORM mapping
+(conditional mapping through `AccessLogMappingPass`). New installs no longer get an empty
+`<table_prefix>_share_access_logs` table.
+
+If the table already exists, the next `make:migration` / `doctrine:schema:update --dump-sql` proposes
+`DROP TABLE <table_prefix>_share_access_logs`. **Do not apply it blindly:** if the access log was **ever enabled**
+(it is the default) the table holds the access history recorded until then (time, read number, client IP and user
+agent of every link open), and dropping it deletes that history for good. To keep it, exclude the table from the
+schema diff, e.g.:
+
+```yaml
+# config/packages/doctrine.yaml
+doctrine:
+    dbal:
+        schema_filter: ~^(?!yopass_share_access_logs$)~   # adapt to your table_prefix
+```
+
+Apply the `DROP TABLE` only when you are sure the history is not needed (or the table is empty). Nothing changes when
+the access log is enabled.
+
+### CSP: nonce and wasm-unsafe-eval
+
+- `yopass.js` now carries the CSP nonce when the host sets the request attribute `csp_nonce` (same hook as the UiKit
+  layouts). Hosts with a nonce-based `script-src` (`'strict-dynamic'`) need nothing else; without a nonce the tag is
+  unchanged.
+- libsodium compiles WebAssembly: the three pages that load `yopass.js` need `'wasm-unsafe-eval'` in `script-src`.
+  Add it only on the route names in the `nowo_yopass.csp.wasm_routes` parameter (by default `nowo_yopass_index`,
+  `nowo_yopass_created`, `nowo_yopass_public_share`; renamed routes are followed), or opt in to
+  `nowo_yopass.csp.wasm_unsafe_eval: true` to let the bundle append it to your existing policy on those routes. See
+  [Configuration — Content-Security-Policy](CONFIGURATION.md#content-security-policy).
+
+### New events
+
+- `YopassEvents::SHARE_CREATED`, `SHARE_DELETED`, `SHARES_BULK_DELETED`: audit / notification hooks with metadata
+  only (never ciphertext, keys, passwords or plaintext).
+- `YopassEvents::SHARE_DELETE_ALL`: take over (tenant / team scope with your own query + `markHandled()`) or veto
+  the manage "delete all". Hosts that replaced the `nowo_yopass_delete_all` route to scope it can drop the override
+  and listen to this event instead. `setSubject()` only accepts the viewer or another `nowo_yopass.user_class`
+  instance; any other object throws a `LogicException` before anything is removed (a tenant entity would otherwise be
+  matched by id against user ids). Veto **before** handling: `veto()` after `markHandled()` is ignored and logged.
+- **Behaviour change for `ShareListQueryEvent::setListSubject()`:** a subject that is neither the viewer nor a
+  `nowo_yopass.user_class` instance now throws a `LogicException` unless the listener also calls `overrideList()`.
+  Up to 1.10 such a subject (team / tenant entity) was silently matched by its id against creator ids. A custom
+  `ShareRepositoryInterface` that understood team subjects must now be fed through `overrideList()`.
+- `ShareListQueryEvent` exposes `getPage()` / `getPageSize()` / `getOffset()` / `isPaginated()`; `overrideList()`
+  listeners should return only the requested page when paginated.
+
+### Translation wording
+
+Spanish (and German, Italian, Portuguese, Dutch, French) wording changed ("share" → "secreto", "Freigabe", …). Hosts
+overriding these keys in their own `NowoYopassBundle.<locale>` catalogue keep their values. New key:
+`yopass.error.delete_all_denied`.
 
 ## To 1.10.1
 

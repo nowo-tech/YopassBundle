@@ -48,6 +48,15 @@
 
 Server-side `ShareEncryptionService` exists for **tests only** — not used in production flow.
 
+**CSP.** libsodium compiles WebAssembly, so the pages that load `yopass.js` need `'wasm-unsafe-eval'` in
+`script-src` (never `'unsafe-eval'`). Scope it to the route names in `nowo_yopass.csp.wasm_routes`, or opt in to
+`nowo_yopass.csp.wasm_unsafe_eval` (edits existing policies on those routes only). The script tag carries the
+request `csp_nonce` attribute as nonce. See [Configuration — Content-Security-Policy](CONFIGURATION.md#content-security-policy).
+
+**Events.** `ShareCreatedEvent`, `ShareDeletedEvent`, `ShareBulkDeletedEvent` and `ShareDeleteAllEvent` carry metadata
+only (ids, creator, dates, counters, payload kind): never ciphertext, keys, passwords or plaintext, and never the
+`SecureShare` entity (`tests/Unit/Event/ShareLifecycleEventsZeroKnowledgeTest.php`).
+
 ## Logging and observability (REQ-OBS-001)
 
 | Logged | Not logged |

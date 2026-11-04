@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Service;
 
 use DateTimeImmutable;
+use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Deletes shares older than the configured retention age.
@@ -21,7 +25,8 @@ final readonly class ShareRetentionPurger
     private ClockInterface $clock;
 
     /**
-     * Creates the purger with the repository, share options and an optional clock.
+     * Creates the purger with the repository, share options, an optional clock and an optional event dispatcher
+     * ({@see YopassEvents::SHARES_BULK_DELETED} with reason "retention" when shares were removed).
      *
      * @param array{
      *     retention?: array{enabled?: bool, max_age?: string}
@@ -31,6 +36,7 @@ final readonly class ShareRetentionPurger
         private ShareRepositoryInterface $shareRepository,
         array $shareOptions,
         ?ClockInterface $clock = null,
+        private ?EventDispatcherInterface $eventDispatcher = null,
     ) {
         $retention     = $shareOptions['retention'] ?? [];
         $this->enabled = (bool) ($retention['enabled'] ?? false);
@@ -62,6 +68,7 @@ final readonly class ShareRetentionPurger
 
         if ($removed > 0) {
             $this->shareRepository->flush();
+            $this->dispatchPurged($creator, $removed, $creator instanceof UserInterface ? $creator : null);
         }
 
         return $removed;
@@ -83,9 +90,18 @@ final readonly class ShareRetentionPurger
 
         if ($removed > 0) {
             $this->shareRepository->flush();
+            $this->dispatchPurged(null, $removed, null);
         }
 
         return $removed;
+    }
+
+    private function dispatchPurged(?object $subject, int $removed, ?UserInterface $viewer): void
+    {
+        $this->eventDispatcher?->dispatch(
+            new ShareBulkDeletedEvent(ShareBulkDeletedEvent::REASON_RETENTION, $subject, $removed, $viewer),
+            YopassEvents::SHARES_BULK_DELETED,
+        );
     }
 
     private function resolveCutoff(): ?DateTimeImmutable

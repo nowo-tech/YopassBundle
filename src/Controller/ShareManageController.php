@@ -9,6 +9,7 @@ use Nowo\UiKitBundle\View\Pagination;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareAccessAction;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Form\CsrfActionType;
 use Nowo\YopassBundle\Form\ShareCreatedLinksType;
@@ -20,6 +21,7 @@ use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
+use Nowo\YopassBundle\Service\ShareDeleter;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
@@ -47,6 +49,8 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 final class ShareManageController extends AbstractController
 {
+    private readonly ShareDeleter $shareDeleter;
+
     /**
      * Creates the manage controller with routes, templates, limits and share options.
      *
@@ -87,7 +91,9 @@ final class ShareManageController extends AbstractController
         private readonly array $sharingOptions,
         private readonly bool $fileSharesEnabled,
         private readonly ?ShareFileHandlerInterface $fileHandler = null,
+        ?ShareDeleter $shareDeleter = null,
     ) {
+        $this->shareDeleter = $shareDeleter ?? new ShareDeleter($shareRepository);
     }
 
     /**
@@ -373,8 +379,7 @@ final class ShareManageController extends AbstractController
         }
 
         // @igor-ignore - HTTP handler delegates to services; no controller worker state.
-        $this->shareRepository->remove($share);
-        $this->shareRepository->flush();
+        $this->shareDeleter->delete($share, $user);
 
         $this->addFlash('success', $this->translator->trans('yopass.deleted', [], YopassBundle::TRANSLATION_DOMAIN));
 
@@ -382,7 +387,7 @@ final class ShareManageController extends AbstractController
     }
 
     /**
-     * Deletes every share owned by the viewer.
+     * Deletes every share owned by the viewer (scoped / vetoed by {@see YopassEvents::SHARE_DELETE_ALL}).
      */
     #[Route('/tools/yopass/delete-all', name: 'nowo_yopass_delete_all', methods: ['POST'])]
     public function deleteAll(Request $request): RedirectResponse
@@ -395,10 +400,13 @@ final class ShareManageController extends AbstractController
 
         $user = $this->requireUser();
         // @igor-ignore - HTTP handler delegates to services; no controller worker state.
-        $removed = $this->shareRepository->removeAllByCreator($user);
+        $removed = $this->shareDeleter->deleteAll($user);
 
-        if ($removed > 0) {
-            $this->shareRepository->flush();
+        if ($removed === null) {
+            // A nowo_yopass.share_delete_all listener vetoed the removal.
+            $this->addFlash('error', $this->translator->trans('yopass.error.delete_all_denied', [], YopassBundle::TRANSLATION_DOMAIN));
+
+            return $this->redirectToRoute($this->routes['manage']['name']);
         }
 
         $this->addFlash(

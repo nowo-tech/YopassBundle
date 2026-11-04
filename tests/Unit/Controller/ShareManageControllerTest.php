@@ -8,12 +8,16 @@ use DateTimeImmutable;
 use Nowo\UiKitBundle\View\ListPage;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
+use Nowo\YopassBundle\Event\ShareDeletedEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
+use Nowo\YopassBundle\Service\ShareDeleter;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
@@ -22,6 +26,7 @@ use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\ControllerContainerBuilder;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
+use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
 use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\Ui\YopassPages;
 use PHPUnit\Framework\TestCase;
@@ -529,6 +534,119 @@ final class ShareManageControllerTest extends TestCase
         self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
     }
 
+    public function testDeleteAllVetoedByListenerRemovesNothing(): void
+    {
+        $user = new TestUser();
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::never())->method('removeAllByCreator');
+        $shareRepository->expects(self::never())->method('flush');
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event): void {
+            $event->veto();
+        });
+
+        $controller = $this->controller(shareRepository: $shareRepository, shareDeleter: new ShareDeleter($shareRepository, $dispatcher));
+        $container  = ControllerContainerBuilder::bind($controller, $user);
+        $token      = ControllerContainerBuilder::csrfToken($container, 'yopass_delete_all');
+
+        $response = $controller->deleteAll(Request::create('/tools/yopass/delete-all', 'POST', [
+            '_token' => $token,
+        ]));
+
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        $session = $container->get('request_stack')->getSession();
+        self::assertSame(['yopass.error.delete_all_denied'], $session->getFlashBag()->get('error'));
+    }
+
+    public function testDeleteDispatchesShareDeletedEvent(): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-000000000099', $user);
+        $share->setCiphertext('PLACEHOLDER-CIPHERTEXT')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETED, static function (ShareDeletedEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        $controller = $this->controller(shareRepository: $shareRepository, shareDeleter: new ShareDeleter($shareRepository, $dispatcher));
+        $container  = ControllerContainerBuilder::bind($controller, $user);
+        $token      = ControllerContainerBuilder::csrfToken($container, 'delete-share-' . $share->getId());
+
+        $controller->delete($share->getId(), Request::create('/', 'POST', ['_token' => $token]));
+
+        self::assertCount(1, $events);
+        self::assertSame($share->getId(), $events[0]->getShareId());
+        self::assertSame($user, $events[0]->getDeletedBy());
+    }
+
+    /**
+     * EL-I2: no log record (PSR logger, PHP error_log) and no flash message produced while creating, deleting and
+     * deleting all shares contains the ciphertext or key material. Placeholders only.
+     */
+    public function testCreateDeleteAndDeleteAllNeverLogOrFlashSecretMaterial(): void
+    {
+        $marker     = 'PLACEHOLDER-SECRET-MATERIAL-7f3a';
+        $ciphertext = '{"v":1,"mode":"key","nonce":"' . $marker . '-nonce","ciphertext":"' . $marker . '-ct"}';
+        $user       = new TestUser();
+        $stored     = null;
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('persist')->willReturnCallback(static function (SecureShare $share) use (&$stored): void {
+            $stored = $share;
+        });
+        $shareRepository->method('find')->willReturnCallback(static function () use (&$stored): ?SecureShare {
+            return $stored;
+        });
+        $shareRepository->method('removeAllByCreator')->willReturn(3);
+
+        $logger     = new SecretCapturingLogger();
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event): void {
+            $event->markHandled(3);
+            $event->veto(); // late veto: ignored and logged, must not leak anything either
+        });
+
+        $errorLog    = (string) tempnam(sys_get_temp_dir(), 'yopass-errlog');
+        $previousLog = ini_set('error_log', $errorLog);
+
+        try {
+            $controller = $this->controller(
+                shareRepository: $shareRepository,
+                shareCreator: new ShareCreator($shareRepository, DefaultShareOptions::get()['expiration_options'], null, $dispatcher),
+                shareDeleter: new ShareDeleter($shareRepository, $dispatcher, null, $logger),
+            );
+            $container = ControllerContainerBuilder::bind($controller, $user);
+
+            $controller->create($this->createShareFormRequest($container, ['ciphertext' => $ciphertext]));
+            $controller->create($this->createShareFormRequest($container, ['ciphertext' => $ciphertext, 'maxReads' => 999]));
+            self::assertInstanceOf(SecureShare::class, $stored);
+
+            $shareId = $stored->getId();
+            $controller->delete($shareId, Request::create('/', 'POST', ['_token' => ControllerContainerBuilder::csrfToken($container, 'delete-share-' . $shareId)]));
+            $controller->deleteAll(Request::create('/', 'POST', ['_token' => ControllerContainerBuilder::csrfToken($container, 'yopass_delete_all')]));
+
+            $flashes = $container->get('request_stack')->getSession()->getFlashBag()->all();
+        } finally {
+            ini_set('error_log', $previousLog === false ? '' : $previousLog);
+        }
+
+        $logged = (string) file_get_contents($errorLog);
+        @unlink($errorLog);
+
+        self::assertNotSame([], $logger->records, 'the late veto must be logged');
+        self::assertStringNotContainsString($marker, print_r($logger->records, true), 'PSR log records leak secret material');
+        self::assertStringNotContainsString($marker, $logged, 'PHP error_log leaks secret material');
+        self::assertNotSame([], $flashes);
+        self::assertStringNotContainsString($marker, print_r($flashes, true), 'flash messages leak secret material');
+    }
+
     public function testDeleteAllThrowsAccessDeniedForInvalidCsrf(): void
     {
         $controller = $this->controller();
@@ -660,6 +778,7 @@ final class ShareManageControllerTest extends TestCase
         int $maxCiphertextBytes = 700_000,
         bool $fileSharesEnabled = false,
         ?ShareFileHandlerInterface $fileHandler = null,
+        ?ShareDeleter $shareDeleter = null,
     ): ShareManageController {
         $translator = $this->createMock(TranslatorInterface::class);
         $translator->method('trans')->willReturnArgument(0);
@@ -703,6 +822,7 @@ final class ShareManageControllerTest extends TestCase
             ],
             $fileSharesEnabled,
             $fileHandler,
+            $shareDeleter,
         );
     }
 

@@ -55,6 +55,7 @@ yopass:
         invalid_ciphertext: The submitted ciphertext is invalid.
         file_not_enabled: File shares are not enabled.
         create: Could not create the share.
+        delete_all_denied: You cannot delete these shares.
     revoked: Share revoked.
     revoke: Revoke
     revoke_confirm: Revoke this share? The public link will stop working.

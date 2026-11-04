@@ -1,6 +1,6 @@
 yopass:
     title: Yopass
-    intro: Crie ligações encriptadas de utilização única para partilhar segredos em segurança. Só gere os seus próprios shares.
+    intro: Crie ligações encriptadas de utilização única para partilhar segredos em segurança. Só gere os seus próprios segredos.
     e2e_notice: A encriptação e desencriptação ocorrem no seu navegador; o servidor nunca vê texto em claro.
     back: Voltar
     access:
@@ -31,20 +31,20 @@ yopass:
         custom: Palavra-passe de desencriptação
         custom_help: Partilhe a ligação e esta palavra-passe por canais diferentes.
         embed_in_url: Incluir chave/palavra-passe no URL (?decrypt_key=)
-        embed_help: A chave é passada como parâmetro ?decrypt_key= na ligação one-click.
+        embed_help: A chave é passada como parâmetro ?decrypt_key= na ligação direta.
         separate_label: Chave / palavra-passe (partilhar separadamente)
         separate_help: Envie a ligação por um canal e a chave por outro (Signal, SMS…).
     result:
         title: Segredo armazenado em segurança
         remember: Lembre-se
-        remember_text: O segredo só pode ser descarregado o número de vezes configurado. Não abra a ligação one-click. O mais prudente é enviar a chave de desencriptação por um canal separado.
-        one_click: Ligação one-click
+        remember_text: O segredo só pode ser descarregado o número de vezes configurado. Não abra a ligação direta. O mais prudente é enviar a chave de desencriptação por um canal separado.
+        one_click: Ligação direta (um clique)
         one_click_help: Partilhe esta ligação para aceder diretamente ao segredo.
         short: Ligação curta
         short_help: Requer partilhar a chave de desencriptação separadamente.
         decryption_key: Chave de desencriptação
         decryption_key_help: Necessária para desencriptar a mensagem com a ligação curta.
-        key_unavailable: A chave de desencriptação já não está disponível. Copie as ligações logo após criar o share.
+        key_unavailable: A chave de desencriptação já não está disponível. Copie as ligações logo após criar o segredo.
         create_another: Criar outro segredo
     error:
         secret: Introduza um segredo ou selecione um ficheiro.
@@ -52,29 +52,30 @@ yopass:
         file: Selecione um ficheiro.
         file_too_large: O ficheiro excede o limite de 512 KB.
         password: Introduza uma palavra-passe de desencriptação.
-        invalid_ciphertext: O ciphertext enviado não é válido.
-        file_not_enabled: Shares de ficheiro não estão ativados.
-        create: Não foi possível criar o share.
-    revoked: Share revogado.
+        invalid_ciphertext: O conteúdo encriptado enviado não é válido.
+        file_not_enabled: A partilha de ficheiros não está ativada.
+        create: Não foi possível criar o segredo.
+        delete_all_denied: Não pode eliminar estes segredos.
+    revoked: Segredo revogado.
     revoke: Revogar
-    revoke_confirm: Revogar este share? A ligação pública deixará de funcionar.
-    deleted: Share eliminado.
+    revoke_confirm: Revogar este segredo? A ligação pública deixará de funcionar.
+    deleted: Segredo eliminado.
     delete: Eliminar
-    delete_confirm: Eliminar permanentemente este share da sua lista? Esta ação não pode ser desfeita.
+    delete_confirm: Eliminar permanentemente este segredo da sua lista? Esta ação não pode ser desfeita.
     delete_all: Eliminar tudo
-    delete_all_confirm: Eliminar permanentemente todos os seus shares? Esta ação não pode ser desfeita.
-    deleted_all: Eliminados %count% share(s).
+    delete_all_confirm: Eliminar permanentemente todos os seus segredos? Esta ação não pode ser desfeita.
+    deleted_all: Eliminados %count% segredo(s).
     view: Ver
     preview:
-        title: Pré-visualização do share
+        title: Pré-visualização do segredo
         intro: A desencriptação ocorre no seu navegador. A pré-visualização não consome uma leitura.
         decrypt: Mostrar conteúdo
         key_field: Chave de desencriptação
-        key_help: Introduza a chave mostrada quando criou este share (guardada nesta sessão do navegador quando possível).
-        key_required: Introduza a chave de desencriptação deste share.
+        key_help: Introduza a chave mostrada quando criou este segredo (guardada nesta sessão do navegador quando possível).
+        key_required: Introduza a chave de desencriptação deste segredo.
         public_link: Ligação pública
         close: Fechar
-        failed: Não foi possível carregar este share.
+        failed: Não foi possível carregar este segredo.
         access_log:
             title: Histórico de aberturas
             intro: Registo de cada abertura da ligação pública (revelar segredo).
@@ -85,7 +86,7 @@ yopass:
             user_agent: Navegador
     extend:
         action: Estender
-        title: Estender share
+        title: Estender segredo
         intro: Adicione tempo ou leituras sem consumir uma visualização. Deixe um campo inalterado para manter o valor atual.
         current: Limites atuais
         expiration_field: Adicionar tempo de expiração
@@ -93,9 +94,9 @@ yopass:
         keep_expiration: Não alterar expiração
         keep_reads: Não alterar leituras máx.
         submit: Aplicar extensão
-        success: Share atualizado.
-        failed: Não foi possível atualizar o share.
-        revoked: Shares revogados não podem ser estendidos.
+        success: Segredo atualizado.
+        failed: Não foi possível atualizar o segredo.
+        revoked: Segredos revogados não podem ser estendidos.
         invalid_expiration: Opção de expiração inválida.
         invalid_max_reads: Valor de leituras máx. inválido.
         max_reads_not_increased: Escolha um valor de leituras máx. superior ao limite atual.
@@ -109,18 +110,18 @@ yopass:
     reads:
         field: Leituras máx.
     create:
-        title: Novo share
+        title: Partilhar um segredo
         submit: Criar ligação
     list:
-        title: Os meus shares
+        title: Os meus segredos partilhados
         type: Tipo
         created: Criado
         expires: Expira
         reads: Leituras
         status: Estado
         actions: Ações
-        empty: Ainda não criou nenhum share.
-        retention_notice: Shares com mais de %max_age% são eliminados automaticamente.
+        empty: Ainda não partilhou nenhum segredo.
+        retention_notice: Segredos com mais de %max_age% são eliminados automaticamente.
         summary: '%from%–%to% de %total%'
         page: Página %page% / %pages%
         previous: Anterior

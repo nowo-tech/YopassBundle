@@ -14,11 +14,13 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
 - [Sharing (encryption & links)](#sharing-encryption--links)
   - [Public link formats](#public-link-formats)
 - [Access log](#access-log)
+- [Content-Security-Policy](#content-security-policy)
 - [Routes](#routes)
 - [Security](#security)
   - [Firewall](#firewall)
   - [Access checker](#access-checker)
   - [Share list and per-share access events](#share-list-and-per-share-access-events)
+  - [Share lifecycle events](#share-lifecycle-events)
   - [Public rate limiting](#public-rate-limiting)
   - [Custom access checker interface](#custom-access-checker-interface)
 - [Web UI (UiKit page contract)](#web-ui-uikit-page-contract)
@@ -208,6 +210,36 @@ nowo_yopass:
 
 When enabled, successful public consumes are logged for the share creator (preview modal history).
 
+When disabled (or with the MongoDB / custom non-relational backends, which always disable it) the
+`ShareAccessLog` entity is **not mapped**: it is excluded from the Doctrine ORM attribute drivers, so no
+`<table_prefix>_share_access_logs` table is created. See [UPGRADING](UPGRADING.md#access-log-table-no-longer-mapped-when-disabled)
+for an existing empty table.
+
+## Content-Security-Policy
+
+The pages that load `js/yopass.js` (manage list, "share created", public reveal) run libsodium, which compiles
+WebAssembly: under a CSP they need **`'wasm-unsafe-eval'`** in `script-src`. The bundle never adds it on its own.
+
+- **Nonce.** The `<script type="module">` of `yopass.js` gets `nonce="…"` from the request attribute `csp_nonce`
+  (the same hook the UiKit layouts read). Set it in your CSP listener (`$request->attributes->set('csp_nonce', $nonce)`)
+  and `script-src 'nonce-…' 'strict-dynamic'` policies accept the module; without it the tag has no nonce.
+- **Scope `'wasm-unsafe-eval'` to the three pages.** Their route names are in the container parameter
+  `nowo_yopass.csp.wasm_routes` (defaults `nowo_yopass_index`, `nowo_yopass_created`, `nowo_yopass_public_share`;
+  values follow `routes.manage.name`, `routes.created.name`, `routes.public_show.name`). Compare them with
+  `$request->attributes->get('_route')` in your own CSP listener, or let the bundle do it:
+
+```yaml
+nowo_yopass:
+    csp:
+        wasm_unsafe_eval: false   # opt-in
+```
+
+With `true`, `WasmCspListener` (kernel.response, priority `-128`, after NelmioSecurityBundle / host listeners) edits
+the existing `Content-Security-Policy` and `Content-Security-Policy-Report-Only` headers of those routes only:
+`'wasm-unsafe-eval'` is appended to `script-src`, or a `script-src` copying `default-src` is added when only
+`default-src` exists. It never creates a policy, never touches other routes, leaves `'none'` / empty script policies
+alone and does nothing when `'wasm-unsafe-eval'` or `'unsafe-eval'` is already allowed. `'unsafe-eval'` is never added.
+
 ## Routes
 
 Each route has `path` and `name`. Optional `web_ui.path_prefix` (deprecated alias: `route_prefix`) is prepended to every path, manage and public (e.g. `/{_locale}`).
@@ -306,10 +338,40 @@ The bundle stores the share **creator** but does not implement teams, groups, or
 | `ShareListQueryEvent` | `YopassEvents::SHARE_LIST_QUERY` | Change list query or replace results |
 | `ShareListResultEvent` | `YopassEvents::SHARE_LIST_RESULT` | Filter/reorder listed shares |
 | `ShareAccessCheckEvent` | `YopassEvents::SHARE_ACCESS_CHECK` | Grant/deny preview, extend, revoke, delete on a share |
+| `ShareDeleteAllEvent` | `YopassEvents::SHARE_DELETE_ALL` | Scope (`setSubject()`), take over (`markHandled()`) or `veto()` the manage "delete all" |
+
+`ShareListQueryEvent` carries the requested page: `getPage()`, `getPageSize()` (0 = not paginated), `getOffset()`,
+`isPaginated()`. An `overrideList($shares, $total)` listener should return that page only and the overall total.
+
+`ShareDeleteAllEvent::getSubject()` (default: the viewer) is what `ShareRepositoryInterface::removeAllByCreator()`
+receives. Only the viewer or another instance of `nowo_yopass.user_class` is accepted as subject (same rule for
+`ShareListQueryEvent::setListSubject()`): the creator queries compare `creator = :subject`, and Doctrine would bind a
+tenant / team entity by its id and match the **user** with that id. Any other subject throws a `LogicException`
+before anything is queried or removed (fails closed: no share is deleted, the request errors so the misconfiguration
+is visible). For tenant / team scopes remove the shares with your own query and call `markHandled($count)` (list:
+`overrideList()`). After `veto()` nothing is removed and the user sees `yopass.error.delete_all_denied`; a `veto()`
+after `markHandled()` is ignored (the shares are gone), logged as a warning, and the bulk-deleted event still fires,
+so veto from a listener with a higher priority than the one that removes.
+
+The manage list clamps `?page=` to `ShareListQueryEvent::MAX_PAGE` (1,000,000) and to the largest page whose offset
+fits in an integer; a page beyond the last one renders the last page.
 
 Default per-share grant: viewer is the creator. Copy example listeners from [`examples/access-control/`](../examples/access-control/) — see [Access control events](examples/AccessControl.md).
 
-Services involved: `ShareLister` (manage list), `ShareAccessGuard` (created/preview/extend/revoke/delete).
+Services involved: `ShareLister` (manage list), `ShareAccessGuard` (created/preview/extend/revoke/delete),
+`ShareDeleter` (delete / delete all).
+
+### Share lifecycle events
+
+| Event | Constant | When | Payload |
+|-------|----------|------|---------|
+| `ShareCreatedEvent` | `YopassEvents::SHARE_CREATED` | After `ShareCreator` persisted a share | share id, creator, created / expires at, max reads, payload kind |
+| `ShareDeletedEvent` | `YopassEvents::SHARE_DELETED` | After a manage "delete" | share id, creator, deleting user, dates, max reads, reads left, payload kind, revoked at |
+| `ShareBulkDeletedEvent` | `YopassEvents::SHARES_BULK_DELETED` | After "delete all" or a retention purge removed ≥ 1 share | reason (`delete_all` / `retention`), subject (creator / tenant, `null` for the console purge), count, acting user |
+
+**Zero-knowledge:** these payloads are metadata only. They never contain the ciphertext, the decryption key, a
+password or decrypted content, and they do not expose the `SecureShare` entity, so they are safe to log or forward
+(audit trail, notifications, metrics).
 
 ### Public rate limiting
 

@@ -22,6 +22,52 @@ Route-level features (`create`, `list`, `revoke`) still go through `YopassAccess
 | `ShareListQueryEvent` | `YopassEvents::SHARE_LIST_QUERY` | Before repository query | Team list, custom query, full override |
 | `ShareListResultEvent` | `YopassEvents::SHARE_LIST_RESULT` | After shares loaded | Filter/reorder results |
 | `ShareAccessCheckEvent` | `YopassEvents::SHARE_ACCESS_CHECK` | Per share + action | Team access, individual grants, role rules |
+| `ShareDeleteAllEvent` | `YopassEvents::SHARE_DELETE_ALL` | Before "delete all" | Tenant / team scope with your own query (`markHandled()`), `veto()` |
+
+A tenant / team scope must be removed by **your own query** and reported with `markHandled()`. Do **not** pass a
+tenant or team entity to `setSubject()`: the default repositories compare `creator = :subject` and Doctrine would
+bind that entity by its id, i.e. delete the shares of the **user** whose id equals the tenant id. The bundle refuses
+such a subject (`LogicException`, nothing deleted); `setSubject()` only accepts the viewer or another
+`nowo_yopass.user_class` instance.
+
+```php
+use Doctrine\ORM\EntityManagerInterface;
+use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+#[AsEventListener(event: YopassEvents::SHARE_DELETE_ALL)]
+final class TenantDeleteAllListener
+{
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly TenantContext $tenantContext,
+    ) {
+    }
+
+    public function __invoke(ShareDeleteAllEvent $event): void
+    {
+        if (!$this->tenantContext->canDeleteAll($event->getViewer())) {
+            $event->veto(); // veto first: a veto after markHandled() is ignored
+            return;
+        }
+
+        // Only the viewer's shares inside the current tenant (host-side join; adapt to your model).
+        $removed = (int) $this->em->createQuery(
+            'DELETE FROM ' . SecureShare::class . ' s WHERE s.creator = :viewer AND s.id IN (:tenantShareIds)'
+        )
+            ->setParameter('viewer', $event->getViewer())
+            ->setParameter('tenantShareIds', $this->tenantContext->shareIds())
+            ->execute();
+
+        $event->markHandled($removed);
+    }
+}
+```
+
+`ShareListQueryEvent` also carries the requested page (`getPage()`, `getPageSize()`, `getOffset()`) for
+`overrideList()` listeners.
 
 ### ShareListQueryEvent
 
@@ -37,7 +83,8 @@ final class MyShareListListener
 {
     public function __invoke(ShareListQueryEvent $event): void
     {
-        // Option A: change the creator subject used by the repository
+        // Option A: change the creator subject used by the repository (another user only:
+        // a tenant / team entity throws a LogicException, use Option B for those scopes)
         // $event->setListSubject($teamLeadUser);
 
         // Option B: replace the query entirely
