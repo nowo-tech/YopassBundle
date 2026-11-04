@@ -50,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **500 on the manage page in dialog create mode with the `ux_icon` icon set.** The "New share" header and empty-state actions passed `icon: 'add'`, which is not a UiKit icon kind (`ux_icon` resolved it to the non-existent `bi:add`). They now use the action kind `create` (UiKit's canonical "add" icon). New regression test `UiKitIconKindsTest`: every icon / kind the bundle hands to UiKit (view builders and Twig literals) must be a canonical UiKit icon kind.
+
 ## [1.12.0] - 2026-11-04
 
 Create in a dialog (opt-in `web_ui.create_mode: dialog`, async JSON create, result and wipe in the dialog), per-row actions from `SHARE_ACCESS_CHECK`, revoke / extend events, host list columns, "Delete all" only with own shares. See [UPGRADING](UPGRADING.md#to-1120).
