@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.11.0](#to-1110)
   - [Access log table no longer mapped when disabled](#access-log-table-no-longer-mapped-when-disabled)
   - [CSP: nonce and wasm-unsafe-eval](#csp-nonce-and-wasm-unsafe-eval)
   - [New events](#new-events)
@@ -73,6 +74,8 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.11.0
 
 From **1.10.1** (no breaking change; every new constructor argument is optional):
 

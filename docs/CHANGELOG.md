@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.11.0] - 2026-11-04](#1110---2026-11-04)
 - [[1.10.1] - 2026-10-30](#1101---2026-10-30)
 - [[1.10.0] - 2026-10-30](#1100---2026-10-30)
 - [[1.9.0] - 2026-10-29](#190---2026-10-29)
@@ -48,7 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Host hooks for 1.11.0: CSP nonce on yopass.js, scoped `'wasm-unsafe-eval'` helper, share lifecycle events (metadata only), scoped / vetoable "delete all", paging on `ShareListQueryEvent`, no `ShareAccessLog` mapping when the access log is disabled, natural Spanish (and other locales) wording. See [UPGRADING](UPGRADING.md#unreleased).
+## [1.11.0] - 2026-11-04
+
+Host hooks for 1.11.0: CSP nonce on yopass.js, scoped `'wasm-unsafe-eval'` helper, share lifecycle events (metadata only), scoped / vetoable "delete all", paging on `ShareListQueryEvent`, no `ShareAccessLog` mapping when the access log is disabled, natural Spanish (and other locales) wording. See [UPGRADING](UPGRADING.md#to-1110).
 
 ### Added
 
@@ -61,7 +64,7 @@ Host hooks for 1.11.0: CSP nonce on yopass.js, scoped `'wasm-unsafe-eval'` helpe
 
 ### Changed
 
-- **`ShareAccessLog` is no longer mapped when the access log is off.** With `access_log.enabled: false` (or the MongoDB / custom non-relational backends, which force it off) the new `AccessLogMappingPass` excludes the entity from the Doctrine ORM attribute drivers, so schema tools no longer create an empty `<table_prefix>_share_access_logs` table. See [UPGRADING](UPGRADING.md#unreleased) for existing tables.
+- **`ShareAccessLog` is no longer mapped when the access log is off.** With `access_log.enabled: false` (or the MongoDB / custom non-relational backends, which force it off) the new `AccessLogMappingPass` excludes the entity from the Doctrine ORM attribute drivers, so schema tools no longer create an empty `<table_prefix>_share_access_logs` table. See [UPGRADING](UPGRADING.md#to-1110) for existing tables.
 - **Translations.** Spanish no longer says "share(s)": "secreto(s)", "compartir un secreto", "Mis secretos compartidos", "enlace directo (un clic)", "contenido cifrado". The same untranslated words were replaced in German ("Freigabe(n)", "Direktlink"), Italian / Portuguese / Dutch ("segreto(i)", "segredo(s)", "geheim(en)", "link diretto", "ligação direta", "directe link") and French ("lien direct", "contenu chiffré").
 - `ShareListQueryEvent` clamps the page to `MAX_PAGE` (1,000,000) and to the largest page whose offset fits in an integer: `?page=9223372036854775807` no longer ends in a `TypeError` / 500 (pre-existing).
 - `ShareCreator`, `ShareRetentionPurger` and `ShareManageController` accept an optional event dispatcher / `ShareDeleter` (autowired; constructor arguments appended with defaults).
@@ -71,6 +74,8 @@ Host hooks for 1.11.0: CSP nonce on yopass.js, scoped `'wasm-unsafe-eval'` helpe
 - **Creator-query subjects are type-checked (pre-release audit EL-L1).** The creator queries compare `creator = :subject` and Doctrine binds any managed entity by its id, so a tenant / team entity set as subject would select or delete the shares of the **user** with the same id. `ShareDeleter::deleteAll()` and `ShareLister::list()` now accept only the viewer or a `nowo_yopass.user_class` instance (`Support\CreatorSubjectGuard`); any other subject throws a `LogicException` before anything is queried or removed, unless the listener handled the result itself (`markHandled()` / `overrideList()`). The pre-existing `ShareListQueryEvent::setListSubject()` coercion is covered too (see UPGRADING). Regression test on a real SQLite ORM repository reproducing the audit PoC (tenant id 7 vs user id 7).
 - **No secret material in logs or flashes** is now tested: create, delete and delete-all run with a capturing PSR logger, a redirected PHP `error_log` and the session flash bag, and none may contain the ciphertext placeholder; a source scan (`SecretMaterialSourceScanTest`) forbids `error_log` / `var_dump` / `print_r`-style dumps in `src/`, limits logger calls to reviewed files and restricts `getCiphertext()` to the entity / document, the Mongo repository mapping, `ShareRetriever` and the public reveal controller.
 - UPGRADING warns that the `DROP TABLE` proposed for a disabled access log deletes the access history recorded while it was enabled, and shows the `schema_filter` to keep it.
+
+[1.11.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.11.0
 
 ## [1.10.1] - 2026-10-30
 
@@ -86,7 +91,7 @@ Security: Bundle routes are opt-in again: controllers are no longer autoconfigur
 
 Yopass: UiKit page contract (guest reveal page, confirm dialogs, no CDN), no-store/no-referrer on secret pages, preview wiped on close See [UPGRADING](UPGRADING.md#to-1100).
 
-Yopass on the UiKit page contract (REQ-UI-003): list / show scaffolds fed by view models, public reveal page on the UiKit guest layout, canonical `web_ui.*` / `security.roles.*` keys with deprecated aliases. See [UPGRADING](UPGRADING.md#unreleased).
+Yopass on the UiKit page contract (REQ-UI-003): list / show scaffolds fed by view models, public reveal page on the UiKit guest layout, canonical `web_ui.*` / `security.roles.*` keys with deprecated aliases. See [UPGRADING](UPGRADING.md#to-1110).
 
 ### Template contract
 
@@ -127,7 +132,7 @@ Yopass on the UiKit page contract (REQ-UI-003): list / show scaffolds fed by vie
 
 Yopass: decryption key kept in the URL fragment (never sent to the server), recipe APP_SECRET removed, password mode works (libsodium sumo) See [UPGRADING](UPGRADING.md#to-190).
 
-Yopass: one-click links carry the key in the URL fragment and honour the embed options, no `APP_SECRET` in the Flex recipe, working password mode. See [UPGRADING](UPGRADING.md#unreleased).
+Yopass: one-click links carry the key in the URL fragment and honour the embed options, no `APP_SECRET` in the Flex recipe, working password mode. See [UPGRADING](UPGRADING.md#to-1110).
 
 ### Security
 
@@ -160,7 +165,7 @@ Yopass: injected clock in share creation and public rate limiter, TS coverage ov
 
 ### Changed
 
-- **REQ-DI-001** — `ShareCreator` computes the expiration date of new shares from an injectable `Psr\Clock\ClockInterface` (new optional third constructor argument; autowired to the framework `clock`), and `PublicEndpointRateLimiter` uses the clock instead of `time()` for its fixed window (new optional fifth argument, wired to `Psr\Clock\ClockInterface` when the service exists). `ShareCreateData::resolveExpiresAt()` accepts an optional `$now` reference time. Without a clock service both fall back to the system clock, so behaviour is unchanged. See [UPGRADING](UPGRADING.md#unreleased).
+- **REQ-DI-001** — `ShareCreator` computes the expiration date of new shares from an injectable `Psr\Clock\ClockInterface` (new optional third constructor argument; autowired to the framework `clock`), and `PublicEndpointRateLimiter` uses the clock instead of `time()` for its fixed window (new optional fifth argument, wired to `Psr\Clock\ClockInterface` when the service exists). `ShareCreateData::resolveExpiresAt()` accepts an optional `$now` reference time. Without a clock service both fall back to the system clock, so behaviour is unchanged. See [UPGRADING](UPGRADING.md#to-1110).
 
 ### Documentation
 
@@ -189,7 +194,7 @@ Security: the admin UI refuses to compile without form CSRF protection (CsrfProt
 
 ### Security
 
-- CSRF fails closed: new `CsrfProtectionPass` makes the container refuse to compile when the manage Web UI (`web_ui.enabled: true`) is on and form CSRF protection is unavailable (`security.csrf.token_manager` or `form.type_extension.csrf` missing, or `framework.form.csrf_protection: false`). Before, share revoke / delete / delete all (`CsrfActionType` declares its own CSRF options, checked by `isCsrfActionValid()`) and the create form accepted tokenless cross-site POSTs in that configuration. `symfony/security-csrf` is now a hard requirement. See [UPGRADING](UPGRADING.md#unreleased) and [SECURITY](SECURITY.md#threats-and-mitigations).
+- CSRF fails closed: new `CsrfProtectionPass` makes the container refuse to compile when the manage Web UI (`web_ui.enabled: true`) is on and form CSRF protection is unavailable (`security.csrf.token_manager` or `form.type_extension.csrf` missing, or `framework.form.csrf_protection: false`). Before, share revoke / delete / delete all (`CsrfActionType` declares its own CSRF options, checked by `isCsrfActionValid()`) and the create form accepted tokenless cross-site POSTs in that configuration. `symfony/security-csrf` is now a hard requirement. See [UPGRADING](UPGRADING.md#to-1110) and [SECURITY](SECURITY.md#threats-and-mitigations).
 
 [1.7.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.7.0
 
@@ -625,7 +630,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.10.1...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.11.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
