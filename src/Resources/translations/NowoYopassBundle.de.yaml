@@ -46,6 +46,7 @@ yopass:
         decryption_key_help: Erforderlich zum Entschlüsseln der Nachricht mit dem Kurzlink.
         key_unavailable: Der Entschlüsselungsschlüssel ist nicht mehr verfügbar. Kopieren Sie die Links direkt nach dem Erstellen der Freigabe.
         create_another: Weiteres Geheimnis erstellen
+        password_note: 'Der Empfänger benötigt das von Ihnen gewählte Passwort: Teilen Sie es über einen anderen Kanal. Es wird hier nicht angezeigt.'
     error:
         secret: Geben Sie ein Geheimnis ein oder wählen Sie eine Datei.
         secret_too_large: Das Geheimnis überschreitet das Zeichenlimit.
@@ -112,6 +113,8 @@ yopass:
     create:
         title: Neue Freigabe
         submit: Link erstellen
+        open: Neue Freigabe
+        done: Fertig
     list:
         title: Meine Freigaben
         type: Typ

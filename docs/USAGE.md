@@ -18,7 +18,8 @@
 
 Authenticated users open the manage UI (default `/tools/yopass`):
 
-- Create text or file shares (encrypted in the browser, submitted via standard Symfony form)
+- Create text or file shares (encrypted in the browser; submitted via the Symfony form, or in a dialog with `fetch`
+  when `web_ui.create_mode: dialog` — the links then appear in the dialog)
 - Set expiration and max reads
 - List own shares by default (paginated when `shares.list_page_size` > 0); customize via share list events
 - Preview content without consuming a read (row action **View** opens the native `<dialog>` preview)
@@ -91,7 +92,8 @@ Three layers — use only what you need:
 | Route features | `YopassAccessCheckerInterface` | Can the user open manage, create, list, or revoke at all? |
 | List query | `ShareListQueryEvent` | Which shares should the repository load? |
 | List filter | `ShareListResultEvent` | Which loaded shares should appear? |
-| Per share | `ShareAccessCheckEvent` | Can the user view/preview/extend/revoke/delete this share? |
+| Per share | `ShareAccessCheckEvent` | Can the user view/preview/extend/revoke/delete this share? (also decides which row actions are rendered) |
+| Extra columns | `ShareListColumnsEvent` | Which host columns ("Created by", "Shared with") does the list show? |
 | Delete all | `ShareDeleteAllEvent` | Which shares does "delete all" remove (tenant scope), or is it vetoed? |
 
 Audit / notification hooks: `ShareCreatedEvent`, `ShareDeletedEvent`, `ShareBulkDeletedEvent` (metadata only, never
@@ -152,7 +154,9 @@ The bundle registers the Twig namespace **`NowoYopassBundle`** with `TwigPathsPa
 | `<subpath>` (under `src/Resources/views/`) | Purpose |
 | ------------------------------------------ | ------- |
 | `manage/index.html.twig` | Manage page (UiKit list scaffold): data block `nowo_ui_list_row`; `nowo_ui_content` adds the create panel and the preview dialog. |
-| `manage/_create_panel.html.twig` | Create-share panel (browser-side encryption form). |
+| `manage/_create_panel.html.twig` | Create-share card (page mode). |
+| `manage/_create_form.html.twig` | Create form shared by the card and the dialog (browser-side encryption; result region in dialog mode). |
+| `manage/_create_dialog.html.twig` | Create dialog (`web_ui.create_mode: dialog`). |
 | `manage/_preview_dialog.html.twig` | Preview / extend native `<dialog>` (UiKit `dialog` partial). |
 | `manage/created.html.twig` | Page shown after creating a share (UiKit show scaffold; short link, decryption key, one-click link). |
 | `public/reveal.html.twig` | Public reveal page (unique page on the UiKit guest layout; key or password input, client-side decryption). |

@@ -41,6 +41,22 @@ final class YopassEvents
     public const SHARE_DELETED = 'nowo_yopass.share_deleted';
 
     /**
+     * Fired after a share is revoked from the manage UI ({@see ShareRevokedEvent}; metadata only).
+     */
+    public const SHARE_REVOKED = 'nowo_yopass.share_revoked';
+
+    /**
+     * Fired after a share's expiration / max reads were extended ({@see ShareExtendedEvent}; old and new limits only).
+     */
+    public const SHARE_EXTENDED = 'nowo_yopass.share_extended';
+
+    /**
+     * Fired after the manage list is loaded, before rendering ({@see ShareListColumnsEvent}): hosts add extra columns
+     * (e.g. "Created by", "Shared with") whose cell values are plain text, escaped by the template.
+     */
+    public const SHARE_LIST_COLUMNS = 'nowo_yopass.share_list_columns';
+
+    /**
      * Fired before the manage "delete all" action ({@see ShareDeleteAllEvent}).
      * Listeners may scope the removal (tenant / team subject), perform it themselves, or veto it.
      */

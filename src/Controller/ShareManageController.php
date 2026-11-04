@@ -9,6 +9,7 @@ use Nowo\UiKitBundle\View\Pagination;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareAccessAction;
+use Nowo\YopassBundle\Event\ShareListColumnsEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Form\CsrfActionType;
@@ -27,6 +28,7 @@ use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Service\ShareRetriever;
+use Nowo\YopassBundle\Service\ShareRevoker;
 use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\YopassBundle;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -38,6 +40,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
@@ -49,7 +52,16 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 final class ShareManageController extends AbstractController
 {
+    /** Error codes of the JSON create endpoint (same meaning as the page-mode flashes). */
+    public const CREATE_ERROR_FAILED = 'CREATE_FAILED';
+
+    public const CREATE_ERROR_FILE_NOT_ENABLED = 'FILE_NOT_ENABLED';
+
+    public const CREATE_ERROR_CROSS_SITE = 'CROSS_SITE';
+
     private readonly ShareDeleter $shareDeleter;
+
+    private readonly ShareRevoker $shareRevoker;
 
     /**
      * Creates the manage controller with routes, templates, limits and share options.
@@ -92,8 +104,12 @@ final class ShareManageController extends AbstractController
         private readonly bool $fileSharesEnabled,
         private readonly ?ShareFileHandlerInterface $fileHandler = null,
         ?ShareDeleter $shareDeleter = null,
+        ?ShareRevoker $shareRevoker = null,
+        private readonly ?EventDispatcherInterface $eventDispatcher = null,
+        private readonly string $createMode = 'page',
     ) {
         $this->shareDeleter = $shareDeleter ?? new ShareDeleter($shareRepository);
+        $this->shareRevoker = $shareRevoker ?? new ShareRevoker($shareRepository);
     }
 
     /**
@@ -116,24 +132,52 @@ final class ShareManageController extends AbstractController
         $totalPages = $pageSize > 0 ? (int) max(1, ceil($total / $pageSize)) : 1;
         $page       = min($page, $totalPages);
 
+        $canCreate  = $this->accessChecker->canCreate($user);
         $createForm = null;
-        if ($this->accessChecker->canCreate($user)) {
+        if ($canCreate) {
             $createForm = $this->buildShareCreateForm()->createView();
         }
 
+        $createDialog = $this->createMode === 'dialog' && $createForm instanceof FormView;
+
         $canRevoke = $this->accessChecker->canRevoke($user);
+        $canExtend = $canRevoke;
+        /** @var array<string, array{view: bool, extend: bool, revoke: bool, delete: bool}> $rowAccess */
+        $rowAccess = [];
         /** @var array<string, FormView> $revokeForms */
         $revokeForms = [];
         /** @var array<string, FormView> $deleteForms */
         $deleteForms = [];
         foreach ($shares as $share) {
-            $shareId               = (string) $share->getId();
-            $revokeForms[$shareId] = $this->createCsrfActionForm($this->routes['revoke']['name'], 'revoke-share-' . $shareId, $shareId)->createView();
-            $deleteForms[$shareId] = $this->createCsrfActionForm($this->routes['delete']['name'], 'delete-share-' . $shareId, $shareId)->createView();
+            // Per-row grants (SHARE_ACCESS_CHECK), computed once per row and action for this request; the routes keep
+            // their own server-side checks.
+            $shareId             = (string) $share->getId();
+            $rowAccess[$shareId] = [
+                'view'   => $this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Preview),
+                'extend' => $canExtend && $this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Extend),
+                'revoke' => $canRevoke && $this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Revoke),
+                'delete' => $canRevoke && $this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Delete),
+            ];
+            if ($rowAccess[$shareId]['revoke']) {
+                $revokeForms[$shareId] = $this->createCsrfActionForm($this->routes['revoke']['name'], 'revoke-share-' . $shareId, $shareId)->createView();
+            }
+            if ($rowAccess[$shareId]['delete']) {
+                $deleteForms[$shareId] = $this->createCsrfActionForm($this->routes['delete']['name'], 'delete-share-' . $shareId, $shareId)->createView();
+            }
+        }
+
+        $columnsEvent = new ShareListColumnsEvent($user, $shares);
+        $this->eventDispatcher?->dispatch($columnsEvent, YopassEvents::SHARE_LIST_COLUMNS);
+        $extraColumns = $columnsEvent->getColumns();
+        /** @var array<string, array<string, string|null>> $extraCells */
+        $extraCells = [];
+        foreach ($shares as $share) {
+            foreach ($extraColumns as $column) {
+                $extraCells[(string) $share->getId()][$column->key] = $column->valueFor($share);
+            }
         }
 
         $deleteAllForm = $this->createCsrfActionForm($this->routes['delete_all']['name'], 'yopass_delete_all')->createView();
-        $canExtend     = $canRevoke;
         $retention     = $this->shareOptions['retention'] ?? [];
 
         $listPage = $this->pages->managePage(
@@ -149,18 +193,32 @@ final class ShareManageController extends AbstractController
             backHref: $this->dashboardRoute !== null && $this->dashboardRoute !== '' ? $this->generateUrl($this->dashboardRoute) : null,
             retentionEnabled: (bool) ($retention['enabled'] ?? false),
             retentionMaxAge: (string) ($retention['max_age'] ?? ''),
+            ownTotal: $list['own_total'],
+            rowAccess: $rowAccess,
+            createDialog: $createDialog,
+            extraColumns: $extraColumns,
         );
 
         // REQ-UI-003: `page` (View\ListPage) feeds the list scaffold; the other variables stay for web_ui.templates
         // overrides and the create form / preview dialog regions of the template.
         return $this->render($this->pages->template('manage'), $this->pages->context([
-            'page'             => $listPage,
-            'shares'           => $shares,
-            'shares_total'     => $total,
-            'shares_page'      => $page,
-            'shares_pages'     => $totalPages,
-            'list_page_size'   => $pageSize,
-            'can_create'       => $this->accessChecker->canCreate($user),
+            'page'           => $listPage,
+            'shares'         => $shares,
+            'shares_total'   => $total,
+            'shares_page'    => $page,
+            'shares_pages'   => $totalPages,
+            'list_page_size' => $pageSize,
+            'can_create'     => $canCreate,
+            'create_mode'    => $createDialog ? 'dialog' : 'page',
+            'row_access'     => $rowAccess,
+            'extra_columns'  => $extraColumns,
+            'extra_cells'    => $extraCells,
+            'own_total'      => $list['own_total'],
+            'links_form'     => $createDialog ? $this->createForm(ShareCreatedLinksType::class, null, [
+                'allow_embed_in_url' => $this->sharingOptions['allow_embed_in_url'],
+                'target_controller'  => 'nowo-yopass-create',
+                'id_prefix'          => 'yopass-create-result',
+            ])->createView() : null,
             'can_revoke'       => $canRevoke,
             'can_extend'       => $canExtend,
             'can_share_file'   => $this->fileSharesEnabled,
@@ -183,35 +241,53 @@ final class ShareManageController extends AbstractController
 
     /**
      * Stores a client-encrypted share submitted from the create form.
+     *
+     * Page mode: POST + redirect to the created page (errors as flashes). JSON mode (the dialog's fetch, `Accept:
+     * application/json`): `201 {id, public_path, created_url}` or `422 {error}` (codes CREATE_FAILED / FILE_NOT_ENABLED),
+     * `403 {error: CROSS_SITE}` for a cross-site fetch, never a flash. The JSON never contains the ciphertext, a key or
+     * plaintext: the browser keeps the key in memory and builds the links itself. Same CSRF token in both modes.
      */
     #[Route('/tools/yopass/create', name: 'nowo_yopass_create', methods: ['POST'])]
-    public function create(Request $request): RedirectResponse
+    public function create(Request $request): Response
     {
         $this->denyUnlessFeature('create');
+
+        $json = $this->wantsJson($request);
+
+        if ($json && !$this->isSameOriginFetch($request)) {
+            return $this->jsonError(self::CREATE_ERROR_CROSS_SITE, Response::HTTP_FORBIDDEN);
+        }
 
         $form = $this->buildShareCreateForm();
         $form->handleRequest($request);
 
         if (!$form->isSubmitted()) {
-            return $this->redirectToRoute($this->routes['manage']['name']);
+            return $json
+                ? $this->jsonError(self::CREATE_ERROR_FAILED, Response::HTTP_UNPROCESSABLE_ENTITY)
+                : $this->redirectToRoute($this->routes['manage']['name']);
         }
 
         if (!$form->isValid()) {
-            $this->addFlash('error', $this->translator->trans('yopass.error.create', [], YopassBundle::TRANSLATION_DOMAIN));
-
-            return $this->redirectToRoute($this->routes['manage']['name']);
+            return $this->createFailed($json, self::CREATE_ERROR_FAILED, 'yopass.error.create');
         }
 
         /** @var ShareCreateData $data */
         $data = $form->getData();
 
         if ($data->payloadKind === 'file' && !$this->fileSharesEnabled) {
-            $this->addFlash('error', $this->translator->trans('yopass.error.file_not_enabled', [], YopassBundle::TRANSLATION_DOMAIN));
-
-            return $this->redirectToRoute($this->routes['manage']['name']);
+            return $this->createFailed($json, self::CREATE_ERROR_FILE_NOT_ENABLED, 'yopass.error.file_not_enabled');
         }
 
         $share = $this->shareCreator->create($this->requireUser(), $data);
+
+        if ($json) {
+            // Zero-knowledge: ids and paths only (no ciphertext echo, no key, no plaintext).
+            return PublicShareController::hardenSecretResponse(new JsonResponse([
+                'id'          => $share->getId(),
+                'public_path' => $this->publicSharePath($share),
+                'created_url' => $this->generateUrl($this->routes['created']['name'], ['id' => $share->getId()]),
+            ], Response::HTTP_CREATED));
+        }
 
         return $this->redirectToRoute($this->routes['created']['name'], [
             'id' => $share->getId(),
@@ -317,7 +393,7 @@ final class ShareManageController extends AbstractController
         }
 
         try {
-            $this->shareExtender->extend($share, $expiresIn, $maxReads);
+            $this->shareExtender->extend($share, $expiresIn, $maxReads, $user);
         } catch (ShareExtendException $exception) {
             return new JsonResponse(['error' => $exception->errorCode], Response::HTTP_BAD_REQUEST);
         }
@@ -350,9 +426,8 @@ final class ShareManageController extends AbstractController
             throw $this->createNotFoundException();
         }
 
-        $share->revoke();
-        $this->shareRepository->persist($share);
-        $this->shareRepository->flush();
+        // @igor-ignore - HTTP handler delegates to services; no controller worker state.
+        $this->shareRevoker->revoke($share, $user);
 
         $this->addFlash('success', $this->translator->trans('yopass.revoked', [], YopassBundle::TRANSLATION_DOMAIN));
 
@@ -413,6 +488,41 @@ final class ShareManageController extends AbstractController
             'success',
             $this->translator->trans('yopass.deleted_all', ['%count%' => $removed], YopassBundle::TRANSLATION_DOMAIN),
         );
+
+        return $this->redirectToRoute($this->routes['manage']['name']);
+    }
+
+    /**
+     * Whether the request is the dialog's fetch (`Accept: application/json` first).
+     */
+    private function wantsJson(Request $request): bool
+    {
+        return ($request->getAcceptableContentTypes()[0] ?? null) === 'application/json';
+    }
+
+    /**
+     * Fetch metadata check: a browser that sends `Sec-Fetch-Site` must report a same-origin request (defence in depth
+     * on top of the CSRF token). Requests without the header (older browsers, tests) rely on the CSRF token.
+     */
+    private function isSameOriginFetch(Request $request): bool
+    {
+        $site = $request->headers->get('Sec-Fetch-Site');
+
+        return $site === null || $site === 'same-origin';
+    }
+
+    private function jsonError(string $code, int $status): Response
+    {
+        return PublicShareController::hardenSecretResponse(new JsonResponse(['error' => $code], $status));
+    }
+
+    private function createFailed(bool $json, string $code, string $flashKey): Response
+    {
+        if ($json) {
+            return $this->jsonError($code, Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $this->addFlash('error', $this->translator->trans($flashKey, [], YopassBundle::TRANSLATION_DOMAIN));
 
         return $this->redirectToRoute($this->routes['manage']['name']);
     }

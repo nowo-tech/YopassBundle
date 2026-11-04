@@ -40,7 +40,7 @@ final readonly class ShareLister
      *
      * @throws LogicException When a listener set an unsupported list subject without overriding the list
      *
-     * @return array{shares: list<SecureShare>, total: int}
+     * @return array{shares: list<SecureShare>, total: int, own_total: int}
      */
     public function list(UserInterface $viewer, int $pageSize, int $page): array
     {
@@ -69,12 +69,19 @@ final readonly class ShareLister
             $total   = count($shares);
         }
 
+        // What "delete all" would remove: a listener's figure, else the default query's total, else a count.
+        $ownTotal = $queryEvent->getOwnTotal()
+            ?? (!$queryEvent->hasOverride() && $queryEvent->getListSubject() === $viewer
+                ? $total
+                : $this->shareRepository->countByCreator($viewer));
+
         $resultEvent = new ShareListResultEvent($viewer, $shares, $total);
         $this->eventDispatcher->dispatch($resultEvent, YopassEvents::SHARE_LIST_RESULT);
 
         return [
-            'shares' => $resultEvent->getShares(),
-            'total'  => $resultEvent->getTotal(),
+            'shares'    => $resultEvent->getShares(),
+            'total'     => $resultEvent->getTotal(),
+            'own_total' => $ownTotal,
         ];
     }
 }

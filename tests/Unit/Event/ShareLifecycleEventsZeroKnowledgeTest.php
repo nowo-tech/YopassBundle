@@ -11,11 +11,16 @@ use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
 use Nowo\YopassBundle\Event\ShareCreatedEvent;
 use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
 use Nowo\YopassBundle\Event\ShareDeletedEvent;
+use Nowo\YopassBundle\Event\ShareExtendedEvent;
+use Nowo\YopassBundle\Event\ShareListColumnsEvent;
+use Nowo\YopassBundle\Event\ShareRevokedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareDeleter;
+use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
+use Nowo\YopassBundle\Service\ShareRevoker;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -55,6 +60,9 @@ final class ShareLifecycleEventsZeroKnowledgeTest extends TestCase
         yield 'deleted' => [ShareDeletedEvent::class];
         yield 'bulk deleted' => [ShareBulkDeletedEvent::class];
         yield 'delete all' => [ShareDeleteAllEvent::class];
+        yield 'revoked' => [ShareRevokedEvent::class];
+        yield 'extended' => [ShareExtendedEvent::class];
+        yield 'list columns' => [ShareListColumnsEvent::class];
     }
 
     /**
@@ -106,6 +114,37 @@ final class ShareLifecycleEventsZeroKnowledgeTest extends TestCase
         self::assertNull($deleted->getDeletedBy());
         self::assertSame(3, $deleted->getReadsLeft());
         self::assertNull($deleted->getRevokedAt());
+    }
+
+    public function testRevokerAndExtenderDispatchMetadataOnlyEvents(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        foreach ([YopassEvents::SHARE_REVOKED, YopassEvents::SHARE_EXTENDED] as $name) {
+            $dispatcher->addListener($name, static function (Event $event) use (&$events): void {
+                $events[] = $event;
+            });
+        }
+
+        $viewer = new TestUser('viewer');
+        (new ShareExtender($repository, DefaultShareOptions::get(), null, $dispatcher))->extend($this->share(), '24h', 10, $viewer);
+        (new ShareRevoker($repository, $dispatcher))->revoke($this->share(), $viewer);
+
+        self::assertCount(2, $events);
+        self::assertInstanceOf(ShareExtendedEvent::class, $events[0]);
+        self::assertSame(3, $events[0]->getOldMaxReads());
+        self::assertSame(10, $events[0]->getNewMaxReads());
+        self::assertGreaterThan($events[0]->getOldExpiresAt(), $events[0]->getNewExpiresAt());
+        self::assertSame('text', $events[0]->getPayloadKind());
+        self::assertSame('00000000-0000-4000-8000-0000000000aa', $events[0]->getShareId());
+        self::assertInstanceOf(TestUser::class, $events[0]->getCreator());
+        self::assertInstanceOf(ShareRevokedEvent::class, $events[1]);
+        self::assertSame('text', $events[1]->getPayloadKind());
+        self::assertSame('00000000-0000-4000-8000-0000000000aa', $events[1]->getShareId());
+        foreach ($events as $event) {
+            $this->assertPayloadIsMetadataOnly($event);
+        }
     }
 
     public function testShareCreatorDispatchesMetadataOnlyEvent(): void

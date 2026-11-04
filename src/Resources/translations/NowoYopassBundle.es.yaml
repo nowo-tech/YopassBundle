@@ -46,6 +46,7 @@ yopass:
         decryption_key_help: Necesaria para descifrar el mensaje con el enlace corto.
         key_unavailable: La clave de descifrado ya no está disponible. Copia los enlaces justo después de crear el secreto.
         create_another: Crear otro secreto
+        password_note: 'El destinatario necesita la contraseña que elegiste: compártela por otro canal. No se muestra aquí.'
     error:
         secret: Introduce un secreto o selecciona un archivo.
         secret_too_large: El secreto supera el límite de caracteres.
@@ -112,6 +113,8 @@ yopass:
     create:
         title: Compartir un secreto
         submit: Crear enlace
+        open: Compartir un secreto
+        done: Hecho
     list:
         title: Mis secretos compartidos
         type: Tipo

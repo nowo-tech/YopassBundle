@@ -3,6 +3,9 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Create in a dialog (opt-in)](#create-in-a-dialog-opt-in)
+  - [Per-row actions, revoke / extend events, host columns](#per-row-actions-revoke--extend-events-host-columns)
+  - [Template overrides](#template-overrides)
 - [To 1.11.0](#to-1110)
   - [Access log table no longer mapped when disabled](#access-log-table-no-longer-mapped-when-disabled)
   - [CSP: nonce and wasm-unsafe-eval](#csp-nonce-and-wasm-unsafe-eval)
@@ -74,6 +77,63 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+From **1.11.0** (no breaking change with the default configuration):
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console assets:install
+php bin/console cache:clear
+```
+
+`js/yopass.js` changed: run `assets:install` (or your asset pipeline) so the browser gets the new controllers.
+
+### Create in a dialog (opt-in)
+
+```yaml
+nowo_yopass:
+    web_ui:
+        create_mode: dialog   # default: page (1.11 behaviour)
+```
+
+- The create card disappears; **New share** (header and empty state) opens the create dialog. The result (links, key,
+  copy buttons) is shown inside the dialog; **Done** (or any close) wipes the form, the result and the key, then
+  reloads the page. To refresh differently, listen to `nowo-yopass-create:created` (bubbling, cancelable,
+  `detail.id`) and call `event.preventDefault()`.
+- **CSP:** the dialog posts with a same-origin `fetch`: `connect-src 'self'` (or a `default-src 'self'` fallback) must
+  allow it. Nothing else changes (same script, same nonce hook, same `'wasm-unsafe-eval'` routes).
+- **JSON endpoint:** `POST` on the create route with `Accept: application/json` answers `201` / `422` / `403` JSON
+  (see [Configuration — Create mode](CONFIGURATION.md#create-mode)). Host code calling the route with that header now
+  gets JSON instead of a redirect.
+- Wording: `yopass.create.open` (New share) and `yopass.create.done` (Done) are new keys; override them in your
+  `NowoYopassBundle` catalogue if needed.
+
+### Per-row actions, revoke / extend events, host columns
+
+- **Row actions follow `SHARE_ACCESS_CHECK`.** View / Extend / Revoke / Delete are now built per row through
+  `ShareAccessGuard::canManage()` (`Preview`, `Extend`, `Revoke`, `Delete`). A listener that grants only `Preview`
+  on someone else's share no longer shows Extend / Revoke / Delete on that row (they answered 404 before). With the
+  default creator-only rule nothing visible changes.
+- **"Delete all"** is shown only when the viewer owns shares. Hosts that override or re-scope the list can report the
+  count with `ShareListQueryEvent::setOwnTotal()`; otherwise the bundle counts the viewer's shares (one extra
+  `countByCreator()` when the list is overridden).
+- **New events:** `YopassEvents::SHARE_REVOKED` (`ShareRevokedEvent::getRevokedBy()`) and
+  `YopassEvents::SHARE_EXTENDED` (`ShareExtendedEvent`, old / new limits) for audit trails; metadata only.
+- **Host columns:** listen to `YopassEvents::SHARE_LIST_COLUMNS` and `addColumn(new ShareListColumn('createdBy',
+  new Label('secrets.created_by', 'messages'), fn (SecureShare $s) => $names[$s->getId()] ?? null, 2))` instead of
+  overriding `nowo_ui_list_head` / `nowo_ui_list_row`. Values are plain text (escaped).
+- **Created page:** it reads the key from the creator's `sessionStorage`; do not grant `ShareAccessAction::View` on it to
+  other users (they would only see "key unavailable").
+- **Retention:** `shares.retention` purges the viewer's own old shares when the list opens; shares of others shown to
+  the viewer are purged by `nowo:yopass:purge-old-shares` (schedule it).
+
+### Template overrides
+
+The create form moved to `manage/_create_form.html.twig`, and its `nowo-yopass-create` controller now sits on the
+wrapping `<div class="nowo-yopass-create__root">` (it was on the `<form>`). An override of `_create_panel.html.twig`
+that still renders the 1.11 form markup keeps working in page mode. Dialog mode needs the bundle's
+`_create_form.html.twig` (or an override of it that keeps the `result*` targets). The type switch is rendered only
+when file shares are enabled.
 
 ## To 1.11.0
 

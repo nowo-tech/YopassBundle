@@ -7,10 +7,21 @@ import {
     readFileAsPayload,
     type YopassPayload,
 } from './yopass-crypto';
-import { storePendingShareKey } from './yopass-share-keys';
+import { PENDING_KEY_STORAGE, storePendingShareKey } from './yopass-share-keys';
+import { reloadPage } from './yopass-navigation';
+import { clearShareLinks, copyToClipboard, renderShareLinks, type ShareLinkTargets } from './yopass-share-links';
+import type { ShareUrlKeyMode } from './yopass-share-url';
+
+/** Cancelable event dispatched (bubbling) when the create dialog closes after a successful create; detail `{id}`. */
+export const CREATED_EVENT = 'nowo-yopass-create:created';
+
+type CreatedResponse = { id: string; public_path: string };
 
 /**
- * Encrypts share content in the browser, then submits a standard Symfony form (POST + redirect).
+ * Encrypts share content in the browser, then either submits the Symfony form (page mode: POST + redirect to the
+ * created page) or, in dialog mode (`async`), posts it with `fetch` (same origin, same CSRF token) and renders the
+ * links in the dialog. In dialog mode the key / password only lives in the result fields of the dialog (never
+ * sessionStorage, never sent to the server) and every close of the dialog wipes the form, the result fields and the key.
  */
 export default class extends Controller {
     static targets = [
@@ -29,6 +40,13 @@ export default class extends Controller {
         'customPassword',
         'error',
         'submit',
+        'result',
+        'rememberNotice',
+        'resultOneClickLink',
+        'resultShortLink',
+        'resultKey',
+        'resultKeyRow',
+        'passwordNote',
     ];
 
     static values = {
@@ -41,6 +59,9 @@ export default class extends Controller {
         tabClass: { type: String, default: '' },
         tabActiveClass: { type: String, default: '' },
         errors: { type: Object, default: {} },
+        async: { type: Boolean, default: false },
+        allowEmbedInUrl: { type: Boolean, default: false },
+        showRememberNotice: { type: Boolean, default: true },
     };
 
     declare readonly formTarget: HTMLFormElement;
@@ -77,6 +98,28 @@ export default class extends Controller {
     declare readonly hasSubmitTarget: boolean;
     declare readonly hasEncryptionPasswordTarget: boolean;
     declare readonly hasFileInputTarget: boolean;
+    declare readonly asyncValue: boolean;
+    declare readonly allowEmbedInUrlValue: boolean;
+    declare readonly showRememberNoticeValue: boolean;
+    declare readonly resultTarget: HTMLElement;
+    declare readonly rememberNoticeTarget: HTMLElement;
+    declare readonly resultOneClickLinkTarget: HTMLInputElement;
+    declare readonly resultShortLinkTarget: HTMLInputElement;
+    declare readonly resultKeyTarget: HTMLInputElement;
+    declare readonly resultKeyRowTarget: HTMLElement;
+    declare readonly passwordNoteTarget: HTMLElement;
+    declare readonly hasRememberNoticeTarget: boolean;
+    declare readonly hasResultOneClickLinkTarget: boolean;
+    declare readonly hasCustomPasswordTarget: boolean;
+
+    /** Id of the share created while the dialog was open (triggers the list refresh on close). */
+    private createdId: string | null = null;
+
+    private dialog: HTMLDialogElement | null = null;
+
+    private readonly onDialogClose = (): void => {
+        this.wipe();
+    };
 
     private readonly onSecretInput = (): void => {
         this.syncSecretCounter();
@@ -88,11 +131,28 @@ export default class extends Controller {
         this.secretTarget.addEventListener('input', this.onSecretInput);
         this.secretTarget.addEventListener('paste', this.onSecretInput);
         this.syncSecretCounter();
+
+        if (this.asyncValue) {
+            this.dialog = this.element.closest('dialog');
+            // Native close (Done, close button, Escape, backdrop) and the UiKit overlay event, when used.
+            this.dialog?.addEventListener('close', this.onDialogClose);
+            this.dialog?.addEventListener('nowo:overlay-close', this.onDialogClose);
+        }
     }
 
     disconnect(): void {
         this.secretTarget.removeEventListener('input', this.onSecretInput);
         this.secretTarget.removeEventListener('paste', this.onSecretInput);
+
+        if (this.dialog) {
+            this.dialog.removeEventListener('close', this.onDialogClose);
+            this.dialog.removeEventListener('nowo:overlay-close', this.onDialogClose);
+            this.dialog = null;
+        }
+
+        if (this.asyncValue) {
+            this.clearSecrets();
+        }
     }
 
     switchTab(event: Event): void {
@@ -191,6 +251,13 @@ export default class extends Controller {
 
             this.ciphertextTarget.value = encrypted.ciphertext;
             this.payloadKindTarget.value = payload.kind;
+
+            if (this.asyncValue) {
+                await this.submitAsync(keyMaterial, passwordMode ? 'password' : 'key');
+
+                return;
+            }
+
             storePendingShareKey(passwordMode ? 'password' : 'key', keyMaterial);
 
             this.formTarget.submit();
@@ -207,6 +274,155 @@ export default class extends Controller {
                 this.submitTarget.disabled = false;
             }
         }
+    }
+
+    /** Done button of the dialog result: closes the dialog (the native close event wipes everything). */
+    done(): void {
+        if (this.dialog?.open) {
+            this.dialog.close();
+        }
+    }
+
+    /** The result fields form is read-only: never submit it (Enter in a field). */
+    preventSubmit(event: Event): void {
+        event.preventDefault();
+    }
+
+    copyOneClickLink(): void {
+        if (this.hasResultOneClickLinkTarget) {
+            copyToClipboard(this.resultOneClickLinkTarget.value);
+        }
+    }
+
+    copyShortLink(): void {
+        copyToClipboard(this.resultShortLinkTarget.value);
+    }
+
+    copyKey(): void {
+        copyToClipboard(this.resultKeyTarget.value);
+    }
+
+    /**
+     * Dialog mode: posts the form (ciphertext + CSRF token only; the browser-only controls have no name) with fetch and
+     * renders the links. The response never carries plaintext or key material; the key stays in this controller.
+     */
+    private async submitAsync(keyMaterial: string, mode: ShareUrlKeyMode): Promise<void> {
+        const body = new FormData(this.formTarget);
+        // The ciphertext is in the request body now; do not keep it in the DOM.
+        this.ciphertextTarget.value = '';
+
+        let response: Response;
+        try {
+            response = await fetch(this.formTarget.action, {
+                method: 'POST',
+                body,
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+                mode: 'same-origin',
+                redirect: 'error',
+                cache: 'no-store',
+            });
+        } catch {
+            throw new Error('CREATE_FAILED');
+        }
+
+        const data: unknown = await response.json().catch(() => null);
+
+        if (response.status !== 201 || !isCreatedResponse(data)) {
+            const code = (data as { error?: unknown } | null)?.error;
+            throw new Error(typeof code === 'string' && /^[A-Z][A-Z_]*$/.test(code) ? code : 'CREATE_FAILED');
+        }
+
+        this.createdId = data.id;
+        this.showResult(data.public_path, keyMaterial, mode);
+    }
+
+    private showResult(publicPath: string, keyMaterial: string, mode: ShareUrlKeyMode): void {
+        // The plaintext is no longer needed once the share exists.
+        this.secretTarget.value = '';
+        if (this.hasFileInputTarget) {
+            this.fileInputTarget.value = '';
+        }
+
+        const targets = this.resultLinkTargets();
+        renderShareLinks(targets, {
+            publicPath,
+            keyMaterial,
+            mode,
+            allowEmbedInUrl: this.allowEmbedInUrlValue,
+            showRememberNotice: this.showRememberNoticeValue,
+        });
+
+        if (mode === 'password') {
+            // The creator chose the password: it is not repeated here (the recipient gets it by another channel).
+            targets.key.value = '';
+            this.customPasswordTarget.value = '';
+        }
+
+        setHidden(this.resultKeyRowTarget, mode === 'password');
+        setHidden(this.passwordNoteTarget, mode !== 'password');
+        setHidden(this.formTarget, true);
+        setHidden(this.resultTarget, false);
+    }
+
+    /**
+     * Wipes everything secret on every dialog close: inputs, hidden ciphertext, result fields, the in-memory key and any
+     * sessionStorage leftover, then restores the empty form. After a create, dispatches the cancelable
+     * `nowo-yopass-create:created` event and reloads the page unless a listener prevented it.
+     */
+    private wipe(): void {
+        this.clearSecrets();
+        this.hideError();
+        setHidden(this.formTarget, false);
+        setHidden(this.resultTarget, true);
+        this.submitTarget.disabled = false;
+
+        this.syncKeyMode();
+        this.syncSecretCounter();
+
+        const createdId = this.createdId;
+        this.createdId = null;
+
+        if (createdId !== null) {
+            const event = new CustomEvent(CREATED_EVENT, { bubbles: true, cancelable: true, detail: { id: createdId } });
+
+            if (this.element.dispatchEvent(event)) {
+                reloadPage();
+            }
+        }
+    }
+
+    private clearSecrets(): void {
+        this.formTarget.reset();
+        this.secretTarget.value = '';
+
+        if (this.hasCustomPasswordTarget) {
+            this.customPasswordTarget.value = '';
+        }
+
+        this.ciphertextTarget.value = '';
+
+        if (this.hasFileInputTarget) {
+            this.fileInputTarget.value = '';
+        }
+
+        clearShareLinks(this.resultLinkTargets());
+
+        try {
+            sessionStorage.removeItem(PENDING_KEY_STORAGE);
+        } catch {
+            // Storage unavailable: nothing was written there either.
+        }
+    }
+
+    /** Result fields of the dialog (always rendered by `_create_form.html.twig` in async mode). */
+    private resultLinkTargets(): ShareLinkTargets {
+        return {
+            shortLink: this.resultShortLinkTarget,
+            key: this.resultKeyTarget,
+            oneClickLink: this.hasResultOneClickLinkTarget ? this.resultOneClickLinkTarget : null,
+            rememberNotice: this.hasRememberNoticeTarget ? this.rememberNoticeTarget : null,
+        };
     }
 
     private async buildPayload(): Promise<YopassPayload> {
@@ -301,4 +517,20 @@ export default class extends Controller {
             setHidden(this.errorTarget, true);
         }
     }
+}
+
+/** 201 body of the JSON create endpoint: an id and a same-origin absolute path (never a URL to another origin). */
+function isCreatedResponse(data: unknown): data is CreatedResponse {
+    if (typeof data !== 'object' || data === null) {
+        return false;
+    }
+
+    const { id, public_path: publicPath } = data as Record<string, unknown>;
+
+    return typeof id === 'string'
+        && /^[A-Za-z0-9-]{1,64}$/.test(id)
+        && typeof publicPath === 'string'
+        && publicPath.startsWith('/')
+        && !publicPath.startsWith('//')
+        && !publicPath.includes('\\');
 }

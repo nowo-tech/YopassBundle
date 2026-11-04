@@ -6,10 +6,14 @@ namespace Nowo\YopassBundle\Service;
 
 use DateTimeImmutable;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareExtendedEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 use function in_array;
 use function ltrim;
@@ -22,7 +26,8 @@ final readonly class ShareExtender
     private ClockInterface $clock;
 
     /**
-     * Creates the extender with the repository, share options and an optional clock.
+     * Creates the extender with the repository, share options, an optional clock and an optional event dispatcher
+     * ({@see YopassEvents::SHARE_EXTENDED} after a successful extension).
      *
      * @param array{
      *     expiration_options: list<array{id: string, interval: string}>,
@@ -33,15 +38,20 @@ final readonly class ShareExtender
         private ShareRepositoryInterface $shareRepository,
         private array $shareOptions,
         ?ClockInterface $clock = null,
+        private ?EventDispatcherInterface $eventDispatcher = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
 
     /**
      * Extends the expiration and/or max reads of a share; throws ShareExtendException when nothing valid changes.
+     * Dispatches {@see YopassEvents::SHARE_EXTENDED} after the flush.
      */
-    public function extend(SecureShare $share, ?string $expiresIn, ?int $maxReads): void
+    public function extend(SecureShare $share, ?string $expiresIn, ?int $maxReads, ?UserInterface $extendedBy = null): void
     {
+        $oldExpiresAt = $share->getExpiresAt();
+        $oldMaxReads  = $share->getMaxReads();
+
         if ($share->getRevokedAt() instanceof DateTimeImmutable) {
             throw new ShareExtendException('revoked');
         }
@@ -64,6 +74,12 @@ final readonly class ShareExtender
 
         $this->shareRepository->persist($share);
         $this->shareRepository->flush();
+
+        // Zero-knowledge: old / new limits only, never the ciphertext.
+        $this->eventDispatcher?->dispatch(
+            ShareExtendedEvent::fromShare($share, $oldExpiresAt, $oldMaxReads, $extendedBy),
+            YopassEvents::SHARE_EXTENDED,
+        );
     }
 
     private function extendExpiration(SecureShare $share, string $expiresIn): void

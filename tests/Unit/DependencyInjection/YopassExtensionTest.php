@@ -557,4 +557,22 @@ final class YopassExtensionTest extends TestCase
         self::assertTrue($container->getParameter('nowo_yopass.csp.wasm_unsafe_eval'));
         self::assertContains('app_secret_reveal', $container->getParameter('nowo_yopass.csp.wasm_routes'));
     }
+
+    public function testCreateModeDefaultsToPageAndAcceptsDialog(): void
+    {
+        $container = new ContainerBuilder();
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User']], $container);
+        self::assertSame('page', $container->getParameter('nowo_yopass.web_ui.create_mode'));
+        self::assertSame('%nowo_yopass.web_ui.create_mode%', $container->getDefinition(ShareManageController::class)->getArgument('$createMode'));
+
+        $dialog = new ContainerBuilder();
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User', 'web_ui' => ['create_mode' => 'dialog']]], $dialog);
+        self::assertSame('dialog', $dialog->getParameter('nowo_yopass.web_ui.create_mode'));
+    }
+
+    public function testCreateModeRejectsUnknownValues(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User', 'web_ui' => ['create_mode' => 'modal']]], new ContainerBuilder());
+    }
 }

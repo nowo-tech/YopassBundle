@@ -1,0 +1,32 @@
+{#
+  Create dialog of the manage page (web_ui.create_mode: dialog; REQ-UI-001 modals: native <dialog> through the UiKit
+  `dialog` partial). Opened by the "New share" header / empty-state actions (Action::dialogId =
+  YopassPageFactory::CREATE_DIALOG_ID). The body is the shared create form (manage/_create_form.html.twig, async) with
+  its result region: the browser encrypts, posts the ciphertext with fetch and renders the links here; the key never
+  leaves the browser memory. Every close (Done, close button, Escape, backdrop) wipes the form, the result and the key.
+  Variables: create_form, links_form, can_share_file, max_file_bytes, max_secret_chars, sharing_options, bundle.
+#}
+{% trans_default_domain 'NowoYopassBundle' %}
+{% set _b = bundle|default('NowoYopassBundle') %}
+{% set _body %}
+    <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.e2e_notice'|trans }}</p>
+    {{ include('@NowoYopassBundle/manage/_create_form.html.twig', {
+        create_form: create_form,
+        links_form: links_form,
+        can_share_file: can_share_file,
+        max_file_bytes: max_file_bytes,
+        max_secret_chars: max_secret_chars,
+        sharing_options: sharing_options,
+        async: true,
+        bundle: _b,
+    }, with_context: false) }}
+{% endset %}
+{{ include(nowo_ui_partial('dialog', _b), {
+    id: constant('Nowo\\YopassBundle\\Ui\\YopassPageFactory::CREATE_DIALOG_ID'),
+    title: 'yopass.create.title'|trans,
+    body: _body,
+    size: 'lg',
+    attr: {'data-testid': 'yopass-create-dialog', class: 'nowo-yopass-create-dialog'},
+    close_label: 'yopass.preview.close'|trans,
+    bundle: _b,
+}, with_context: false) }}

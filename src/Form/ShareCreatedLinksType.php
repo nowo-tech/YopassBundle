@@ -53,9 +53,9 @@ final class ShareCreatedLinksType extends AbstractType
                 'required' => false,
                 'label'    => false,
                 'attr'     => [
-                    'class'                           => 'nowo-ui-input nowo-ui-input--full',
-                    'readonly'                        => true,
-                    'data-nowo-yopass-created-target' => $target,
+                    'class'                                             => 'nowo-ui-input nowo-ui-input--full',
+                    'readonly'                                          => true,
+                    'data-' . $options['target_controller'] . '-target' => $target,
                 ],
             ]);
         }
@@ -66,10 +66,11 @@ final class ShareCreatedLinksType extends AbstractType
      */
     public function finishView(FormView $view, FormInterface $form, array $options): void
     {
+        $prefix = $options['id_prefix'];
         $this->detachClientOnlyChildren($view, [
-            'oneClickLink' => 'yopass-created-one-click',
-            'shortLink'    => 'yopass-created-short',
-            'key'          => 'yopass-created-key',
+            'oneClickLink' => $prefix . '-one-click',
+            'shortLink'    => $prefix . '-short',
+            'key'          => $prefix . '-key',
         ]);
     }
 
@@ -83,8 +84,13 @@ final class ShareCreatedLinksType extends AbstractType
             'csrf_protection'    => false,
             'translation_domain' => YopassBundle::TRANSLATION_DOMAIN,
             'allow_embed_in_url' => false,
+            // Stimulus controller the read-only fields target (the created page, or the create dialog in dialog mode).
+            'target_controller' => 'nowo-yopass-created',
+            'id_prefix'         => 'yopass-created',
         ]);
         $resolver->setAllowedTypes('allow_embed_in_url', 'bool');
+        $resolver->setAllowedValues('target_controller', ['nowo-yopass-created', 'nowo-yopass-create']);
+        $resolver->setAllowedValues('id_prefix', ['yopass-created', 'yopass-create-result']);
     }
 
     /**

@@ -33,7 +33,7 @@ test.describe('Yopass screenshots', () => {
   });
 
   test('share-created — short link, decryption key and one-click link', async ({ page }) => {
-    await createShare(page);
+    await createShare(page, undefined, false); // dialog mode: capture the result inside the dialog
     await waitForToolbar(page);
     await page.screenshot({ path: resolve(outDir, 'share-created.png') });
   });

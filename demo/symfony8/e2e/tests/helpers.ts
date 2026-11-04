@@ -12,16 +12,29 @@ export async function waitForToolbar(page: Page): Promise<void> {
   }
 }
 
-/** Create a one-time share from the manage page (browser-side encryption); returns the one-click link path + fragment. */
-export async function createShare(page: Page, secret: string = DEMO_SECRET): Promise<string> {
+/** Open the create dialog (web_ui.create_mode: dialog) from the header or the empty state. */
+export async function openCreateDialog(page: Page): Promise<void> {
+  await page.locator('[data-testid="yopass-create-open"]').first().click();
+  await expect(page.locator('dialog#nowo-yopass-create-dialog')).toBeVisible();
+}
+
+/**
+ * Create a one-time share in the create dialog (browser-side encryption, async create); returns the one-click link
+ * path + fragment. Leaves the dialog open on the result unless `close` is true (Done → wipe + reload).
+ */
+export async function createShare(page: Page, secret: string = DEMO_SECRET, close = true): Promise<string> {
   await page.goto('/tools/yopass');
-  const form = page.locator('form[data-nowo-yopass-create-target="form"]');
-  await expect(form).toBeVisible();
-  await form.locator('textarea').first().fill(secret);
-  await form.locator('button[data-nowo-yopass-create-target="submit"]').click();
-  const oneClick = page.locator('#yopass-created-one-click');
+  await openCreateDialog(page);
+  const dialog = page.locator('dialog#nowo-yopass-create-dialog');
+  await dialog.locator('textarea').first().fill(secret);
+  await dialog.locator('button[data-nowo-yopass-create-target="submit"]').click();
+  const oneClick = dialog.locator('#yopass-create-result-one-click');
   await expect(oneClick).toHaveValue(/\/share\//, { timeout: 15_000 });
   const url = new URL(await oneClick.inputValue());
+
+  if (close) {
+    await Promise.all([page.waitForEvent('load'), dialog.locator('[data-testid="yopass-create-done"]').click()]);
+  }
 
   return `${url.pathname}${url.search}${url.hash}`;
 }
