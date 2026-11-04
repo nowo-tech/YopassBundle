@@ -99,7 +99,9 @@ nowo_yopass:
 - The create card disappears; **New share** (header and empty state) opens the create dialog. The result (links, key,
   copy buttons) is shown inside the dialog; **Done** (or any close) wipes the form, the result and the key, then
   reloads the page. To refresh differently, listen to `nowo-yopass-create:created` (bubbling, cancelable,
-  `detail.id`) and call `event.preventDefault()`.
+  `detail.id`, `null` when the dialog was closed while the request was in flight) and call `event.preventDefault()`.
+- **Fetch metadata in both modes:** a create POST whose `Sec-Fetch-Site` header is present and not `same-origin` is
+  refused (JSON: `403 {error: CROSS_SITE}`; page mode: 403). Browsers send `same-origin` for the bundle's own forms.
 - **CSP:** the dialog posts with a same-origin `fetch`: `connect-src 'self'` (or a `default-src 'self'` fallback) must
   allow it. Nothing else changes (same script, same nonce hook, same `'wasm-unsafe-eval'` routes).
 - **JSON endpoint:** `POST` on the create route with `Accept: application/json` answers `201` / `422` / `403` JSON

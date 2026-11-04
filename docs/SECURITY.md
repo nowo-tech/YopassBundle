@@ -50,7 +50,8 @@ Server-side `ShareEncryptionService` exists for **tests only** — not used in p
 
 **Dialog create (`web_ui.create_mode: dialog`).** Encryption still happens in the browser before the request; the
 `fetch` posts only the ciphertext and the CSRF token (same origin, `redirect: error`, `cache: no-store`); the JSON
-answer is ids and paths only (`no-store`, `no-referrer`); a `Sec-Fetch-Site` other than `same-origin` gets `403`. The
+answer is ids and paths only (`no-store`, `no-referrer`); a `Sec-Fetch-Site` other than `same-origin` gets `403` (in
+both create modes). A close aborts the request in flight and a request token discards any late response. The
 key stays in the dialog's memory and result fields (never `sessionStorage`) and every close wipes the form, the result
 and the key. `public_path` from the response is only used when it is a same-origin path.
 

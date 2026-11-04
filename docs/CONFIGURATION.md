@@ -492,14 +492,16 @@ The canonical key wins when both are set.
    |--------|------|------|
    | `201` | `{"id", "public_path", "created_url"}` | Share stored (`ShareCreatedEvent` dispatched) |
    | `422` | `{"error": "CREATE_FAILED"}` / `{"error": "FILE_NOT_ENABLED"}` | Invalid form (CSRF, ciphertext, options) / file shares disabled |
-   | `403` | `{"error": "CROSS_SITE"}` | `Sec-Fetch-Site` sent and not `same-origin` |
+   | `403` | `{"error": "CROSS_SITE"}` | `Sec-Fetch-Site` sent and not `same-origin` (also enforced in page mode: plain 403) |
 
    JSON responses carry `Cache-Control: no-store, private` and `Referrer-Policy: no-referrer`, no flash, and never the
    ciphertext, a key or plaintext.
 4. The links are built in the browser from `public_path` (must be a same-origin path) and the key kept in memory; the
    key never reaches `sessionStorage` or the server.
 5. Every close of the dialog wipes the form, the result and the key; after a create the cancelable
-   `nowo-yopass-create:created` event (`detail.id`) fires, then the page reloads unless prevented.
+   `nowo-yopass-create:created` event (`detail.id`) fires, then the page reloads unless prevented. A close while the
+   request is in flight aborts it and invalidates its response (a late answer writes nothing and keeps no key); the
+   event then fires with `detail.id = null` (the share may exist), so the list still refreshes.
 
 CSP: the `fetch` needs `connect-src 'self'` (or `default-src 'self'`); the script keeps the `csp_nonce` hook and the
 `'wasm-unsafe-eval'` routes of [Content-Security-Policy](#content-security-policy).

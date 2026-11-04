@@ -244,7 +244,8 @@ final class ShareManageController extends AbstractController
      *
      * Page mode: POST + redirect to the created page (errors as flashes). JSON mode (the dialog's fetch, `Accept:
      * application/json`): `201 {id, public_path, created_url}` or `422 {error}` (codes CREATE_FAILED / FILE_NOT_ENABLED),
-     * `403 {error: CROSS_SITE}` for a cross-site fetch, never a flash. The JSON never contains the ciphertext, a key or
+     * `403 {error: CROSS_SITE}` when `Sec-Fetch-Site` is present and not `same-origin` (page mode: a plain 403), never a
+     * flash. The JSON never contains the ciphertext, a key or
      * plaintext: the browser keeps the key in memory and builds the links itself. Same CSRF token in both modes.
      */
     #[Route('/tools/yopass/create', name: 'nowo_yopass_create', methods: ['POST'])]
@@ -254,8 +255,14 @@ final class ShareManageController extends AbstractController
 
         $json = $this->wantsJson($request);
 
-        if ($json && !$this->isSameOriginFetch($request)) {
-            return $this->jsonError(self::CREATE_ERROR_CROSS_SITE, Response::HTTP_FORBIDDEN);
+        // Fetch metadata (both modes): a browser that reports a non same-origin request is refused before the form is
+        // handled; a missing header (older browsers, non-browser clients) relies on the CSRF token alone.
+        if (!$this->isSameOriginFetch($request)) {
+            if ($json) {
+                return $this->jsonError(self::CREATE_ERROR_CROSS_SITE, Response::HTTP_FORBIDDEN);
+            }
+
+            throw $this->createAccessDeniedException();
         }
 
         $form = $this->buildShareCreateForm();

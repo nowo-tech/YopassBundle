@@ -867,6 +867,30 @@ final class ShareManageControllerTest extends TestCase
         self::assertSame('{"error":"CROSS_SITE"}', $response->getContent());
     }
 
+    public function testPageModeCreateRefusesACrossSiteFormPost(): void
+    {
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::never())->method('persist');
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        $container  = ControllerContainerBuilder::bind($controller, new TestUser());
+        $request    = $this->createShareFormRequest($container);
+        $request->headers->set('Sec-Fetch-Site', 'cross-site');
+
+        $this->expectException(AccessDeniedException::class);
+        $controller->create($request);
+    }
+
+    public function testPageModeCreateAcceptsASameOriginFormPost(): void
+    {
+        $controller = $this->controller();
+        $container  = ControllerContainerBuilder::bind($controller, new TestUser());
+        $request    = $this->createShareFormRequest($container);
+        $request->headers->set('Sec-Fetch-Site', 'same-origin');
+
+        self::assertSame(Response::HTTP_FOUND, $controller->create($request)->getStatusCode());
+    }
+
     public function testIndexInDialogModeAddsTheNewShareActionsAndTheResultForm(): void
     {
         $user = new TestUser();

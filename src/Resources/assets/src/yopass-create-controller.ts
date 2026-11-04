@@ -115,6 +115,15 @@ export default class extends Controller {
     /** Id of the share created while the dialog was open (triggers the list refresh on close). */
     private createdId: string | null = null;
 
+    /**
+     * Generation of the current create request: every close / disconnect increments it, so a response (or an
+     * encryption) that finishes after the dialog was closed is recognised as stale and writes nothing (ET-L1).
+     */
+    private requestToken = 0;
+
+    /** Abort handle of the create request in flight (dialog mode). */
+    private inFlight: AbortController | null = null;
+
     private dialog: HTMLDialogElement | null = null;
 
     private readonly onDialogClose = (): void => {
@@ -151,6 +160,7 @@ export default class extends Controller {
         }
 
         if (this.asyncValue) {
+            this.cancelInFlight();
             this.clearSecrets();
         }
     }
@@ -228,6 +238,7 @@ export default class extends Controller {
         }
 
         this.submitTarget.disabled = true;
+        const token = ++this.requestToken;
 
         try {
             const payload = await this.buildPayload();
@@ -249,11 +260,16 @@ export default class extends Controller {
                 throw new Error('CREATE_FAILED');
             }
 
+            if (token !== this.requestToken) {
+                // The dialog was closed while encrypting: send nothing, keep nothing.
+                return;
+            }
+
             this.ciphertextTarget.value = encrypted.ciphertext;
             this.payloadKindTarget.value = payload.kind;
 
             if (this.asyncValue) {
-                await this.submitAsync(keyMaterial, passwordMode ? 'password' : 'key');
+                await this.submitAsync(keyMaterial, passwordMode ? 'password' : 'key', token);
 
                 return;
             }
@@ -262,6 +278,11 @@ export default class extends Controller {
 
             this.formTarget.submit();
         } catch (error) {
+            if (token !== this.requestToken) {
+                // Closed meanwhile (aborted request or stale failure): the dialog was already wiped.
+                return;
+            }
+
             // Only the bundle's own error codes are shown; raw library messages map to CREATE_FAILED.
             const message = error instanceof Error
                 ? (/^[A-Z][A-Z_]*$/.test(error.message) ? error.message : 'CREATE_FAILED')
@@ -306,12 +327,16 @@ export default class extends Controller {
      * Dialog mode: posts the form (ciphertext + CSRF token only; the browser-only controls have no name) with fetch and
      * renders the links. The response never carries plaintext or key material; the key stays in this controller.
      */
-    private async submitAsync(keyMaterial: string, mode: ShareUrlKeyMode): Promise<void> {
+    private async submitAsync(keyMaterial: string, mode: ShareUrlKeyMode, token: number): Promise<void> {
         const body = new FormData(this.formTarget);
         // The ciphertext is in the request body now; do not keep it in the DOM.
         this.ciphertextTarget.value = '';
 
+        const controller = new AbortController();
+        this.inFlight = controller;
+
         let response: Response;
+        let data: unknown;
         try {
             response = await fetch(this.formTarget.action, {
                 method: 'POST',
@@ -321,12 +346,22 @@ export default class extends Controller {
                 mode: 'same-origin',
                 redirect: 'error',
                 cache: 'no-store',
+                signal: controller.signal,
             });
+            data = await response.json().catch(() => null);
         } catch {
             throw new Error('CREATE_FAILED');
+        } finally {
+            if (this.inFlight === controller) {
+                this.inFlight = null;
+            }
         }
 
-        const data: unknown = await response.json().catch(() => null);
+        if (token !== this.requestToken) {
+            // ET-L1: the dialog was closed while the request was in flight. Write nothing and drop the key; the close
+            // already refreshed the list (the share may exist on the server).
+            return;
+        }
 
         if (response.status !== 201 || !isCreatedResponse(data)) {
             const code = (data as { error?: unknown } | null)?.error;
@@ -368,9 +403,12 @@ export default class extends Controller {
     /**
      * Wipes everything secret on every dialog close: inputs, hidden ciphertext, result fields, the in-memory key and any
      * sessionStorage leftover, then restores the empty form. After a create, dispatches the cancelable
-     * `nowo-yopass-create:created` event and reloads the page unless a listener prevented it.
+     * `nowo-yopass-create:created` event and reloads the page unless a listener prevented it. A close while a create
+     * request is in flight aborts it, invalidates its response and refreshes too (`detail.id` is then null: the share
+     * may or may not exist).
      */
     private wipe(): void {
+        const interrupted = this.cancelInFlight();
         this.clearSecrets();
         this.hideError();
         setHidden(this.formTarget, false);
@@ -383,13 +421,27 @@ export default class extends Controller {
         const createdId = this.createdId;
         this.createdId = null;
 
-        if (createdId !== null) {
-            const event = new CustomEvent(CREATED_EVENT, { bubbles: true, cancelable: true, detail: { id: createdId } });
+        if (createdId !== null || interrupted) {
+            const event = new CustomEvent<{ id: string | null }>(CREATED_EVENT, { bubbles: true, cancelable: true, detail: { id: createdId } });
 
             if (this.element.dispatchEvent(event)) {
                 reloadPage();
             }
         }
+    }
+
+    /**
+     * Invalidates the current create request (stale responses write nothing) and aborts its fetch.
+     *
+     * @returns true when a request was in flight
+     */
+    private cancelInFlight(): boolean {
+        const inFlight = this.inFlight;
+        this.requestToken++;
+        this.inFlight = null;
+        inFlight?.abort();
+
+        return inFlight !== null;
     }
 
     private clearSecrets(): void {
@@ -530,7 +582,22 @@ function isCreatedResponse(data: unknown): data is CreatedResponse {
     return typeof id === 'string'
         && /^[A-Za-z0-9-]{1,64}$/.test(id)
         && typeof publicPath === 'string'
-        && publicPath.startsWith('/')
-        && !publicPath.startsWith('//')
-        && !publicPath.includes('\\');
+        && isSafeSameOriginPath(publicPath);
+}
+
+/**
+ * Same-origin absolute path only (kept consistent with UiKit's check): leading `/`, no `//`, no backslash, no tab /
+ * control / whitespace characters, no encoded dot or backslash (`%2e`, `%5c`) and no `.` / `..` segments.
+ */
+export function isSafeSameOriginPath(path: string): boolean {
+    if (!path.startsWith('/') || path.includes('//') || path.includes('\\')) {
+        return false;
+    }
+
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u0020\u007f]/.test(path) || /%(2e|5c)/i.test(path)) {
+        return false;
+    }
+
+    return path.split('/').every((segment) => segment !== '.' && segment !== '..');
 }

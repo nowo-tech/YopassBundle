@@ -215,6 +215,17 @@ describe('yopass-create-controller (dialog mode, async)', () => {
         [201, { id: 'share-5', public_path: '//evil.example/x' }, 'Could not create the share.'],
         [201, { id: 'share-5', public_path: '/\\\\evil.example/x' }, 'Could not create the share.'],
         [201, { id: '../x', public_path: '/share/x' }, 'Could not create the share.'],
+        // ET-I2: dot segments, encoded dot / backslash, tab / control characters (consistent with UiKit).
+        [201, { id: 'share-5', public_path: '/.//evil.example' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: '/../evil.example' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: '/share/./x' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: '/%2e%2e/evil.example' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: '/%2E/evil.example' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: '/%5c/evil.example' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: '/\t/evil.example' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: '/share/x\u0000' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: ' /share/x' }, 'Could not create the share.'],
+        [201, { id: 'share-5', public_path: 'javascript:alert(1)' }, 'Could not create the share.'],
         [201, null, 'Could not create the share.'],
         [200, { id: 'share-5', public_path: '/share/share-5' }, 'Could not create the share.'],
     ])('keeps the form and shows the error (status %s)', async (status, body, message) => {
@@ -243,6 +254,81 @@ describe('yopass-create-controller (dialog mode, async)', () => {
         closeDialog();
         expect(target<HTMLInputElement>('resultKey').value).toBe('');
         expect(reloadPage).toHaveBeenCalledOnce();
+    });
+
+    it('ET-L1: a 201 arriving after the dialog was closed writes nothing and keeps no key', async () => {
+        let resolveFetch!: (response: Response) => void;
+        fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => {
+            resolveFetch = resolve; // ignores the abort signal on purpose: the stale-token guard must hold on its own
+        }));
+        await mount();
+        typeSecret(PLAINTEXT);
+        submitForm();
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+        const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal as AbortSignal;
+
+        closeDialog();
+        expect(signal.aborted).toBe(true);
+        // The share may exist on the server: the close refreshes the list (id unknown).
+        expect(reloadPage).toHaveBeenCalledOnce();
+        expect(dumpDom()).not.toContain(KEY);
+
+        resolveFetch(new Response(JSON.stringify({ id: 'late-1', public_path: '/share/late-1' }), { status: 201 }));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        expect(dumpDom()).not.toContain(KEY);
+        expect(dumpDom()).not.toContain('late-1');
+        expect(target('result').hidden).toBe(true);
+        expect(target<HTMLFormElement>('form').hidden).toBe(false);
+        expect(target('error').hidden).toBe(true);
+        expect(sessionStorage.length).toBe(0);
+
+        // The next close has nothing to refresh.
+        closeDialog();
+        expect(reloadPage).toHaveBeenCalledOnce();
+    });
+
+    it('ET-L1: an aborted request shows no error and the created event carries a null id', async () => {
+        fetchMock.mockImplementationOnce((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+        }));
+        const ids: Array<string | null> = [];
+        document.addEventListener(CREATED_EVENT, (event) => {
+            ids.push((event as CustomEvent<{ id: string | null }>).detail.id);
+            event.preventDefault();
+        }, { once: true });
+        await mount();
+        typeSecret(PLAINTEXT);
+        submitForm();
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+        closeDialog();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        expect(ids).toEqual([null]);
+        expect(reloadPage).not.toHaveBeenCalled();
+        expect(target('error').hidden).toBe(true);
+        expect(target<HTMLButtonElement>('submit').disabled).toBe(false);
+    });
+
+    it('ET-L1: closing while encrypting sends nothing', async () => {
+        let resolveEncrypt!: (value: { ciphertext: string; decryptionKey: string }) => void;
+        vi.mocked(encryptPayload).mockReturnValueOnce(new Promise((resolve) => {
+            resolveEncrypt = resolve;
+        }));
+        await mount();
+        typeSecret(PLAINTEXT);
+        submitForm();
+        await vi.waitFor(() => expect(encryptPayload).toHaveBeenCalled());
+
+        closeDialog();
+        resolveEncrypt({ ciphertext: CIPHERTEXT, decryptionKey: KEY });
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(target<HTMLInputElement>('ciphertext').value).toBe('');
+        expect(dumpDom()).not.toContain(KEY);
+        expect(reloadPage).not.toHaveBeenCalled();
     });
 
     it('maps a network error to CREATE_FAILED', async () => {
@@ -349,6 +435,20 @@ describe('yopass-create-controller (dialog mode, async)', () => {
         el('#done').click();
 
         expect(close).not.toHaveBeenCalled();
+    });
+
+    it('aborts the request in flight when the controller disconnects', async () => {
+        fetchMock.mockReturnValueOnce(new Promise<Response>(() => undefined));
+        await mount();
+        typeSecret(PLAINTEXT);
+        submitForm();
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+        const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal as AbortSignal;
+
+        el('[data-controller="create"]').remove();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(signal.aborted).toBe(true);
     });
 
     it('clears secrets when the controller disconnects', async () => {
