@@ -1273,7 +1273,10 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     max_secret_chars?: int|Param, // Maximum characters allowed in the text secret field (multiline). Must stay within max_ciphertext_bytes after encryption. // Default: 524288
  *     file_handler?: scalar|Param|null, // Service id implementing ShareFileHandlerInterface. When null, the file tab is hidden and file shares are rejected. // Default: null
  *     access_log?: array{ // Records successful public link opens (consume) for the share creator audit trail. Requires Doctrine ORM.
- *         enabled?: bool|Param, // When false, opens are not persisted and the history UI stays hidden. // Default: true
+ *         enabled?: bool|Param, // When false, opens are not persisted, the history UI stays hidden and the ShareAccessLog entity is not mapped (no table). // Default: true
+ *     },
+ *     csp?: array{ // Content-Security-Policy helpers. libsodium compiles WebAssembly, so the pages that load yopass.js (manage, created, public reveal) need 'wasm-unsafe-eval' in script-src.
+ *         wasm_unsafe_eval?: bool|Param, // Opt-in: append 'wasm-unsafe-eval' to script-src (or to a script-src derived from default-src) of the Content-Security-Policy / -Report-Only response headers on the yopass.js routes only. Never creates a policy and never touches other routes. Default false (the host adds it). // Default: false
  *     },
  *     route_prefix?: scalar|Param|null, // Deprecated: The "route_prefix" option at "nowo_yopass.route_prefix" is deprecated, use "nowo_yopass.web_ui.path_prefix" instead (REQ-UI-003). // Deprecated since 1.10: use web_ui.path_prefix. // Default: null
  *     dashboard_route?: scalar|Param|null, // Optional route name for the back link in the manage UI. Null hides the button. // Default: null
@@ -1316,6 +1319,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     web_ui?: array{ // Web UI on the UiKit page contract (REQ-UI-001 / REQ-UI-003). The CSS stack, icon set and row-action display are inherited from nowo_ui_kit.
  *         enabled?: bool|Param, // Manage Web UI feature flag (default true). Access is still enforced by security.access_roles and the host firewall. The public share routes are always registered. // Default: true
  *         path_prefix?: scalar|Param|null, // Prefix prepended to every bundle route path, manage and public (e.g. /{_locale}). Replaces route_prefix. // Default: ""
+ *         create_mode?: "page"|"dialog"|Param, // Where the create form lives: "page" (card above the list, POST + redirect to the created page; 1.11 behaviour) or "dialog" (a "New share" header / empty-state action opens a <dialog>; the browser encrypts, posts the ciphertext with fetch and shows the links in the dialog; the key stays in memory and is wiped on close). // Default: "page"
  *         layout_template?: scalar|Param|null, // Layout the manage pages extend (page.layout). Null = nowo_ui_kit.layouts.admin. A 1.x layout without the UiKit canonical blocks is wrapped in a deprecated bridge. // Default: null
  *         public_layout_template?: scalar|Param|null, // Layout of the public reveal page. Null = nowo_ui_kit.layouts.guest. // Default: null
  *         templates?: array{ // Per-page template overrides (a host template extending @!NowoYopassBundle/... and overriding a data block). Null = the bundle template.

@@ -36,6 +36,8 @@ final class ShareListQueryEvent extends Event
 
     private ?int $overrideTotal = null;
 
+    private ?int $ownTotal = null;
+
     private readonly int $page;
 
     private readonly int $pageSize;
@@ -154,5 +156,23 @@ final class ShareListQueryEvent extends Event
         $this->overrideShares = $shares;
         // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->overrideTotal = $total;
+    }
+
+    /**
+     * Sets how many shares the viewer owns (what "delete all" would remove). The "Delete all" header action is hidden
+     * at 0. Hosts that override or re-scope the list should set it; otherwise the bundle counts the viewer's shares.
+     */
+    public function setOwnTotal(int $ownTotal): void
+    {
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
+        $this->ownTotal = max(0, $ownTotal);
+    }
+
+    /**
+     * Returns the viewer's own share count set by a listener, or null when none was set.
+     */
+    public function getOwnTotal(): ?int
+    {
+        return $this->ownTotal;
     }
 }

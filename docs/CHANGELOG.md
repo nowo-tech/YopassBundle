@@ -49,6 +49,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Create in a dialog (opt-in `web_ui.create_mode: dialog`, async JSON create, result and wipe in the dialog), per-row actions from `SHARE_ACCESS_CHECK`, revoke / extend events, host list columns, "Delete all" only with own shares. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Added
+
+- **`web_ui.create_mode: page|dialog`** (default `page` = 1.11 behaviour). In `dialog` mode the manage page has a primary **New share** header action and the same action in the empty state (`yopass.create.open`, icon `add`, `data-testid` `yopass-create-open` / `yopass-create-open-empty`); they open `manage/_create_dialog.html.twig` (UiKit `<dialog>`, id `nowo-yopass-create-dialog`) instead of rendering the create card.
+- **Async create (dialog mode).** The browser still encrypts first; then `nowo-yopass-create` `fetch`es the form (same CSRF token, `Accept: application/json`, `credentials` / `mode: same-origin`, `redirect: error`, `cache: no-store`) instead of `form.submit()`. `ShareManageController::create()` answers JSON when the request asks for it: `201 {id, public_path, created_url}` (`ShareCreatedEvent` dispatched as before, `no-store` + `no-referrer`), `422 {error: CREATE_FAILED | FILE_NOT_ENABLED}`, `403 {error: CROSS_SITE}` when `Sec-Fetch-Site` is present and not `same-origin` (the same fetch-metadata check refuses a non same-origin page-mode POST with a plain 403); never a flash. The response never echoes the ciphertext, a key or plaintext.
+- **Result in the dialog.** One-click link (first when `sharing.default_embed_in_url`, only when `sharing.allow_embed_in_url`), short link, decryption key, copy buttons and the remember notice, built by the new shared module `yopass-share-links.ts` (also used by the created page). Custom-password mode omits the key field and shows `yopass.result.password_note`. The key / password stays in the dialog's memory and fields only: never `sessionStorage`, never the server.
+- **Wipe on every close** (Done `yopass.create.done`, close button, Escape, backdrop, `nowo:overlay-close`): form reset, secret / password / hidden ciphertext emptied, result fields cleared and hidden, any pending `sessionStorage` key removed. After a create, closing dispatches the cancelable bubbling `nowo-yopass-create:created` event (`detail: {id}`) and reloads the page unless a listener prevented it. A close during encryption sends nothing; a close while the request is in flight aborts it (`AbortController`) and a request token makes any late response write nothing (pre-release audit ET-L1); the event then carries `detail.id = null`. The client accepts only a same-origin `public_path` without `.` / `..` segments, `%2e`, `%5c`, backslashes or control characters (ET-I2).
+- **Per-row actions from `SHARE_ACCESS_CHECK`.** The manage list builds each row's View / Extend / Revoke / Delete through `ShareAccessGuard::canManage()` (`Preview`, `Extend`, `Revoke`, `Delete`), once per row and action, on top of the page-wide `security.roles.*` flags; revoke / delete CSRF forms are only built for the rows that get the action. The routes keep their own server-side checks.
+- **`YopassEvents::SHARE_REVOKED`** (`ShareRevokedEvent`: share id, creator, revoked by, revoked at, payload kind; new `Service\ShareRevoker`) and **`YopassEvents::SHARE_EXTENDED`** (`ShareExtendedEvent`: share id, creator, extended by, old / new expiry, old / new max reads, payload kind; `ShareExtender::extend()` takes the acting user), dispatched after the flush. Metadata only; covered by the zero-knowledge test.
+- **Host list columns:** `YopassEvents::SHARE_LIST_COLUMNS` (`ShareListColumnsEvent::addColumn(new Ui\ShareListColumn($key, $label, $valueProvider, $priority))`). Columns are appended after the built-in ones; cell values are plain text printed with Twig auto-escaping (`—` when empty).
+- **`ShareListQueryEvent::setOwnTotal()`**: the "Delete all" header action is shown only when the viewer owns shares (a listener's figure, else the default query's total, else a `countByCreator($viewer)`).
+- Translation keys `yopass.create.open`, `yopass.create.done`, `yopass.result.password_note` (7 locales).
+
+### Changed
+
+- **The type switch** (Text / File tabs) is rendered only when file shares are enabled.
+- **Create form markup:** the form moved to `manage/_create_form.html.twig` (shared by the card and the dialog) and the `nowo-yopass-create` controller now sits on a wrapping `<div class="nowo-yopass-create__root">` instead of the `<form>`. Host overrides of `_create_panel.html.twig` that copied the 1.11 form markup keep working (the controller attributes on the form still work); see UPGRADING.
+- `ShareCreatedLinksType` options `target_controller` / `id_prefix` (defaults unchanged) so the dialog reuses it.
+- `ShareManageController` takes optional `ShareRevoker`, event dispatcher and `$createMode` arguments (autowired / configured; appended with defaults).
+
 ## [1.11.0] - 2026-11-04
 
 Host hooks for 1.11.0: CSP nonce on yopass.js, scoped `'wasm-unsafe-eval'` helper, share lifecycle events (metadata only), scoped / vetoable "delete all", paging on `ShareListQueryEvent`, no `ShareAccessLog` mapping when the access log is disabled, natural Spanish (and other locales) wording. See [UPGRADING](UPGRADING.md#to-1110).

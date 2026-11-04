@@ -46,6 +46,7 @@ yopass:
         decryption_key_help: Necessária para desencriptar a mensagem com a ligação curta.
         key_unavailable: A chave de desencriptação já não está disponível. Copie as ligações logo após criar o segredo.
         create_another: Criar outro segredo
+        password_note: 'O destinatário precisa da palavra-passe que escolheu: partilhe-a por outro canal. Não é mostrada aqui.'
     error:
         secret: Introduza um segredo ou selecione um ficheiro.
         secret_too_large: O segredo excede o limite de caracteres.
@@ -112,6 +113,8 @@ yopass:
     create:
         title: Partilhar um segredo
         submit: Criar ligação
+        open: Partilhar um segredo
+        done: Concluído
     list:
         title: Os meus segredos partilhados
         type: Tipo

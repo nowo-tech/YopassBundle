@@ -91,6 +91,7 @@ services:
             $sharingOptions: '%nowo_yopass.sharing%'
             $fileSharesEnabled: '%nowo_yopass.file_shares_enabled%'
             $fileHandler: null  # Set at compile time when nowo_yopass.file_handler is configured
+            $createMode: '%nowo_yopass.web_ui.create_mode%'
 
     # Anonymous public reveal and consume endpoints (ciphertext only; decryption in browser).
     Nowo\YopassBundle\Controller\PublicShareController:

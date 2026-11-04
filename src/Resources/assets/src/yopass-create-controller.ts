@@ -7,10 +7,21 @@ import {
     readFileAsPayload,
     type YopassPayload,
 } from './yopass-crypto';
-import { storePendingShareKey } from './yopass-share-keys';
+import { PENDING_KEY_STORAGE, storePendingShareKey } from './yopass-share-keys';
+import { reloadPage } from './yopass-navigation';
+import { clearShareLinks, copyToClipboard, renderShareLinks, type ShareLinkTargets } from './yopass-share-links';
+import type { ShareUrlKeyMode } from './yopass-share-url';
+
+/** Cancelable event dispatched (bubbling) when the create dialog closes after a successful create; detail `{id}`. */
+export const CREATED_EVENT = 'nowo-yopass-create:created';
+
+type CreatedResponse = { id: string; public_path: string };
 
 /**
- * Encrypts share content in the browser, then submits a standard Symfony form (POST + redirect).
+ * Encrypts share content in the browser, then either submits the Symfony form (page mode: POST + redirect to the
+ * created page) or, in dialog mode (`async`), posts it with `fetch` (same origin, same CSRF token) and renders the
+ * links in the dialog. In dialog mode the key / password only lives in the result fields of the dialog (never
+ * sessionStorage, never sent to the server) and every close of the dialog wipes the form, the result fields and the key.
  */
 export default class extends Controller {
     static targets = [
@@ -29,6 +40,13 @@ export default class extends Controller {
         'customPassword',
         'error',
         'submit',
+        'result',
+        'rememberNotice',
+        'resultOneClickLink',
+        'resultShortLink',
+        'resultKey',
+        'resultKeyRow',
+        'passwordNote',
     ];
 
     static values = {
@@ -41,6 +59,9 @@ export default class extends Controller {
         tabClass: { type: String, default: '' },
         tabActiveClass: { type: String, default: '' },
         errors: { type: Object, default: {} },
+        async: { type: Boolean, default: false },
+        allowEmbedInUrl: { type: Boolean, default: false },
+        showRememberNotice: { type: Boolean, default: true },
     };
 
     declare readonly formTarget: HTMLFormElement;
@@ -77,6 +98,37 @@ export default class extends Controller {
     declare readonly hasSubmitTarget: boolean;
     declare readonly hasEncryptionPasswordTarget: boolean;
     declare readonly hasFileInputTarget: boolean;
+    declare readonly asyncValue: boolean;
+    declare readonly allowEmbedInUrlValue: boolean;
+    declare readonly showRememberNoticeValue: boolean;
+    declare readonly resultTarget: HTMLElement;
+    declare readonly rememberNoticeTarget: HTMLElement;
+    declare readonly resultOneClickLinkTarget: HTMLInputElement;
+    declare readonly resultShortLinkTarget: HTMLInputElement;
+    declare readonly resultKeyTarget: HTMLInputElement;
+    declare readonly resultKeyRowTarget: HTMLElement;
+    declare readonly passwordNoteTarget: HTMLElement;
+    declare readonly hasRememberNoticeTarget: boolean;
+    declare readonly hasResultOneClickLinkTarget: boolean;
+    declare readonly hasCustomPasswordTarget: boolean;
+
+    /** Id of the share created while the dialog was open (triggers the list refresh on close). */
+    private createdId: string | null = null;
+
+    /**
+     * Generation of the current create request: every close / disconnect increments it, so a response (or an
+     * encryption) that finishes after the dialog was closed is recognised as stale and writes nothing (ET-L1).
+     */
+    private requestToken = 0;
+
+    /** Abort handle of the create request in flight (dialog mode). */
+    private inFlight: AbortController | null = null;
+
+    private dialog: HTMLDialogElement | null = null;
+
+    private readonly onDialogClose = (): void => {
+        this.wipe();
+    };
 
     private readonly onSecretInput = (): void => {
         this.syncSecretCounter();
@@ -88,11 +140,29 @@ export default class extends Controller {
         this.secretTarget.addEventListener('input', this.onSecretInput);
         this.secretTarget.addEventListener('paste', this.onSecretInput);
         this.syncSecretCounter();
+
+        if (this.asyncValue) {
+            this.dialog = this.element.closest('dialog');
+            // Native close (Done, close button, Escape, backdrop) and the UiKit overlay event, when used.
+            this.dialog?.addEventListener('close', this.onDialogClose);
+            this.dialog?.addEventListener('nowo:overlay-close', this.onDialogClose);
+        }
     }
 
     disconnect(): void {
         this.secretTarget.removeEventListener('input', this.onSecretInput);
         this.secretTarget.removeEventListener('paste', this.onSecretInput);
+
+        if (this.dialog) {
+            this.dialog.removeEventListener('close', this.onDialogClose);
+            this.dialog.removeEventListener('nowo:overlay-close', this.onDialogClose);
+            this.dialog = null;
+        }
+
+        if (this.asyncValue) {
+            this.cancelInFlight();
+            this.clearSecrets();
+        }
     }
 
     switchTab(event: Event): void {
@@ -168,6 +238,7 @@ export default class extends Controller {
         }
 
         this.submitTarget.disabled = true;
+        const token = ++this.requestToken;
 
         try {
             const payload = await this.buildPayload();
@@ -189,12 +260,29 @@ export default class extends Controller {
                 throw new Error('CREATE_FAILED');
             }
 
+            if (token !== this.requestToken) {
+                // The dialog was closed while encrypting: send nothing, keep nothing.
+                return;
+            }
+
             this.ciphertextTarget.value = encrypted.ciphertext;
             this.payloadKindTarget.value = payload.kind;
+
+            if (this.asyncValue) {
+                await this.submitAsync(keyMaterial, passwordMode ? 'password' : 'key', token);
+
+                return;
+            }
+
             storePendingShareKey(passwordMode ? 'password' : 'key', keyMaterial);
 
             this.formTarget.submit();
         } catch (error) {
+            if (token !== this.requestToken) {
+                // Closed meanwhile (aborted request or stale failure): the dialog was already wiped.
+                return;
+            }
+
             // Only the bundle's own error codes are shown; raw library messages map to CREATE_FAILED.
             const message = error instanceof Error
                 ? (/^[A-Z][A-Z_]*$/.test(error.message) ? error.message : 'CREATE_FAILED')
@@ -207,6 +295,186 @@ export default class extends Controller {
                 this.submitTarget.disabled = false;
             }
         }
+    }
+
+    /** Done button of the dialog result: closes the dialog (the native close event wipes everything). */
+    done(): void {
+        if (this.dialog?.open) {
+            this.dialog.close();
+        }
+    }
+
+    /** The result fields form is read-only: never submit it (Enter in a field). */
+    preventSubmit(event: Event): void {
+        event.preventDefault();
+    }
+
+    copyOneClickLink(): void {
+        if (this.hasResultOneClickLinkTarget) {
+            copyToClipboard(this.resultOneClickLinkTarget.value);
+        }
+    }
+
+    copyShortLink(): void {
+        copyToClipboard(this.resultShortLinkTarget.value);
+    }
+
+    copyKey(): void {
+        copyToClipboard(this.resultKeyTarget.value);
+    }
+
+    /**
+     * Dialog mode: posts the form (ciphertext + CSRF token only; the browser-only controls have no name) with fetch and
+     * renders the links. The response never carries plaintext or key material; the key stays in this controller.
+     */
+    private async submitAsync(keyMaterial: string, mode: ShareUrlKeyMode, token: number): Promise<void> {
+        const body = new FormData(this.formTarget);
+        // The ciphertext is in the request body now; do not keep it in the DOM.
+        this.ciphertextTarget.value = '';
+
+        const controller = new AbortController();
+        this.inFlight = controller;
+
+        let response: Response;
+        let data: unknown;
+        try {
+            response = await fetch(this.formTarget.action, {
+                method: 'POST',
+                body,
+                headers: { Accept: 'application/json' },
+                credentials: 'same-origin',
+                mode: 'same-origin',
+                redirect: 'error',
+                cache: 'no-store',
+                signal: controller.signal,
+            });
+            data = await response.json().catch(() => null);
+        } catch {
+            throw new Error('CREATE_FAILED');
+        } finally {
+            if (this.inFlight === controller) {
+                this.inFlight = null;
+            }
+        }
+
+        if (token !== this.requestToken) {
+            // ET-L1: the dialog was closed while the request was in flight. Write nothing and drop the key; the close
+            // already refreshed the list (the share may exist on the server).
+            return;
+        }
+
+        if (response.status !== 201 || !isCreatedResponse(data)) {
+            const code = (data as { error?: unknown } | null)?.error;
+            throw new Error(typeof code === 'string' && /^[A-Z][A-Z_]*$/.test(code) ? code : 'CREATE_FAILED');
+        }
+
+        this.createdId = data.id;
+        this.showResult(data.public_path, keyMaterial, mode);
+    }
+
+    private showResult(publicPath: string, keyMaterial: string, mode: ShareUrlKeyMode): void {
+        // The plaintext is no longer needed once the share exists.
+        this.secretTarget.value = '';
+        if (this.hasFileInputTarget) {
+            this.fileInputTarget.value = '';
+        }
+
+        const targets = this.resultLinkTargets();
+        renderShareLinks(targets, {
+            publicPath,
+            keyMaterial,
+            mode,
+            allowEmbedInUrl: this.allowEmbedInUrlValue,
+            showRememberNotice: this.showRememberNoticeValue,
+        });
+
+        if (mode === 'password') {
+            // The creator chose the password: it is not repeated here (the recipient gets it by another channel).
+            targets.key.value = '';
+            this.customPasswordTarget.value = '';
+        }
+
+        setHidden(this.resultKeyRowTarget, mode === 'password');
+        setHidden(this.passwordNoteTarget, mode !== 'password');
+        setHidden(this.formTarget, true);
+        setHidden(this.resultTarget, false);
+    }
+
+    /**
+     * Wipes everything secret on every dialog close: inputs, hidden ciphertext, result fields, the in-memory key and any
+     * sessionStorage leftover, then restores the empty form. After a create, dispatches the cancelable
+     * `nowo-yopass-create:created` event and reloads the page unless a listener prevented it. A close while a create
+     * request is in flight aborts it, invalidates its response and refreshes too (`detail.id` is then null: the share
+     * may or may not exist).
+     */
+    private wipe(): void {
+        const interrupted = this.cancelInFlight();
+        this.clearSecrets();
+        this.hideError();
+        setHidden(this.formTarget, false);
+        setHidden(this.resultTarget, true);
+        this.submitTarget.disabled = false;
+
+        this.syncKeyMode();
+        this.syncSecretCounter();
+
+        const createdId = this.createdId;
+        this.createdId = null;
+
+        if (createdId !== null || interrupted) {
+            const event = new CustomEvent<{ id: string | null }>(CREATED_EVENT, { bubbles: true, cancelable: true, detail: { id: createdId } });
+
+            if (this.element.dispatchEvent(event)) {
+                reloadPage();
+            }
+        }
+    }
+
+    /**
+     * Invalidates the current create request (stale responses write nothing) and aborts its fetch.
+     *
+     * @returns true when a request was in flight
+     */
+    private cancelInFlight(): boolean {
+        const inFlight = this.inFlight;
+        this.requestToken++;
+        this.inFlight = null;
+        inFlight?.abort();
+
+        return inFlight !== null;
+    }
+
+    private clearSecrets(): void {
+        this.formTarget.reset();
+        this.secretTarget.value = '';
+
+        if (this.hasCustomPasswordTarget) {
+            this.customPasswordTarget.value = '';
+        }
+
+        this.ciphertextTarget.value = '';
+
+        if (this.hasFileInputTarget) {
+            this.fileInputTarget.value = '';
+        }
+
+        clearShareLinks(this.resultLinkTargets());
+
+        try {
+            sessionStorage.removeItem(PENDING_KEY_STORAGE);
+        } catch {
+            // Storage unavailable: nothing was written there either.
+        }
+    }
+
+    /** Result fields of the dialog (always rendered by `_create_form.html.twig` in async mode). */
+    private resultLinkTargets(): ShareLinkTargets {
+        return {
+            shortLink: this.resultShortLinkTarget,
+            key: this.resultKeyTarget,
+            oneClickLink: this.hasResultOneClickLinkTarget ? this.resultOneClickLinkTarget : null,
+            rememberNotice: this.hasRememberNoticeTarget ? this.rememberNoticeTarget : null,
+        };
     }
 
     private async buildPayload(): Promise<YopassPayload> {
@@ -301,4 +569,35 @@ export default class extends Controller {
             setHidden(this.errorTarget, true);
         }
     }
+}
+
+/** 201 body of the JSON create endpoint: an id and a same-origin absolute path (never a URL to another origin). */
+function isCreatedResponse(data: unknown): data is CreatedResponse {
+    if (typeof data !== 'object' || data === null) {
+        return false;
+    }
+
+    const { id, public_path: publicPath } = data as Record<string, unknown>;
+
+    return typeof id === 'string'
+        && /^[A-Za-z0-9-]{1,64}$/.test(id)
+        && typeof publicPath === 'string'
+        && isSafeSameOriginPath(publicPath);
+}
+
+/**
+ * Same-origin absolute path only (kept consistent with UiKit's check): leading `/`, no `//`, no backslash, no tab /
+ * control / whitespace characters, no encoded dot or backslash (`%2e`, `%5c`) and no `.` / `..` segments.
+ */
+export function isSafeSameOriginPath(path: string): boolean {
+    if (!path.startsWith('/') || path.includes('//') || path.includes('\\')) {
+        return false;
+    }
+
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u0020\u007f]/.test(path) || /%(2e|5c)/i.test(path)) {
+        return false;
+    }
+
+    return path.split('/').every((segment) => segment !== '.' && segment !== '..');
 }

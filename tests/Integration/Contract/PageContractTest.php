@@ -62,6 +62,55 @@ final class PageContractTest extends PageContractTestCase
         self::assertStringNotContainsString('<script>alert(1)</script>', $html);
     }
 
+    public function testDialogModeRendersTheCreateDialogInsteadOfTheCard(): void
+    {
+        $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, true, true)))->html;
+
+        self::assertStringContainsString('id="nowo-yopass-create-dialog"', $html);
+        self::assertStringContainsString('data-nowo-ui-dialog-open="nowo-yopass-create-dialog"', $html);
+        self::assertStringContainsString('data-testid="yopass-create-open"', $html);
+        self::assertStringContainsString('data-nowo-yopass-create-async-value="true"', $html);
+        self::assertStringContainsString('data-nowo-yopass-create-target="result"', $html);
+        self::assertStringContainsString('data-testid="yopass-create-done"', $html);
+        self::assertStringContainsString('id="yopass-create-result-short"', $html);
+        self::assertStringNotContainsString('data-testid="yopass-create"', $html, 'no create card in dialog mode');
+    }
+
+    public function testEmptyDialogModeOffersNewShareInTheEmptyState(): void
+    {
+        $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(true, false, true)))->html;
+
+        self::assertStringContainsString('data-testid="yopass-create-open-empty"', $html);
+        self::assertStringNotContainsString('data-testid="yopass-delete-all"', $html);
+    }
+
+    public function testPageModeKeepsTheCardAndNoDialog(): void
+    {
+        $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage()))->html;
+
+        self::assertStringContainsString('data-testid="yopass-create"', $html);
+        self::assertStringContainsString('data-nowo-yopass-create-async-value="false"', $html);
+        self::assertStringNotContainsString('nowo-yopass-create-dialog', $html);
+        self::assertStringContainsString('role="tablist"', $html);
+    }
+
+    public function testTheTypeSwitchIsHiddenWithASingleType(): void
+    {
+        $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, false)))->html;
+
+        self::assertStringNotContainsString('role="tablist"', $html);
+    }
+
+    public function testHostColumnValuesAreEscaped(): void
+    {
+        $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, true, false, true)))->html;
+
+        self::assertStringContainsString('&lt;b&gt;placeholder-user&lt;/b&gt;', $html);
+        self::assertStringNotContainsString('<b>placeholder-user</b>', $html);
+        self::assertStringContainsString('data-nowo-yopass-column="createdBy"', $html);
+        self::assertStringContainsString('Created by', $html);
+    }
+
     protected function configureTwig(Environment $twig): void
     {
         if ($this->cspNonce === null) {
@@ -78,6 +127,8 @@ final class PageContractTest extends PageContractTestCase
     {
         yield 'manage' => new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage());
         yield 'manage (empty, no file shares)' => new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(true, false));
+        yield 'manage (dialog create mode, host column)' => new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, true, true, true));
+        yield 'manage (dialog create mode, empty, text only)' => new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(true, false, true));
         yield 'created' => new PageFixture('@NowoYopassBundle/manage/created.html.twig', PageFixtures::created());
         yield 'created (one-click link first)' => new PageFixture('@NowoYopassBundle/manage/created.html.twig', PageFixtures::created(true, true));
         yield 'created (no one-click link)' => new PageFixture('@NowoYopassBundle/manage/created.html.twig', PageFixtures::created(false));

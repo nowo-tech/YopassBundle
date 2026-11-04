@@ -1,8 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
 import { setHidden, syncHidden } from './visibility';
 import { consumePendingShareKey } from './yopass-share-keys';
+import { copyToClipboard, renderShareLinks } from './yopass-share-links';
 import {
-    buildShareUrlWithKey,
     readShareKeyFromUrlAnyMode,
     stripShareKeyFromUrl,
     type ShareUrlKeyMode,
@@ -71,15 +71,15 @@ export default class extends Controller {
             return;
         }
 
-        void navigator.clipboard?.writeText(this.resultOneClickLinkTarget.value);
+        copyToClipboard(this.resultOneClickLinkTarget.value);
     }
 
     copyShortLink(): void {
-        void navigator.clipboard?.writeText(this.resultShortLinkTarget.value);
+        copyToClipboard(this.resultShortLinkTarget.value);
     }
 
     copyKey(): void {
-        void navigator.clipboard?.writeText(this.resultKeyTarget.value);
+        copyToClipboard(this.resultKeyTarget.value);
     }
 
     private resolveKeyMaterial(): { material: string; mode: ShareUrlKeyMode } | null {
@@ -98,31 +98,22 @@ export default class extends Controller {
         return { material: stored.material, mode: stored.mode };
     }
 
-    private buildShortLink(): string {
-        return `${window.location.origin}${this.publicPathValue}`;
-    }
-
-    private buildOneClickLink(keyMaterial: string, mode: ShareUrlKeyMode): string {
-        const pathWithKey = buildShareUrlWithKey(this.publicPathValue, keyMaterial, mode);
-
-        return `${window.location.origin}${pathWithKey}`;
-    }
-
     private renderLinks(keyMaterial: string, mode: ShareUrlKeyMode): void {
-        const shortLink = this.buildShortLink();
-
-        this.resultShortLinkTarget.value = shortLink;
-
-        if (this.hasResultOneClickLinkTarget) {
-            // Never put the key in a URL when the host disabled embedding (the Twig view omits the field as well).
-            this.resultOneClickLinkTarget.value = this.allowEmbedInUrlValue ? this.buildOneClickLink(keyMaterial, mode) : '';
-        }
-
-        this.resultKeyTarget.value = keyMaterial;
-
-        if (this.hasRememberNoticeTarget) {
-            setHidden(this.rememberNoticeTarget, !this.showRememberNoticeValue);
-        }
+        renderShareLinks(
+            {
+                shortLink: this.resultShortLinkTarget,
+                key: this.resultKeyTarget,
+                oneClickLink: this.hasResultOneClickLinkTarget ? this.resultOneClickLinkTarget : null,
+                rememberNotice: this.hasRememberNoticeTarget ? this.rememberNoticeTarget : null,
+            },
+            {
+                publicPath: this.publicPathValue,
+                keyMaterial,
+                mode,
+                allowEmbedInUrl: this.allowEmbedInUrlValue,
+                showRememberNotice: this.showRememberNoticeValue,
+            },
+        );
     }
 
     private showKeyUnavailable(): void {

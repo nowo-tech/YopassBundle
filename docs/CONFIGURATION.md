@@ -24,6 +24,7 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
   - [Public rate limiting](#public-rate-limiting)
   - [Custom access checker interface](#custom-access-checker-interface)
 - [Web UI (UiKit page contract)](#web-ui-uikit-page-contract)
+  - [Create mode](#create-mode)
   - [Host layout integration](#host-layout-integration)
 - [Other options](#other-options)
 - [Assets](#assets)
@@ -340,6 +341,37 @@ The bundle stores the share **creator** but does not implement teams, groups, or
 | `ShareAccessCheckEvent` | `YopassEvents::SHARE_ACCESS_CHECK` | Grant/deny preview, extend, revoke, delete on a share |
 | `ShareDeleteAllEvent` | `YopassEvents::SHARE_DELETE_ALL` | Scope (`setSubject()`), take over (`markHandled()`) or `veto()` the manage "delete all" |
 
+**Row actions follow these grants:** the manage list asks `SHARE_ACCESS_CHECK` once per row and action (`Preview` →
+View, `Extend`, `Revoke`, `Delete`) and renders only the granted actions (revoke / delete CSRF forms only for those
+rows), on top of the page-wide `security.roles.*` flags. The routes keep their own server-side checks. Do not grant
+`View` (the "share created" page) to other users: it reads the key from the creator's `sessionStorage`.
+
+**"Delete all"** is shown only when the viewer owns shares: `ShareListQueryEvent::setOwnTotal($n)` from a listener,
+else the default query's total, else `countByCreator($viewer)`.
+
+**Host columns:** `YopassEvents::SHARE_LIST_COLUMNS` (`ShareListColumnsEvent`, after the list is loaded) lets the host
+append columns without overriding the template:
+
+```php
+#[AsEventListener(event: YopassEvents::SHARE_LIST_COLUMNS)]
+public function __invoke(ShareListColumnsEvent $event): void
+{
+    $names = $this->creators->namesFor($event->getShares()); // batch lookup, host side
+    $event->addColumn(new ShareListColumn(
+        'createdBy',
+        new Label('secrets.created_by', 'messages'),     // or a plain (escaped) string
+        static fn (SecureShare $share): ?string => $names[$share->getId()] ?? null,
+        priority: 2,                                     // hidden on narrow screens like the built-in dates
+    ));
+}
+```
+
+Keys are `[a-zA-Z][a-zA-Z0-9_]*` and may not reuse a built-in key. Values are plain text (scalar, `Stringable` or
+null → "—") printed with Twig auto-escaping; never return secret material.
+
+**Retention** (`shares.retention`) purges the viewer's own old shares when the list opens; shares of other creators
+shown to the viewer are purged by the `nowo:yopass:purge-old-shares` command only.
+
 `ShareListQueryEvent` carries the requested page: `getPage()`, `getPageSize()` (0 = not paginated), `getOffset()`,
 `isPaginated()`. An `overrideList($shares, $total)` listener should return that page only and the overall total.
 
@@ -367,6 +399,8 @@ Services involved: `ShareLister` (manage list), `ShareAccessGuard` (created/prev
 |-------|----------|------|---------|
 | `ShareCreatedEvent` | `YopassEvents::SHARE_CREATED` | After `ShareCreator` persisted a share | share id, creator, created / expires at, max reads, payload kind |
 | `ShareDeletedEvent` | `YopassEvents::SHARE_DELETED` | After a manage "delete" | share id, creator, deleting user, dates, max reads, reads left, payload kind, revoked at |
+| `ShareRevokedEvent` | `YopassEvents::SHARE_REVOKED` | After a manage "revoke" | share id, creator, revoking user, revoked at, payload kind |
+| `ShareExtendedEvent` | `YopassEvents::SHARE_EXTENDED` | After a manage "extend" | share id, creator, extending user, old / new expiry, old / new max reads, payload kind |
 | `ShareBulkDeletedEvent` | `YopassEvents::SHARES_BULK_DELETED` | After "delete all" or a retention purge removed ≥ 1 share | reason (`delete_all` / `retention`), subject (creator / tenant, `null` for the console purge), count, acting user |
 
 **Zero-knowledge:** these payloads are metadata only. They never contain the ciphertext, the decryption key, a
@@ -420,6 +454,7 @@ nowo_yopass:
     web_ui:
         enabled: true
         path_prefix: ''                  # prefix of every bundle route (e.g. /{_locale})
+        create_mode: page                # page (create card) | dialog (New share opens a <dialog>)
         layout_template: ~               # null = nowo_ui_kit.layouts.admin
         public_layout_template: ~        # null = nowo_ui_kit.layouts.guest
         templates:
@@ -432,6 +467,7 @@ nowo_yopass:
 |--------|---------|-------------|
 | `web_ui.enabled` | `true` | Manage Web UI feature flag. When false, only the public routes (`/share/{id}`, `/share/{id}/consume`) are registered and the CSRF / SecurityBundle compile checks of the manage UI are skipped. When true, access is enforced by `security.*` and the host firewall. |
 | `web_ui.path_prefix` | `''` | Prefix prepended to every bundle route path (manage and public). Replaces `route_prefix`. |
+| `web_ui.create_mode` | `page` | `page`: create card above the list, POST + redirect to the created page. `dialog`: **New share** (header + empty state) opens a `<dialog>`; the browser encrypts, posts with `fetch` and shows the links in the dialog. See [Create mode](#create-mode). |
 | `web_ui.layout_template` | `null` | Layout the manage pages extend (`page.layout`). Null = `nowo_ui_kit.layouts.admin`. **Set the project admin layout in UiKit once** (`nowo_ui_kit.layouts.admin`); use this key only for a Yopass-specific layout. A 1.x layout without the UiKit canonical blocks (e.g. a `base.html.twig` with `body`) is wrapped in the deprecated `_legacy_layout.html.twig` bridge. The 1.x default `@NowoYopassBundle/layout.html.twig` maps to null. |
 | `web_ui.public_layout_template` | `null` | Layout of the public reveal page. Null = `nowo_ui_kit.layouts.guest`. **Must not load third-party scripts** (they could read the decryption key and the decrypted secret); see [Usage — layout security](USAGE.md#public-reveal-page-layout-security). |
 | `web_ui.templates.<page>` | `null` | Per-page template override (`manage`, `created`, `public`): a host template that `{% extends '@!NowoYopassBundle/...' %}` and overrides one data block. |
@@ -441,6 +477,34 @@ nowo_yopass:
 **Deprecated root keys (1.10, removed in 2.0):** `route_prefix` → `web_ui.path_prefix`; `templates.layout` →
 `web_ui.layout_template`; `templates.manage` / `templates.created` / `templates.public` → `web_ui.templates.<page>`.
 The canonical key wins when both are set.
+
+### Create mode
+
+`web_ui.create_mode: dialog` keeps the zero-knowledge model of the page mode:
+
+1. The browser encrypts the secret (libsodium) **before** any request; only the ciphertext and the CSRF token are
+   posted (the secret, file and password controls have no `name`).
+2. `nowo-yopass-create` posts with `fetch(form.action, {method: 'POST', credentials: 'same-origin', mode:
+   'same-origin', redirect: 'error', cache: 'no-store', headers: {Accept: 'application/json'}})`.
+3. `ShareManageController::create()` answers JSON when `application/json` is the first accepted type:
+
+   | Status | Body | When |
+   |--------|------|------|
+   | `201` | `{"id", "public_path", "created_url"}` | Share stored (`ShareCreatedEvent` dispatched) |
+   | `422` | `{"error": "CREATE_FAILED"}` / `{"error": "FILE_NOT_ENABLED"}` | Invalid form (CSRF, ciphertext, options) / file shares disabled |
+   | `403` | `{"error": "CROSS_SITE"}` | `Sec-Fetch-Site` sent and not `same-origin` (also enforced in page mode: plain 403) |
+
+   JSON responses carry `Cache-Control: no-store, private` and `Referrer-Policy: no-referrer`, no flash, and never the
+   ciphertext, a key or plaintext.
+4. The links are built in the browser from `public_path` (must be a same-origin path) and the key kept in memory; the
+   key never reaches `sessionStorage` or the server.
+5. Every close of the dialog wipes the form, the result and the key; after a create the cancelable
+   `nowo-yopass-create:created` event (`detail.id`) fires, then the page reloads unless prevented. A close while the
+   request is in flight aborts it and invalidates its response (a late answer writes nothing and keeps no key); the
+   event then fires with `detail.id = null` (the share may exist), so the list still refreshes.
+
+CSP: the `fetch` needs `connect-src 'self'` (or `default-src 'self'`); the script keeps the `csp_nonce` hook and the
+`'wasm-unsafe-eval'` routes of [Content-Security-Policy](#content-security-policy).
 
 ### Host layout integration
 

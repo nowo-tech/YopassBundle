@@ -46,6 +46,7 @@ yopass:
         decryption_key_help: Requise pour déchiffrer le message avec le lien court.
         key_unavailable: La clé de déchiffrement n'est plus disponible. Copiez les liens juste après la création du partage.
         create_another: Créer un autre secret
+        password_note: 'Le destinataire a besoin du mot de passe que vous avez choisi : transmettez-le par un autre canal. Il n''est pas affiché ici.'
     error:
         secret: Saisissez un secret ou sélectionnez un fichier.
         secret_too_large: Le secret dépasse la limite de caractères.
@@ -112,6 +113,8 @@ yopass:
     create:
         title: Nouveau partage
         submit: Créer le lien
+        open: Nouveau partage
+        done: Terminé
     list:
         title: Mes partages
         type: Type de partage

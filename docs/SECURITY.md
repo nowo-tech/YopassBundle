@@ -48,12 +48,19 @@
 
 Server-side `ShareEncryptionService` exists for **tests only** — not used in production flow.
 
+**Dialog create (`web_ui.create_mode: dialog`).** Encryption still happens in the browser before the request; the
+`fetch` posts only the ciphertext and the CSRF token (same origin, `redirect: error`, `cache: no-store`); the JSON
+answer is ids and paths only (`no-store`, `no-referrer`); a `Sec-Fetch-Site` other than `same-origin` gets `403` (in
+both create modes). A close aborts the request in flight and a request token discards any late response. The
+key stays in the dialog's memory and result fields (never `sessionStorage`) and every close wipes the form, the result
+and the key. `public_path` from the response is only used when it is a same-origin path.
+
 **CSP.** libsodium compiles WebAssembly, so the pages that load `yopass.js` need `'wasm-unsafe-eval'` in
 `script-src` (never `'unsafe-eval'`). Scope it to the route names in `nowo_yopass.csp.wasm_routes`, or opt in to
 `nowo_yopass.csp.wasm_unsafe_eval` (edits existing policies on those routes only). The script tag carries the
 request `csp_nonce` attribute as nonce. See [Configuration — Content-Security-Policy](CONFIGURATION.md#content-security-policy).
 
-**Events.** `ShareCreatedEvent`, `ShareDeletedEvent`, `ShareBulkDeletedEvent` and `ShareDeleteAllEvent` carry metadata
+**Events.** `ShareCreatedEvent`, `ShareDeletedEvent`, `ShareRevokedEvent`, `ShareExtendedEvent`, `ShareBulkDeletedEvent` and `ShareDeleteAllEvent` carry metadata
 only (ids, creator, dates, counters, payload kind): never ciphertext, keys, passwords or plaintext, and never the
 `SecureShare` entity (`tests/Unit/Event/ShareLifecycleEventsZeroKnowledgeTest.php`).
 

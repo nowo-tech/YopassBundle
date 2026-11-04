@@ -14,6 +14,7 @@ use Nowo\YopassBundle\Form\ShareCreateType;
 use Nowo\YopassBundle\Form\SharePreviewType;
 use Nowo\YopassBundle\Form\ShareRevealType;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
+use Nowo\YopassBundle\Ui\ShareListColumn;
 use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\Ui\YopassPages;
 use Symfony\Component\Form\Extension\Csrf\CsrfExtension;
@@ -55,7 +56,7 @@ final class PageFixtures
      *
      * @return array<string, mixed>
      */
-    public static function manage(bool $empty = false, bool $fileShares = true): array
+    public static function manage(bool $empty = false, bool $fileShares = true, bool $dialog = false, bool $hostColumn = false): array
     {
         $user   = new TestUser();
         $shares = [];
@@ -94,15 +95,32 @@ final class PageFixtures
             backHref: '/dashboard',
             retentionEnabled: !$empty,
             retentionMaxAge: '1 month',
+            createDialog: $dialog,
+            extraColumns: $hostColumn ? [self::hostColumn()] : [],
         );
 
+        $extraCells = [];
+        if ($hostColumn) {
+            foreach ($shares as $share) {
+                $extraCells[$share->getId()]['createdBy'] = self::hostColumn()->valueFor($share);
+            }
+        }
+
         return [
-            'page'             => $page,
-            'shares'           => $shares,
-            'can_create'       => true,
-            'can_revoke'       => true,
-            'can_extend'       => true,
-            'can_share_file'   => $fileShares,
+            'page'           => $page,
+            'shares'         => $shares,
+            'can_create'     => true,
+            'can_revoke'     => true,
+            'can_extend'     => true,
+            'can_share_file' => $fileShares,
+            'create_mode'    => $dialog ? 'dialog' : 'page',
+            'extra_columns'  => $hostColumn ? [self::hostColumn()] : [],
+            'extra_cells'    => $extraCells,
+            'links_form'     => $dialog ? $forms->create(ShareCreatedLinksType::class, null, [
+                'allow_embed_in_url' => true,
+                'target_controller'  => 'nowo-yopass-create',
+                'id_prefix'          => 'yopass-create-result',
+            ])->createView() : null,
             'max_file_bytes'   => 1024,
             'max_secret_chars' => 512,
             'dashboard_route'  => 'demo_home',
@@ -123,6 +141,14 @@ final class PageFixtures
                 'extend_enabled' => true,
             ])->createView(),
         ];
+    }
+
+    /**
+     * Host column used by the contract test: the value carries markup that must be printed escaped.
+     */
+    public static function hostColumn(): ShareListColumn
+    {
+        return new ShareListColumn('createdBy', 'Created by', static fn (SecureShare $share): ?string => $share->getPayloadKind() === 'file' ? null : '<b>placeholder-user</b>', 2);
     }
 
     /**

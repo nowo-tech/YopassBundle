@@ -167,4 +167,44 @@ final class ShareListerTest extends TestCase
 
         (new ShareLister($repository, new EventDispatcher()))->list($user, 20, PHP_INT_MAX);
     }
+
+    public function testOwnTotalDefaultsToTheViewerTotal(): void
+    {
+        $user       = new TestUser('viewer');
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::once())->method('countByCreator')->willReturn(4);
+        $repository->method('findByCreatorPaginated')->willReturn([]);
+
+        self::assertSame(4, (new ShareLister($repository, new EventDispatcher()))->list($user, 10, 1)['own_total']);
+    }
+
+    public function testOwnTotalIsCountedWhenAListenerOverridesTheList(): void
+    {
+        $user       = new TestUser('viewer');
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::once())->method('countByCreator')->with($user)->willReturn(0);
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_QUERY, static function (ShareListQueryEvent $event): void {
+            $event->overrideList([], 5);
+        });
+
+        self::assertSame(0, (new ShareLister($repository, $dispatcher))->list($user, 0, 1)['own_total']);
+    }
+
+    public function testOwnTotalSetByAListenerWins(): void
+    {
+        $user       = new TestUser('viewer');
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('countByCreator');
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_QUERY, static function (ShareListQueryEvent $event): void {
+            self::assertNull($event->getOwnTotal());
+            $event->overrideList([], 9);
+            $event->setOwnTotal(-3);
+        });
+
+        self::assertSame(0, (new ShareLister($repository, $dispatcher))->list($user, 0, 1)['own_total']);
+    }
 }

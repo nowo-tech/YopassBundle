@@ -74,6 +74,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.templates', $webUi['templates']);
         $container->setParameter('nowo_yopass.web_ui.enabled', $webUi['enabled']);
         $container->setParameter('nowo_yopass.web_ui.path_prefix', $webUi['path_prefix']);
+        $container->setParameter('nowo_yopass.web_ui.create_mode', $webUi['create_mode']);
         $container->setParameter('nowo_yopass.web_ui.layout_template', $webUi['layout_template']);
         $container->setParameter('nowo_yopass.web_ui.public_layout_template', $webUi['public_layout_template']);
         $container->setParameter('nowo_yopass.web_ui.templates', $webUi['templates']);
@@ -140,6 +141,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
      * @return array{
      *     enabled: bool,
      *     path_prefix: string,
+     *     create_mode: string,
      *     layout_template: string|null,
      *     public_layout_template: string|null,
      *     templates: array{manage: string|null, created: string|null, public: string|null},
@@ -166,6 +168,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
         return [
             'enabled'                => (bool) $webUi['enabled'],
+            'create_mode'            => ($webUi['create_mode'] ?? 'page') === 'dialog' ? 'dialog' : 'page',
             'path_prefix'            => (string) ($webUi['path_prefix'] ?? ''),
             'layout_template'        => $layout,
             'public_layout_template' => $publicLayout,

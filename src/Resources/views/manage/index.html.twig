@@ -4,7 +4,9 @@
   FormView behind the UiKit confirm dialog); columns type, created, expires, reads, status; rows = list<SecureShare>;
   row actions View / Extend (open the preview <dialog>), Revoke and Delete (POST + CSRF behind the confirm dialog);
   Pagination (shares.list_page_size); EmptyState yopass.list.empty).
-  Data blocks: nowo_ui_list_row (cells). nowo_ui_content prepends the create panel (manage/_create_panel.html.twig) and
+  Data blocks: nowo_ui_list_row (cells, then the host columns of ShareListColumnsEvent: extra_columns / extra_cells,
+  escaped). nowo_ui_content prepends the create card (manage/_create_panel.html.twig; web_ui.create_mode: page) or
+  the create dialog (manage/_create_dialog.html.twig; dialog mode, opened by the "New share" actions) and
   wraps the list in the preview controller with the preview dialog (manage/_preview_dialog.html.twig);
   nowo_ui_scripts stacks the bundle script after the host / UiKit scripts.
   Other variables (1.x, kept for web_ui.templates overrides and the partials): shares, shares_total, shares_page,
@@ -18,13 +20,25 @@
 {% block nowo_ui_content %}
     {% set _b = page.bundle %}
     {% if can_create and create_form %}
-        {{ include('@NowoYopassBundle/manage/_create_panel.html.twig', {
-            create_form: create_form,
-            can_share_file: can_share_file,
-            max_file_bytes: max_file_bytes,
-            max_secret_chars: max_secret_chars,
-            bundle: _b,
-        }, with_context: false) }}
+        {% if create_mode|default('page') == 'dialog' %}
+            {{ include('@NowoYopassBundle/manage/_create_dialog.html.twig', {
+                create_form: create_form,
+                links_form: links_form,
+                can_share_file: can_share_file,
+                max_file_bytes: max_file_bytes,
+                max_secret_chars: max_secret_chars,
+                sharing_options: sharing_options,
+                bundle: _b,
+            }, with_context: false) }}
+        {% else %}
+            {{ include('@NowoYopassBundle/manage/_create_panel.html.twig', {
+                create_form: create_form,
+                can_share_file: can_share_file,
+                max_file_bytes: max_file_bytes,
+                max_secret_chars: max_secret_chars,
+                bundle: _b,
+            }, with_context: false) }}
+        {% endif %}
     {% endif %}
     <div class="nowo-yopass-shares"
          data-controller="nowo-yopass-manage-preview"
@@ -79,6 +93,11 @@
             <span class="{{ nowo_ui_class('badge_warning', _b) }}">{{ 'yopass.status.unavailable'|trans }}</span>
         {% endif %}
     </td>
+    {# Host columns (ShareListColumnsEvent): plain text, auto-escaped, "—" when empty. #}
+    {% for column in extra_columns|default([]) %}
+        {% set _value = extra_cells[row.id][column.key]|default(null) %}
+        <td class="{{ _cell }}{{ _value is null or _value == '' ? ' ' ~ nowo_ui_class('table_cell_muted', _b) }}" data-label="{{ column.label|nowo_ui_trans }}" data-nowo-yopass-column="{{ column.key }}"{% if column.priority and column.priority > 1 %} data-nowo-ui-priority="{{ column.priority }}"{% endif %}>{{ _value is null or _value == '' ? '—' : _value }}</td>
+    {% endfor %}
 {% endblock %}
 
 {% block nowo_ui_scripts %}

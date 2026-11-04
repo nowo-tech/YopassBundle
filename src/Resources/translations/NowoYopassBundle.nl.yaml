@@ -46,6 +46,7 @@ yopass:
         decryption_key_help: Vereist om het bericht met de korte link te ontsleutelen.
         key_unavailable: De ontsleutelingssleutel is niet meer beschikbaar. Kopieer de links direct na het aanmaken van het geheim.
         create_another: Nog een geheim aanmaken
+        password_note: 'De ontvanger heeft het gekozen wachtwoord nodig: deel het via een ander kanaal. Het wordt hier niet getoond.'
     error:
         secret: Voer een geheim in of selecteer een bestand.
         secret_too_large: Het geheim overschrijdt de tekenlimiet.
@@ -112,6 +113,8 @@ yopass:
     create:
         title: Nieuw geheim
         submit: Link aanmaken
+        open: Nieuw geheim
+        done: Klaar
     list:
         title: Mijn geheimen
         type: Soort

@@ -19,6 +19,8 @@ nowo_yopass:
     # icon set come from nowo_ui_kit. web_ui.layout_template / public_layout_template stay null.
     web_ui:
         enabled: true
+        # 1.12: "New share" opens a <dialog>; the links are shown in the dialog (default: page = create card).
+        create_mode: dialog
 
     routes:
         manage:

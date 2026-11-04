@@ -46,6 +46,7 @@ yopass:
         decryption_key_help: Required to decrypt the message with the short link.
         key_unavailable: The decryption key is no longer available. Copy the links right after creating the share.
         create_another: Create another secret
+        password_note: 'The recipient needs the password you chose: share it through another channel. It is not shown here.'
     error:
         secret: Enter a secret or select a file.
         secret_too_large: Secret exceeds the character limit.
@@ -112,6 +113,8 @@ yopass:
     create:
         title: New share
         submit: Create link
+        open: New share
+        done: Done
     list:
         title: My shares
         type: Type

@@ -5,11 +5,19 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\Controller;
 
 use DateTimeImmutable;
+use Nowo\UiKitBundle\View\Action;
 use Nowo\UiKitBundle\View\ListPage;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareAccessAction;
+use Nowo\YopassBundle\Event\ShareAccessCheckEvent;
+use Nowo\YopassBundle\Event\ShareCreatedEvent;
 use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
 use Nowo\YopassBundle\Event\ShareDeletedEvent;
+use Nowo\YopassBundle\Event\ShareExtendedEvent;
+use Nowo\YopassBundle\Event\ShareListColumnsEvent;
+use Nowo\YopassBundle\Event\ShareListQueryEvent;
+use Nowo\YopassBundle\Event\ShareRevokedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
@@ -23,10 +31,12 @@ use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Service\ShareRetriever;
+use Nowo\YopassBundle\Service\ShareRevoker;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\ControllerContainerBuilder;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
+use Nowo\YopassBundle\Ui\ShareListColumn;
 use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\Ui\YopassPages;
 use PHPUnit\Framework\TestCase;
@@ -767,6 +777,274 @@ final class ShareManageControllerTest extends TestCase
         $method->invoke($controller, 'unknown');
     }
 
+    public function testJsonCreateAnswers201WithIdsOnlyAndDispatchesTheEvent(): void
+    {
+        $user       = new TestUser();
+        $ciphertext = '{"v":1,"ciphertext":"PLACEHOLDER-JSON-CT"}';
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::once())->method('persist');
+
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_CREATED, static function (ShareCreatedEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        $controller = $this->controller(
+            shareRepository: $shareRepository,
+            shareCreator: new ShareCreator($shareRepository, DefaultShareOptions::get()['expiration_options'], null, $dispatcher),
+            createMode: 'dialog',
+        );
+        $container = ControllerContainerBuilder::bind($controller, $user);
+        $request   = $this->jsonCreateRequest($container, ['ciphertext' => $ciphertext]);
+
+        $response = $controller->create($request);
+
+        self::assertSame(Response::HTTP_CREATED, $response->getStatusCode());
+        self::assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        self::assertSame('no-referrer', $response->headers->get('Referrer-Policy'));
+        /** @var array<string, string> $body */
+        $body = json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(['id', 'public_path', 'created_url'], array_keys($body));
+        self::assertSame('/generated/nowo_yopass_public_share', $body['public_path']);
+        self::assertStringNotContainsString('PLACEHOLDER', (string) $response->getContent());
+        self::assertCount(1, $events);
+        self::assertSame($body['id'], $events[0]->getShareId());
+        self::assertSame([], $container->get('request_stack')->getSession()->getFlashBag()->peekAll());
+    }
+
+    public function testJsonCreateAnswers422WithoutFlashOnInvalidCsrf(): void
+    {
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::never())->method('persist');
+
+        $controller = $this->controller(shareRepository: $shareRepository, createMode: 'dialog');
+        $container  = ControllerContainerBuilder::bind($controller, new TestUser());
+        $request    = $this->jsonCreateRequest($container, ['_token' => 'invalid']);
+
+        $response = $controller->create($request);
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertSame('{"error":"CREATE_FAILED"}', $response->getContent());
+        self::assertSame([], $container->get('request_stack')->getSession()->getFlashBag()->peekAll());
+    }
+
+    public function testJsonCreateAnswers422WhenNothingIsSubmitted(): void
+    {
+        $controller = $this->controller(createMode: 'dialog');
+        ControllerContainerBuilder::bind($controller, new TestUser());
+        $request = Request::create('/tools/yopass/create', 'POST');
+        $request->headers->set('Accept', 'application/json');
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $controller->create($request)->getStatusCode());
+    }
+
+    public function testJsonCreateAnswers422WhenFileSharesAreDisabled(): void
+    {
+        $controller = $this->controller(createMode: 'dialog');
+        $container  = ControllerContainerBuilder::bind($controller, new TestUser());
+
+        $response = $controller->create($this->jsonCreateRequest($container, ['payloadKind' => 'file']));
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertSame('{"error":"FILE_NOT_ENABLED"}', $response->getContent());
+    }
+
+    public function testJsonCreateRefusesACrossSiteFetch(): void
+    {
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::never())->method('persist');
+
+        $controller = $this->controller(shareRepository: $shareRepository, createMode: 'dialog');
+        $container  = ControllerContainerBuilder::bind($controller, new TestUser());
+        $request    = $this->jsonCreateRequest($container);
+        $request->headers->set('Sec-Fetch-Site', 'cross-site');
+
+        $response = $controller->create($request);
+
+        self::assertSame(Response::HTTP_FORBIDDEN, $response->getStatusCode());
+        self::assertSame('{"error":"CROSS_SITE"}', $response->getContent());
+    }
+
+    public function testPageModeCreateRefusesACrossSiteFormPost(): void
+    {
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::never())->method('persist');
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        $container  = ControllerContainerBuilder::bind($controller, new TestUser());
+        $request    = $this->createShareFormRequest($container);
+        $request->headers->set('Sec-Fetch-Site', 'cross-site');
+
+        $this->expectException(AccessDeniedException::class);
+        $controller->create($request);
+    }
+
+    public function testPageModeCreateAcceptsASameOriginFormPost(): void
+    {
+        $controller = $this->controller();
+        $container  = ControllerContainerBuilder::bind($controller, new TestUser());
+        $request    = $this->createShareFormRequest($container);
+        $request->headers->set('Sec-Fetch-Site', 'same-origin');
+
+        self::assertSame(Response::HTTP_FOUND, $controller->create($request)->getStatusCode());
+    }
+
+    public function testIndexInDialogModeAddsTheNewShareActionsAndTheResultForm(): void
+    {
+        $user = new TestUser();
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('countByCreator')->willReturn(0);
+        $shareRepository->method('findByCreatorPaginated')->willReturn([]);
+
+        $twig       = $this->capturingTwig();
+        $controller = $this->controller(accessChecker: $this->accessChecker(), shareRepository: $shareRepository, createMode: 'dialog');
+        ControllerContainerBuilder::bind($controller, $user, ['twig' => $twig]);
+
+        $controller->index(Request::create('/tools/yopass'));
+
+        $page = $twig->captured['page'];
+        self::assertInstanceOf(ListPage::class, $page);
+        self::assertSame('dialog', $twig->captured['create_mode']);
+        self::assertInstanceOf(FormView::class, $twig->captured['links_form']);
+        self::assertCount(1, $page->header->actions, 'New share only: no "Delete all" without own shares');
+        self::assertSame(YopassPageFactory::CREATE_DIALOG_ID, $page->header->actions[0]->dialogId);
+        self::assertSame('yopass-create-open', $page->header->actions[0]->attributes['data-testid']);
+        self::assertSame(YopassPageFactory::CREATE_DIALOG_ID, $page->empty?->action?->dialogId);
+    }
+
+    public function testIndexGatesRowActionsPerShareAndAddsHostColumns(): void
+    {
+        $user    = new TestUser('viewer');
+        $own     = new SecureShare('00000000-0000-4000-8000-0000000000c1', $user);
+        $foreign = new SecureShare('00000000-0000-4000-8000-0000000000c2', new TestUser('other'));
+        foreach ([$own, $foreign] as $share) {
+            $share->setCiphertext('PLACEHOLDER-CT')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+        }
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('countByCreator')->willReturn(1);
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_QUERY, static function (ShareListQueryEvent $event) use ($own, $foreign): void {
+            $event->overrideList([$own, $foreign], 2);
+        });
+        // The foreign share may only be previewed.
+        $dispatcher->addListener(YopassEvents::SHARE_ACCESS_CHECK, static function (ShareAccessCheckEvent $event) use ($foreign): void {
+            if ($event->getShare() === $foreign && $event->getAction() === ShareAccessAction::Preview) {
+                $event->grant();
+            }
+        });
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_COLUMNS, static function (ShareListColumnsEvent $event): void {
+            $event->addColumn(new ShareListColumn('createdBy', 'Created by', static fn (SecureShare $share): string => '<b>' . $share->getId() . '</b>', 2));
+        });
+
+        $twig       = $this->capturingTwig();
+        $controller = $this->controller(accessChecker: $this->accessChecker(), shareRepository: $shareRepository, dispatcher: $dispatcher);
+        ControllerContainerBuilder::bind($controller, $user, ['twig' => $twig]);
+
+        $controller->index(Request::create('/tools/yopass'));
+
+        $page = $twig->captured['page'];
+        self::assertInstanceOf(ListPage::class, $page);
+        $kinds = static fn (SecureShare $share): array => array_map(static fn (Action $action): string => $action->kind, $page->rowActions($share));
+        self::assertSame(['view', 'restore', 'cancel', 'delete'], $kinds($own));
+        self::assertSame(['view'], $kinds($foreign));
+        self::assertArrayNotHasKey($foreign->getId(), $twig->captured['revoke_forms']);
+        self::assertArrayNotHasKey($foreign->getId(), $twig->captured['delete_forms']);
+        self::assertSame(1, $twig->captured['own_total']);
+        self::assertSame('createdBy', $page->columns[array_key_last($page->columns)]->key);
+        self::assertSame('<b>' . $foreign->getId() . '</b>', $twig->captured['extra_cells'][$foreign->getId()]['createdBy']);
+        self::assertSame('page', $twig->captured['create_mode']);
+        self::assertNull($twig->captured['links_form']);
+    }
+
+    public function testRevokeDispatchesShareRevokedEvent(): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-0000000000c3', $user);
+        $share->setCiphertext('PLACEHOLDER-CT')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_REVOKED, static function (ShareRevokedEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        $controller = $this->controller(shareRepository: $shareRepository, dispatcher: $dispatcher);
+        $container  = ControllerContainerBuilder::bind($controller, $user);
+        $token      = ControllerContainerBuilder::csrfToken($container, 'revoke-share-' . $share->getId());
+
+        $controller->revoke($share->getId(), Request::create('/', 'POST', ['_token' => $token]));
+
+        self::assertCount(1, $events);
+        self::assertSame($share->getId(), $events[0]->getShareId());
+        self::assertSame($user, $events[0]->getRevokedBy());
+        self::assertNotNull($share->getRevokedAt());
+    }
+
+    public function testExtendDispatchesShareExtendedEvent(): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-0000000000c4', $user);
+        $share->setCiphertext('PLACEHOLDER-CT')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_EXTENDED, static function (ShareExtendedEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        $controller = $this->controller(shareRepository: $shareRepository, dispatcher: $dispatcher);
+        $container  = ControllerContainerBuilder::bind($controller, $user);
+        $request    = Request::create('/', 'POST', [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode(['maxReads' => 3], JSON_THROW_ON_ERROR));
+        $request->headers->set('X-CSRF-TOKEN', ControllerContainerBuilder::csrfToken($container, 'yopass_extend'));
+
+        $controller->extend($share->getId(), $request);
+
+        self::assertCount(1, $events);
+        self::assertSame(1, $events[0]->getOldMaxReads());
+        self::assertSame(3, $events[0]->getNewMaxReads());
+        self::assertSame($user, $events[0]->getExtendedBy());
+        self::assertSame($events[0]->getOldExpiresAt(), $events[0]->getNewExpiresAt());
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     */
+    private function jsonCreateRequest(Container $container, array $overrides = []): Request
+    {
+        $request = $this->createShareFormRequest($container, $overrides);
+        $request->headers->set('Accept', 'application/json');
+        $request->headers->set('Sec-Fetch-Site', 'same-origin');
+
+        return $request;
+    }
+
+    private function capturingTwig(): object
+    {
+        return new class {
+            /** @var array<string, mixed> */
+            public array $captured = [];
+
+            /** @param array<string, mixed> $context */
+            public function render(string $name, array $context = []): string
+            {
+                $this->captured = $context;
+
+                return $name;
+            }
+        };
+    }
+
     private function controller(
         ?YopassAccessCheckerInterface $accessChecker = null,
         ?ShareRepositoryInterface $shareRepository = null,
@@ -779,17 +1057,20 @@ final class ShareManageControllerTest extends TestCase
         bool $fileSharesEnabled = false,
         ?ShareFileHandlerInterface $fileHandler = null,
         ?ShareDeleter $shareDeleter = null,
+        ?EventDispatcher $dispatcher = null,
+        string $createMode = 'page',
+        ?ShareRevoker $shareRevoker = null,
     ): ShareManageController {
         $translator = $this->createMock(TranslatorInterface::class);
         $translator->method('trans')->willReturnArgument(0);
 
         $shareRepository ??= $this->createMock(ShareRepositoryInterface::class);
-        $eventDispatcher  = new EventDispatcher();
+        $eventDispatcher  = $dispatcher ?? new EventDispatcher();
         $shareLister      = new ShareLister($shareRepository, $eventDispatcher);
         $shareAccessGuard = new ShareAccessGuard($eventDispatcher);
         $shareCreator ??= new ShareCreator($shareRepository, DefaultShareOptions::get()['expiration_options']);
         $shareRetriever ??= new ShareRetriever($shareRepository);
-        $shareExtender ??= new ShareExtender($shareRepository, DefaultShareOptions::get());
+        $shareExtender ??= new ShareExtender($shareRepository, DefaultShareOptions::get(), null, $eventDispatcher);
         $accessLogger ??= new ShareAccessLogger(
             $this->createMock(ShareAccessLogRepositoryInterface::class),
             false,
@@ -823,6 +1104,9 @@ final class ShareManageControllerTest extends TestCase
             $fileSharesEnabled,
             $fileHandler,
             $shareDeleter,
+            $shareRevoker ?? new ShareRevoker($shareRepository, $eventDispatcher),
+            $eventDispatcher,
+            $createMode,
         );
     }
 

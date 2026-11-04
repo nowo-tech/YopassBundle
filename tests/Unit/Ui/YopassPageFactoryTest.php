@@ -111,6 +111,33 @@ final class YopassPageFactoryTest extends TestCase
         self::assertSame(['a' => 1, 'nowo_yopass_legacy_layout' => null, 'nowo_yopass_legacy_blocks' => []], $factory->context(['a' => 1]));
     }
 
+    public function testManagePageRowAccessHidesActionsAndUnknownRowsGetNone(): void
+    {
+        $share   = $this->share('00000000-0000-4000-8000-0000000000e1');
+        $missing = $this->share('00000000-0000-4000-8000-0000000000e2');
+
+        $page = (new YopassPageFactory(new YopassPages()))->managePage(
+            shares: [$share, $missing],
+            pagination: null,
+            canExtend: true,
+            canRevoke: true,
+            revokeForms: [$share->getId() => $this->form('/revoke'), $missing->getId() => $this->form('/revoke')],
+            deleteForms: [$share->getId() => $this->form('/delete'), $missing->getId() => $this->form('/delete')],
+            deleteAllForm: $this->form('/delete-all'),
+            backHref: null,
+            retentionEnabled: false,
+            retentionMaxAge: '',
+            ownTotal: 0,
+            rowAccess: [$share->getId() => ['view' => false, 'extend' => true, 'revoke' => false, 'delete' => true]],
+        );
+
+        $kinds = static fn (SecureShare $row): array => array_map(static fn (Action $action): string => $action->kind, $page->rowActions($row));
+        self::assertSame(['restore', 'delete'], $kinds($share));
+        self::assertSame([], $kinds($missing));
+        self::assertSame([], $page->header->actions, 'no Delete all when the viewer owns nothing');
+        self::assertNull($page->empty?->action);
+    }
+
     private function share(string $id): SecureShare
     {
         return (new SecureShare($id, new TestUser()))
