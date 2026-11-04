@@ -1,6 +1,6 @@
 yopass:
     title: Yopass
-    intro: Maak eenmalige versleutelde links om geheimen veilig te delen. U beheert alleen uw eigen shares.
+    intro: Maak eenmalige versleutelde links om geheimen veilig te delen. U beheert alleen uw eigen geheimen.
     e2e_notice: Versleuteling en ontsleuteling gebeuren in uw browser; de server ziet nooit platte tekst.
     back: Terug
     access:
@@ -31,20 +31,20 @@ yopass:
         custom: Ontsleutelingswachtwoord
         custom_help: Deel de link en dit wachtwoord via verschillende kanalen.
         embed_in_url: Sleutel/wachtwoord in URL opnemen (?decrypt_key=)
-        embed_help: De sleutel wordt doorgegeven als ?decrypt_key=-queryparameter in de one-click-link.
+        embed_help: De sleutel wordt doorgegeven als ?decrypt_key=-queryparameter in de directe link.
         separate_label: Sleutel / wachtwoord (apart delen)
         separate_help: Stuur de link via het ene kanaal en de sleutel via het andere (Signal, SMS…).
     result:
         title: Geheim veilig opgeslagen
         remember: Onthoud
-        remember_text: Het geheim kan alleen het geconfigureerde aantal keren worden gedownload. Open de one-click-link niet zelf. Het is verstandig de ontsleutelingssleutel via een apart kanaal te sturen.
-        one_click: One-click-link
+        remember_text: Het geheim kan alleen het geconfigureerde aantal keren worden gedownload. Open de directe link niet zelf. Het is verstandig de ontsleutelingssleutel via een apart kanaal te sturen.
+        one_click: Directe link (één klik)
         one_click_help: Deel deze link voor directe toegang tot het geheim.
         short: Korte link
         short_help: Vereist dat de ontsleutelingssleutel apart wordt gedeeld.
         decryption_key: Ontsleutelingssleutel
         decryption_key_help: Vereist om het bericht met de korte link te ontsleutelen.
-        key_unavailable: De ontsleutelingssleutel is niet meer beschikbaar. Kopieer de links direct na het aanmaken van de share.
+        key_unavailable: De ontsleutelingssleutel is niet meer beschikbaar. Kopieer de links direct na het aanmaken van het geheim.
         create_another: Nog een geheim aanmaken
     error:
         secret: Voer een geheim in of selecteer een bestand.
@@ -52,29 +52,30 @@ yopass:
         file: Selecteer een bestand.
         file_too_large: Het bestand overschrijdt de limiet van 512 KB.
         password: Voer een ontsleutelingswachtwoord in.
-        invalid_ciphertext: De ingediende ciphertext is ongeldig.
-        file_not_enabled: Bestandsshares zijn niet ingeschakeld.
-        create: Share kon niet worden aangemaakt.
-    revoked: Share ingetrokken.
+        invalid_ciphertext: De ingediende versleutelde inhoud is ongeldig.
+        file_not_enabled: Bestanden delen is niet ingeschakeld.
+        create: Geheim kon niet worden aangemaakt.
+        delete_all_denied: U kunt deze geheimen niet verwijderen.
+    revoked: Geheim ingetrokken.
     revoke: Intrekken
-    revoke_confirm: Deze share intrekken? De openbare link werkt dan niet meer.
-    deleted: Share verwijderd.
+    revoke_confirm: Dit geheim intrekken? De openbare link werkt dan niet meer.
+    deleted: Geheim verwijderd.
     delete: Verwijderen
-    delete_confirm: Deze share permanent uit uw lijst verwijderen? Dit kan niet ongedaan worden gemaakt.
+    delete_confirm: Dit geheim permanent uit uw lijst verwijderen? Dit kan niet ongedaan worden gemaakt.
     delete_all: Alles verwijderen
-    delete_all_confirm: Al uw shares permanent verwijderen? Dit kan niet ongedaan worden gemaakt.
-    deleted_all: '%count% share(s) verwijderd.'
+    delete_all_confirm: Al uw geheimen permanent verwijderen? Dit kan niet ongedaan worden gemaakt.
+    deleted_all: '%count% geheim(en) verwijderd.'
     view: Bekijken
     preview:
-        title: Share-voorvertoning
+        title: Voorvertoning van geheim
         intro: Ontsleuteling gebeurt in uw browser. Voorvertoning verbruikt geen lezing.
         decrypt: Inhoud tonen
         key_field: Ontsleutelingssleutel
-        key_help: Voer de sleutel in die werd getoond bij het aanmaken van deze share (indien mogelijk opgeslagen in deze browsersessie).
-        key_required: Voer de ontsleutelingssleutel voor deze share in.
+        key_help: Voer de sleutel in die werd getoond bij het aanmaken van dit geheim (indien mogelijk opgeslagen in deze browsersessie).
+        key_required: Voer de ontsleutelingssleutel voor dit geheim in.
         public_link: Openbare link
         close: Sluiten
-        failed: Deze share kon niet worden geladen.
+        failed: Dit geheim kon niet worden geladen.
         access_log:
             title: Openingsgeschiedenis
             intro: Log van elke keer dat iemand de openbare link opende (geheim tonen).
@@ -85,7 +86,7 @@ yopass:
             user_agent: Webbrowser
     extend:
         action: Verlengen
-        title: Share verlengen
+        title: Geheim verlengen
         intro: Voeg tijd of lezingen toe zonder een weergave te verbruiken. Laat een veld ongewijzigd om de huidige waarde te behouden.
         current: Huidige limieten
         expiration_field: Verlooptijd toevoegen
@@ -93,9 +94,9 @@ yopass:
         keep_expiration: Vervaldatum niet wijzigen
         keep_reads: Max. lezingen niet wijzigen
         submit: Verlenging toepassen
-        success: Share bijgewerkt.
-        failed: Share kon niet worden bijgewerkt.
-        revoked: Ingetrokken shares kunnen niet worden verlengd.
+        success: Geheim bijgewerkt.
+        failed: Geheim kon niet worden bijgewerkt.
+        revoked: Ingetrokken geheimen kunnen niet worden verlengd.
         invalid_expiration: Ongeldige vervaloptie.
         invalid_max_reads: Ongeldige waarde voor max. lezingen.
         max_reads_not_increased: Kies een hogere waarde voor max. lezingen dan de huidige limiet.
@@ -109,18 +110,18 @@ yopass:
     reads:
         field: Max. lezingen
     create:
-        title: Nieuwe share
+        title: Nieuw geheim
         submit: Link aanmaken
     list:
-        title: Mijn shares
+        title: Mijn geheimen
         type: Soort
         created: Aangemaakt
         expires: Verloopt
         reads: Lezingen
         status: Toestand
         actions: Acties
-        empty: U heeft nog geen shares aangemaakt.
-        retention_notice: Shares ouder dan %max_age% worden automatisch verwijderd.
+        empty: U heeft nog geen geheimen aangemaakt.
+        retention_notice: Geheimen ouder dan %max_age% worden automatisch verwijderd.
         summary: '%from%–%to% van %total%'
         page: Pagina %page% / %pages%
         previous: Vorige

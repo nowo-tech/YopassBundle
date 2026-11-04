@@ -73,5 +73,7 @@
 
 {% block nowo_ui_scripts %}
     {{ parent() }}
-    <script type="module" src="{{ asset('js/yopass.js', 'nowo_yopass') }}"></script>
+    {# CSP: the host's request attribute csp_nonce (same hook as the UiKit layouts); no nonce = no attribute. #}
+    {% set _yopass_nonce = app is defined and app.request ? app.request.attributes.get('csp_nonce') : null %}
+    <script type="module" src="{{ asset('js/yopass.js', 'nowo_yopass') }}"{% if _yopass_nonce %} nonce="{{ _yopass_nonce }}"{% endif %}></script>
 {% endblock %}

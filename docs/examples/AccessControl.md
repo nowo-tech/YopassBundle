@@ -22,6 +22,22 @@ Route-level features (`create`, `list`, `revoke`) still go through `YopassAccess
 | `ShareListQueryEvent` | `YopassEvents::SHARE_LIST_QUERY` | Before repository query | Team list, custom query, full override |
 | `ShareListResultEvent` | `YopassEvents::SHARE_LIST_RESULT` | After shares loaded | Filter/reorder results |
 | `ShareAccessCheckEvent` | `YopassEvents::SHARE_ACCESS_CHECK` | Per share + action | Team access, individual grants, role rules |
+| `ShareDeleteAllEvent` | `YopassEvents::SHARE_DELETE_ALL` | Before "delete all" | Tenant / team scope (`setSubject()`), own removal (`markHandled()`), `veto()` |
+
+```php
+#[AsEventListener(event: YopassEvents::SHARE_DELETE_ALL)]
+final class TenantDeleteAllListener
+{
+    public function __invoke(ShareDeleteAllEvent $event): void
+    {
+        // e.g. only the shares the viewer created in the current tenant
+        $event->setSubject($this->tenantContext->creatorScope($event->getViewer()));
+    }
+}
+```
+
+`ShareListQueryEvent` also carries the requested page (`getPage()`, `getPageSize()`, `getOffset()`) for
+`overrideList()` listeners.
 
 ### ShareListQueryEvent
 

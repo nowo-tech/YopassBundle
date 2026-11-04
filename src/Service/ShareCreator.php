@@ -6,10 +6,13 @@ namespace Nowo\YopassBundle\Service;
 
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareCreatedEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\ValueObject\Uuid;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Persists client-encrypted shares (E2E — server stores ciphertext only).
@@ -24,11 +27,13 @@ final readonly class ShareCreator
      * @param ShareRepositoryInterface $shareRepository Share persistence
      * @param list<array{id: string, interval: string}> $expirationOptions Allowed expiration options
      * @param ClockInterface|null $clock Clock used to compute expiration dates (REQ-DI-001)
+     * @param EventDispatcherInterface|null $eventDispatcher Dispatches {@see YopassEvents::SHARE_CREATED} (metadata only)
      */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         private array $expirationOptions,
         ?ClockInterface $clock = null,
+        private ?EventDispatcherInterface $eventDispatcher = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -52,6 +57,9 @@ final readonly class ShareCreator
 
         $this->shareRepository->persist($share);
         $this->shareRepository->flush();
+
+        // Zero-knowledge: the event carries metadata only (never the ciphertext).
+        $this->eventDispatcher?->dispatch(ShareCreatedEvent::fromShare($share), YopassEvents::SHARE_CREATED);
 
         return $share;
     }

@@ -48,6 +48,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Host hooks for 1.11.0: CSP nonce on yopass.js, scoped `'wasm-unsafe-eval'` helper, share lifecycle events (metadata only), scoped / vetoable "delete all", paging on `ShareListQueryEvent`, no `ShareAccessLog` mapping when the access log is disabled, natural Spanish (and other locales) wording. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Added
+
+- **CSP nonce on `yopass.js`.** The `<script type="module">` of the manage, "share created" and public reveal pages carries `nonce="…"` when the host sets the request attribute `csp_nonce` (the hook the UiKit layouts use), so `script-src 'nonce-…' 'strict-dynamic'` policies no longer block it. No nonce: the tag is rendered exactly as before.
+- **`'wasm-unsafe-eval'` scoped to the libsodium pages.** Parameter `nowo_yopass.csp.wasm_routes` (route names of the three pages that load yopass.js: `routes.manage`, `routes.created`, `routes.public_show`) and opt-in `nowo_yopass.csp.wasm_unsafe_eval` (default `false`): `EventListener\WasmCspListener` appends `'wasm-unsafe-eval'` to the existing `Content-Security-Policy` / `-Report-Only` `script-src` (or a `script-src` derived from `default-src`) on those routes only. It never creates a policy, never touches other routes, keeps `'none'` policies and is a no-op when the keyword or `'unsafe-eval'` is already there. Documented in CONFIGURATION and SECURITY.
+- **Share lifecycle events (zero-knowledge payloads).** `YopassEvents::SHARE_CREATED` (`ShareCreatedEvent`, from `ShareCreator`), `YopassEvents::SHARE_DELETED` (`ShareDeletedEvent`, manage delete) and `YopassEvents::SHARES_BULK_DELETED` (`ShareBulkDeletedEvent`, "delete all" and retention purges with `reason` `delete_all` / `retention`). Payloads are ids, creator, acting user, dates, read counters and payload kind only: never the ciphertext, a key, a password or decrypted content, and never the `SecureShare` entity. A test asserts this (`ShareLifecycleEventsZeroKnowledgeTest`).
+- **Scoped / vetoable "delete all".** `YopassEvents::SHARE_DELETE_ALL` (`ShareDeleteAllEvent`) is dispatched before `removeAllByCreator()`: listeners may `setSubject()` (tenant / team object), perform the removal themselves (`markHandled($count)`) or `veto()` it (nothing removed, error flash `yopass.error.delete_all_denied`). New service `Service\ShareDeleter`.
+- **Paging on `ShareListQueryEvent`:** `getPage()`, `getPageSize()`, `getOffset()`, `isPaginated()` so an `overrideList()` listener can query one page only. The new constructor arguments are optional (`$pageSize = 0`, `$page = 1`).
+- Translation key `yopass.error.delete_all_denied` (7 locales).
+
+### Changed
+
+- **`ShareAccessLog` is no longer mapped when the access log is off.** With `access_log.enabled: false` (or the MongoDB / custom non-relational backends, which force it off) the new `AccessLogMappingPass` excludes the entity from the Doctrine ORM attribute drivers, so schema tools no longer create an empty `<table_prefix>_share_access_logs` table. See [UPGRADING](UPGRADING.md#unreleased) for existing tables.
+- **Translations.** Spanish no longer says "share(s)": "secreto(s)", "compartir un secreto", "Mis secretos compartidos", "enlace directo (un clic)", "contenido cifrado". The same untranslated words were replaced in German ("Freigabe(n)", "Direktlink"), Italian / Portuguese / Dutch ("segreto(i)", "segredo(s)", "geheim(en)", "link diretto", "ligação direta", "directe link") and French ("lien direct", "contenu chiffré").
+- `ShareCreator`, `ShareRetentionPurger` and `ShareManageController` accept an optional event dispatcher / `ShareDeleter` (autowired; constructor arguments appended with defaults).
+
 ## [1.10.1] - 2026-10-30
 
 Security: Bundle routes are opt-in again: controllers are no longer autoconfigured, so a host's routing.controllers import does not expose them (REQ-SF-004 rule 7). See [UPGRADING](UPGRADING.md#to-1101).

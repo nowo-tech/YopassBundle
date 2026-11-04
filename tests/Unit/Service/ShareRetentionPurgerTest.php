@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\Service;
 
 use DateTimeImmutable;
+use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class ShareRetentionPurgerTest extends TestCase
 {
@@ -58,5 +61,44 @@ final class ShareRetentionPurgerTest extends TestCase
         $removed = (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '']]))->purgeAll();
 
         self::assertSame(0, $removed);
+    }
+
+    public function testPurgeForCreatorDispatchesRetentionBulkEvent(): void
+    {
+        $user       = new TestUser();
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->method('removeByCreatorOlderThan')->willReturn(2);
+
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARES_BULK_DELETED, static function (ShareBulkDeletedEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '1 day']], null, $dispatcher))->purgeForCreator($user);
+
+        self::assertCount(1, $events);
+        self::assertSame(ShareBulkDeletedEvent::REASON_RETENTION, $events[0]->getReason());
+        self::assertSame($user, $events[0]->getSubject());
+        self::assertSame($user, $events[0]->getViewer());
+        self::assertSame(2, $events[0]->getRemoved());
+    }
+
+    public function testPurgeAllDispatchesGlobalRetentionBulkEvent(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->method('removeOlderThan')->willReturn(5);
+
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARES_BULK_DELETED, static function (ShareBulkDeletedEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '1 day']], null, $dispatcher))->purgeAll();
+
+        self::assertCount(1, $events);
+        self::assertNull($events[0]->getSubject());
+        self::assertNull($events[0]->getViewer());
     }
 }

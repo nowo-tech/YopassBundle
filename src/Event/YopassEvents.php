@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Event;
 
 /**
- * Event names dispatched by YopassBundle for share listing and per-share access checks.
+ * Event names dispatched by YopassBundle: share listing, per-share access checks and share lifecycle.
+ *
+ * Lifecycle payloads (created / deleted / bulk deleted) are metadata only: they never carry ciphertext, keys,
+ * passwords or decrypted content (zero-knowledge).
  */
 final class YopassEvents
 {
@@ -26,4 +29,25 @@ final class YopassEvents
      * Default grant is creator ownership; listeners may grant or deny further access.
      */
     public const SHARE_ACCESS_CHECK = 'nowo_yopass.share_access_check';
+
+    /**
+     * Fired after a share is persisted ({@see ShareCreatedEvent}; metadata only, never the ciphertext).
+     */
+    public const SHARE_CREATED = 'nowo_yopass.share_created';
+
+    /**
+     * Fired after a single share is deleted from the manage UI ({@see ShareDeletedEvent}; metadata only).
+     */
+    public const SHARE_DELETED = 'nowo_yopass.share_deleted';
+
+    /**
+     * Fired before the manage "delete all" action ({@see ShareDeleteAllEvent}).
+     * Listeners may scope the removal (tenant / team subject), perform it themselves, or veto it.
+     */
+    public const SHARE_DELETE_ALL = 'nowo_yopass.share_delete_all';
+
+    /**
+     * Fired after shares are removed in bulk ("delete all" or retention purge; {@see ShareBulkDeletedEvent}).
+     */
+    public const SHARES_BULK_DELETED = 'nowo_yopass.shares_bulk_deleted';
 }

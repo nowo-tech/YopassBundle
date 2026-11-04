@@ -45,6 +45,12 @@ services:
             $routes: '%nowo_yopass.routes%'
             $routePrefix: '%nowo_yopass.route_prefix%'
 
+    # Opt-in (nowo_yopass.csp.wasm_unsafe_eval): adds 'wasm-unsafe-eval' to the host CSP on the yopass.js routes only.
+    Nowo\YopassBundle\EventListener\WasmCspListener:
+        arguments:
+            $routeNames: '%nowo_yopass.csp.wasm_routes%'
+            $enabled: '%nowo_yopass.csp.wasm_unsafe_eval%'
+
     Nowo\YopassBundle\Service\ShareCreator:
         arguments:
             # Allowed expiration ids/intervals from nowo_yopass.shares.expiration_options.

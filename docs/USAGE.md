@@ -61,7 +61,9 @@ rendered inside **your** guest / public layout. Every script that layout loads r
 - If your site-wide guest layout carries such scripts, point `web_ui.public_layout_template` at a dedicated minimal
   layout (extend `@NowoUiKit/layout/guest.html.twig` or use the UiKit bridge) without them.
 - Send a strict `Content-Security-Policy` for `/share/{id}` (at least `script-src 'self'`; no `unsafe-inline` /
-  third-party origins).
+  third-party origins). libsodium needs `'wasm-unsafe-eval'` on the pages that load `yopass.js`; scope it to those
+  routes and pass your nonce through the `csp_nonce` request attribute
+  ([Configuration — Content-Security-Policy](CONFIGURATION.md#content-security-policy)).
 - The same rule applies to the admin layout for the "share created" page and the manage preview (stored key, one-click
   link, decrypted preview).
 
@@ -90,6 +92,10 @@ Three layers — use only what you need:
 | List query | `ShareListQueryEvent` | Which shares should the repository load? |
 | List filter | `ShareListResultEvent` | Which loaded shares should appear? |
 | Per share | `ShareAccessCheckEvent` | Can the user view/preview/extend/revoke/delete this share? |
+| Delete all | `ShareDeleteAllEvent` | Which shares does "delete all" remove (tenant scope), or is it vetoed? |
+
+Audit / notification hooks: `ShareCreatedEvent`, `ShareDeletedEvent`, `ShareBulkDeletedEvent` (metadata only, never
+secret material). See [Configuration — Share lifecycle events](CONFIGURATION.md#share-lifecycle-events).
 
 ### Route-level checker
 

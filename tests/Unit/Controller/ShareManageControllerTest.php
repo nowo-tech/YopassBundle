@@ -8,12 +8,16 @@ use DateTimeImmutable;
 use Nowo\UiKitBundle\View\ListPage;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
+use Nowo\YopassBundle\Event\ShareDeletedEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
+use Nowo\YopassBundle\Service\ShareDeleter;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
@@ -529,6 +533,58 @@ final class ShareManageControllerTest extends TestCase
         self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
     }
 
+    public function testDeleteAllVetoedByListenerRemovesNothing(): void
+    {
+        $user = new TestUser();
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::never())->method('removeAllByCreator');
+        $shareRepository->expects(self::never())->method('flush');
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event): void {
+            $event->veto();
+        });
+
+        $controller = $this->controller(shareRepository: $shareRepository, shareDeleter: new ShareDeleter($shareRepository, $dispatcher));
+        $container  = ControllerContainerBuilder::bind($controller, $user);
+        $token      = ControllerContainerBuilder::csrfToken($container, 'yopass_delete_all');
+
+        $response = $controller->deleteAll(Request::create('/tools/yopass/delete-all', 'POST', [
+            '_token' => $token,
+        ]));
+
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
+        $session = $container->get('request_stack')->getSession();
+        self::assertSame(['yopass.error.delete_all_denied'], $session->getFlashBag()->get('error'));
+    }
+
+    public function testDeleteDispatchesShareDeletedEvent(): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-000000000099', $user);
+        $share->setCiphertext('PLACEHOLDER-CIPHERTEXT')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETED, static function (ShareDeletedEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        $controller = $this->controller(shareRepository: $shareRepository, shareDeleter: new ShareDeleter($shareRepository, $dispatcher));
+        $container  = ControllerContainerBuilder::bind($controller, $user);
+        $token      = ControllerContainerBuilder::csrfToken($container, 'delete-share-' . $share->getId());
+
+        $controller->delete($share->getId(), Request::create('/', 'POST', ['_token' => $token]));
+
+        self::assertCount(1, $events);
+        self::assertSame($share->getId(), $events[0]->getShareId());
+        self::assertSame($user, $events[0]->getDeletedBy());
+    }
+
     public function testDeleteAllThrowsAccessDeniedForInvalidCsrf(): void
     {
         $controller = $this->controller();
@@ -660,6 +716,7 @@ final class ShareManageControllerTest extends TestCase
         int $maxCiphertextBytes = 700_000,
         bool $fileSharesEnabled = false,
         ?ShareFileHandlerInterface $fileHandler = null,
+        ?ShareDeleter $shareDeleter = null,
     ): ShareManageController {
         $translator = $this->createMock(TranslatorInterface::class);
         $translator->method('trans')->willReturnArgument(0);
@@ -703,6 +760,7 @@ final class ShareManageControllerTest extends TestCase
             ],
             $fileSharesEnabled,
             $fileHandler,
+            $shareDeleter,
         );
     }
 

@@ -35,7 +35,7 @@ final readonly class ShareLister
      */
     public function list(UserInterface $viewer, int $pageSize, int $page): array
     {
-        $queryEvent = new ShareListQueryEvent($viewer, $viewer);
+        $queryEvent = new ShareListQueryEvent($viewer, $viewer, $pageSize, $page);
         $this->eventDispatcher->dispatch($queryEvent, YopassEvents::SHARE_LIST_QUERY);
 
         if ($queryEvent->hasOverride()) {
@@ -44,8 +44,7 @@ final readonly class ShareLister
         } elseif ($pageSize > 0) {
             $subject = $queryEvent->getListSubject();
             $total   = $this->shareRepository->countByCreator($subject);
-            $offset  = max(0, ($page - 1) * $pageSize);
-            $shares  = $this->shareRepository->findByCreatorPaginated($subject, $pageSize, $offset);
+            $shares  = $this->shareRepository->findByCreatorPaginated($subject, $pageSize, $queryEvent->getOffset());
         } else {
             $subject = $queryEvent->getListSubject();
             $shares  = $this->shareRepository->findByCreator($subject);
