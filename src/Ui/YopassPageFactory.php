@@ -251,7 +251,7 @@ final readonly class YopassPageFactory
         return new Action(
             'create',
             YopassPages::label('yopass.create.open'),
-            icon: 'add',
+            // No `icon`: UiKit uses the kind (`create`), a canonical icon kind of every icon set.
             variant: 'primary',
             attributes: ['data-testid' => $testId],
             dialogId: self::CREATE_DIALOG_ID,
