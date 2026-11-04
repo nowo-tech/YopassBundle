@@ -5,21 +5,32 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Event;
 
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Service\ShareLister;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
+
+use function intdiv;
+
+use const PHP_INT_MAX;
 
 /**
  * Dispatched before loading shares for the manage list.
  *
  * By default the bundle queries shares where {@see getListSubject()} is the creator.
- * Listeners may change the subject (e.g. team entity) or call {@see overrideList()}
- * to skip the built-in repository query and supply a custom result set.
+ * Listeners may change the subject to another instance of the configured creator class (`nowo_yopass.user_class`)
+ * or call {@see overrideList()} to skip the built-in repository query and supply a custom result set. A tenant / team
+ * scope needs {@see overrideList()} (or a custom repository): any other subject makes
+ * {@see ShareLister} throw a LogicException, because the creator queries would match
+ * that entity's id against creator ids.
  *
  * {@see getPage()} / {@see getPageSize()} / {@see getOffset()} expose the requested page so an override can query
  * only that page (page size 0 = no pagination: return every share).
  */
 final class ShareListQueryEvent extends Event
 {
+    /** Highest page number honoured; larger values are clamped (no offset overflow, no 500 on ?page=PHP_INT_MAX). */
+    public const MAX_PAGE = 1_000_000;
+
     /** @var list<SecureShare>|null */
     private ?array $overrideShares = null;
 
@@ -42,7 +53,8 @@ final class ShareListQueryEvent extends Event
         int $page = 1,
     ) {
         $this->pageSize = max(0, $pageSize);
-        $this->page     = max(1, $page);
+        $maxPage        = $this->pageSize > 0 ? min(self::MAX_PAGE, intdiv(PHP_INT_MAX, $this->pageSize)) : 1;
+        $this->page     = min(max(1, $page), max(1, $maxPage));
     }
 
     /**
@@ -94,7 +106,8 @@ final class ShareListQueryEvent extends Event
     }
 
     /**
-     * Replaces the subject passed to the repository creator queries.
+     * Replaces the subject passed to the repository creator queries: the viewer or another instance of the configured
+     * creator class only (see the class description; use {@see overrideList()} for tenant / team scopes).
      */
     public function setListSubject(object $listSubject): void
     {

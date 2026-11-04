@@ -51,6 +51,15 @@ services:
             $routeNames: '%nowo_yopass.csp.wasm_routes%'
             $enabled: '%nowo_yopass.csp.wasm_unsafe_eval%'
 
+    # Creator queries only accept the viewer or a nowo_yopass.user_class instance as listener-set subject (EL-L1).
+    Nowo\YopassBundle\Service\ShareDeleter:
+        arguments:
+            $creatorClass: '%nowo_yopass.user_class%'
+
+    Nowo\YopassBundle\Service\ShareLister:
+        arguments:
+            $creatorClass: '%nowo_yopass.user_class%'
+
     Nowo\YopassBundle\Service\ShareCreator:
         arguments:
             # Allowed expiration ids/intervals from nowo_yopass.shares.expiration_options.

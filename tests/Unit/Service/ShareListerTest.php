@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\Service;
 
 use DateTimeImmutable;
+use LogicException;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareListQueryEvent;
 use Nowo\YopassBundle\Event\ShareListResultEvent;
@@ -13,7 +14,10 @@ use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareLister;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+
+use const PHP_INT_MAX;
 
 final class ShareListerTest extends TestCase
 {
@@ -113,5 +117,54 @@ final class ShareListerTest extends TestCase
         $clamped = new ShareListQueryEvent($user, $user, -5, -2);
         self::assertSame(0, $clamped->getPageSize());
         self::assertSame(1, $clamped->getPage());
+    }
+
+    public function testListRefusesANonUserSubjectWithoutOverride(): void
+    {
+        $user       = new TestUser('viewer');
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('findByCreator');
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_QUERY, static function (ShareListQueryEvent $event): void {
+            $event->setListSubject(new stdClass());
+        });
+
+        $this->expectException(LogicException::class);
+        (new ShareLister($repository, $dispatcher, TestUser::class))->list($user, 0, 1);
+    }
+
+    public function testListAcceptsANonUserSubjectWhenTheListenerOverrides(): void
+    {
+        $user       = new TestUser('viewer');
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_QUERY, static function (ShareListQueryEvent $event): void {
+            $event->setListSubject(new stdClass());
+            $event->overrideList([], 0);
+        });
+
+        self::assertSame(0, (new ShareLister($repository, $dispatcher, TestUser::class))->list($user, 0, 1)['total']);
+    }
+
+    public function testPageIsClampedSoTheOffsetNeverOverflows(): void
+    {
+        $user = new TestUser('viewer');
+
+        $event = new ShareListQueryEvent($user, $user, 20, PHP_INT_MAX);
+        self::assertSame(ShareListQueryEvent::MAX_PAGE, $event->getPage());
+        self::assertSame((ShareListQueryEvent::MAX_PAGE - 1) * 20, $event->getOffset());
+
+        $huge = new ShareListQueryEvent($user, $user, PHP_INT_MAX, PHP_INT_MAX);
+        self::assertSame(1, $huge->getPage());
+        self::assertSame(0, $huge->getOffset());
+
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->method('countByCreator')->willReturn(1);
+        $repository->expects(self::once())->method('findByCreatorPaginated')
+            ->with($user, 20, (ShareListQueryEvent::MAX_PAGE - 1) * 20)->willReturn([]);
+
+        (new ShareLister($repository, new EventDispatcher()))->list($user, 20, PHP_INT_MAX);
     }
 }

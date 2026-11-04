@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Event;
 
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Service\ShareDeleter;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
 
@@ -13,14 +14,18 @@ use Symfony\Contracts\EventDispatcher\Event;
  *
  * By default every share whose creator is {@see getSubject()} (the viewer) is removed through
  * {@see ShareRepositoryInterface::removeAllByCreator()}. Listeners may:
- * - scope the removal with {@see setSubject()} (e.g. the tenant / team object the host's repository understands),
- * - perform a context-aware removal themselves and report it with {@see markHandled()} (the built-in query is
- *   skipped),
- * - or {@see veto()} the action (nothing is removed; the user gets an error flash).
+ * - narrow the removal with {@see setSubject()}: only the viewer or another instance of the configured creator class
+ *   (`nowo_yopass.user_class`) is accepted, any other object makes {@see ShareDeleter}
+ *   throw a LogicException before anything is removed (a tenant / team entity would be matched by its id against
+ *   creator ids and delete another user's shares),
+ * - perform a context-aware removal (tenant, team, …) with their own query and report it with {@see markHandled()}
+ *   (the built-in query is skipped, whatever the subject),
+ * - or {@see veto()} the action (nothing is removed; the user gets an error flash). Veto before handling: once
+ *   {@see markHandled()} was called, {@see veto()} is ignored (the removal already happened) and logged.
  */
 final class ShareDeleteAllEvent extends Event
 {
-    private bool $vetoed = false;
+    private bool $vetoRequested = false;
 
     private ?int $handledCount = null;
 
@@ -60,20 +65,34 @@ final class ShareDeleteAllEvent extends Event
 
     /**
      * Cancels the removal; no share is deleted. Stops propagation.
+     *
+     * Ignored once a listener called {@see markHandled()} (the shares are already gone): the outcome stays "handled",
+     * the bulk-deleted audit event still fires and {@see isVetoIgnored()} reports the late veto.
      */
     public function veto(): void
     {
         // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
-        $this->vetoed = true;
-        $this->stopPropagation();
+        $this->vetoRequested = true;
+
+        if (!$this->isHandled()) {
+            $this->stopPropagation();
+        }
     }
 
     /**
-     * Whether a listener cancelled the removal.
+     * Whether a listener cancelled the removal (and no listener removed the shares itself).
      */
     public function isVetoed(): bool
     {
-        return $this->vetoed;
+        return $this->vetoRequested && !$this->isHandled();
+    }
+
+    /**
+     * Whether a veto was requested although a listener already removed the shares ({@see markHandled()}).
+     */
+    public function isVetoIgnored(): bool
+    {
+        return $this->vetoRequested && $this->isHandled();
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\Service;
 
 use DateTimeImmutable;
+use LogicException;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
 use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
@@ -12,9 +13,11 @@ use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareDeleter;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
+use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Security\Core\User\InMemoryUser;
 
 final class ShareDeleterTest extends TestCase
 {
@@ -51,20 +54,20 @@ final class ShareDeleterTest extends TestCase
         self::assertSame(3, $bulk[0]->getRemoved());
     }
 
-    public function testDeleteAllCanBeScopedToAnotherSubject(): void
+    public function testDeleteAllCanBeNarrowedToAnotherUser(): void
     {
         $viewer     = new TestUser('viewer');
-        $tenant     = new stdClass();
+        $other      = new TestUser('other');
         $repository = $this->createMock(ShareRepositoryInterface::class);
-        $repository->expects(self::once())->method('removeAllByCreator')->with($tenant)->willReturn(0);
+        $repository->expects(self::once())->method('removeAllByCreator')->with($other)->willReturn(0);
         $repository->expects(self::never())->method('flush');
 
         $bulk       = 0;
         $dispatcher = new EventDispatcher();
-        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event) use ($tenant, $viewer): void {
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event) use ($other, $viewer): void {
             self::assertSame($viewer, $event->getViewer());
             self::assertSame($viewer, $event->getSubject());
-            $event->setSubject($tenant);
+            $event->setSubject($other);
         });
         $dispatcher->addListener(YopassEvents::SHARES_BULK_DELETED, static function () use (&$bulk): void {
             ++$bulk;
@@ -72,6 +75,66 @@ final class ShareDeleterTest extends TestCase
 
         self::assertSame(0, (new ShareDeleter($repository, $dispatcher))->deleteAll($viewer));
         self::assertSame(0, $bulk, 'no bulk event when nothing was removed');
+    }
+
+    public function testDeleteAllRefusesANonUserSubject(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('removeAllByCreator');
+        $repository->expects(self::never())->method('flush');
+
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event): void {
+            $event->setSubject(new stdClass());
+        });
+
+        $this->expectException(LogicException::class);
+        (new ShareDeleter($repository, $dispatcher, TestUser::class))->deleteAll(new TestUser());
+    }
+
+    public function testDeleteAllRefusesAUserOfAnotherClassWhenTheCreatorClassIsKnown(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('removeAllByCreator');
+
+        $otherUser  = new InMemoryUser('other', null);
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event) use ($otherUser): void {
+            $event->setSubject($otherUser);
+        });
+
+        $this->expectException(LogicException::class);
+        (new ShareDeleter($repository, $dispatcher, TestUser::class))->deleteAll(new TestUser());
+    }
+
+    public function testVetoAfterMarkHandledIsIgnoredLoggedAndAudited(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('removeAllByCreator');
+
+        $bulk       = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event): void {
+            $event->markHandled(2);
+        }, 10);
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event): void {
+            $event->veto();
+            self::assertFalse($event->isVetoed());
+            self::assertTrue($event->isVetoIgnored());
+            self::assertFalse($event->isPropagationStopped());
+        });
+        $dispatcher->addListener(YopassEvents::SHARES_BULK_DELETED, static function (ShareBulkDeletedEvent $event) use (&$bulk): void {
+            $bulk[] = $event;
+        });
+
+        $logger = new SecretCapturingLogger();
+
+        self::assertSame(2, (new ShareDeleter($repository, $dispatcher, null, $logger))->deleteAll(new TestUser()));
+        self::assertCount(1, $bulk);
+        self::assertSame(2, $bulk[0]->getRemoved());
+        self::assertCount(1, $logger->records);
+        self::assertSame('warning', $logger->records[0]['level']);
+        self::assertSame(['removed' => 2], $logger->records[0]['context']);
     }
 
     public function testDeleteAllVetoRemovesNothing(): void

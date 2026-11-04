@@ -26,6 +26,7 @@ use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\ControllerContainerBuilder;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
+use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
 use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\Ui\YopassPages;
 use PHPUnit\Framework\TestCase;
@@ -583,6 +584,67 @@ final class ShareManageControllerTest extends TestCase
         self::assertCount(1, $events);
         self::assertSame($share->getId(), $events[0]->getShareId());
         self::assertSame($user, $events[0]->getDeletedBy());
+    }
+
+    /**
+     * EL-I2: no log record (PSR logger, PHP error_log) and no flash message produced while creating, deleting and
+     * deleting all shares contains the ciphertext or key material. Placeholders only.
+     */
+    public function testCreateDeleteAndDeleteAllNeverLogOrFlashSecretMaterial(): void
+    {
+        $marker     = 'PLACEHOLDER-SECRET-MATERIAL-7f3a';
+        $ciphertext = '{"v":1,"mode":"key","nonce":"' . $marker . '-nonce","ciphertext":"' . $marker . '-ct"}';
+        $user       = new TestUser();
+        $stored     = null;
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('persist')->willReturnCallback(static function (SecureShare $share) use (&$stored): void {
+            $stored = $share;
+        });
+        $shareRepository->method('find')->willReturnCallback(static function () use (&$stored): ?SecureShare {
+            return $stored;
+        });
+        $shareRepository->method('removeAllByCreator')->willReturn(3);
+
+        $logger     = new SecretCapturingLogger();
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_DELETE_ALL, static function (ShareDeleteAllEvent $event): void {
+            $event->markHandled(3);
+            $event->veto(); // late veto: ignored and logged, must not leak anything either
+        });
+
+        $errorLog    = (string) tempnam(sys_get_temp_dir(), 'yopass-errlog');
+        $previousLog = ini_set('error_log', $errorLog);
+
+        try {
+            $controller = $this->controller(
+                shareRepository: $shareRepository,
+                shareCreator: new ShareCreator($shareRepository, DefaultShareOptions::get()['expiration_options'], null, $dispatcher),
+                shareDeleter: new ShareDeleter($shareRepository, $dispatcher, null, $logger),
+            );
+            $container = ControllerContainerBuilder::bind($controller, $user);
+
+            $controller->create($this->createShareFormRequest($container, ['ciphertext' => $ciphertext]));
+            $controller->create($this->createShareFormRequest($container, ['ciphertext' => $ciphertext, 'maxReads' => 999]));
+            self::assertInstanceOf(SecureShare::class, $stored);
+
+            $shareId = $stored->getId();
+            $controller->delete($shareId, Request::create('/', 'POST', ['_token' => ControllerContainerBuilder::csrfToken($container, 'delete-share-' . $shareId)]));
+            $controller->deleteAll(Request::create('/', 'POST', ['_token' => ControllerContainerBuilder::csrfToken($container, 'yopass_delete_all')]));
+
+            $flashes = $container->get('request_stack')->getSession()->getFlashBag()->all();
+        } finally {
+            ini_set('error_log', $previousLog === false ? '' : $previousLog);
+        }
+
+        $logged = (string) file_get_contents($errorLog);
+        @unlink($errorLog);
+
+        self::assertNotSame([], $logger->records, 'the late veto must be logged');
+        self::assertStringNotContainsString($marker, print_r($logger->records, true), 'PSR log records leak secret material');
+        self::assertStringNotContainsString($marker, $logged, 'PHP error_log leaks secret material');
+        self::assertNotSame([], $flashes);
+        self::assertStringNotContainsString($marker, print_r($flashes, true), 'flash messages leak secret material');
     }
 
     public function testDeleteAllThrowsAccessDeniedForInvalidCsrf(): void

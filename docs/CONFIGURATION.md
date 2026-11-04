@@ -344,8 +344,17 @@ The bundle stores the share **creator** but does not implement teams, groups, or
 `isPaginated()`. An `overrideList($shares, $total)` listener should return that page only and the overall total.
 
 `ShareDeleteAllEvent::getSubject()` (default: the viewer) is what `ShareRepositoryInterface::removeAllByCreator()`
-receives; set a tenant / team object your repository understands, or remove the shares yourself and call
-`markHandled($count)`. After `veto()` nothing is removed and the user sees `yopass.error.delete_all_denied`.
+receives. Only the viewer or another instance of `nowo_yopass.user_class` is accepted as subject (same rule for
+`ShareListQueryEvent::setListSubject()`): the creator queries compare `creator = :subject`, and Doctrine would bind a
+tenant / team entity by its id and match the **user** with that id. Any other subject throws a `LogicException`
+before anything is queried or removed (fails closed: no share is deleted, the request errors so the misconfiguration
+is visible). For tenant / team scopes remove the shares with your own query and call `markHandled($count)` (list:
+`overrideList()`). After `veto()` nothing is removed and the user sees `yopass.error.delete_all_denied`; a `veto()`
+after `markHandled()` is ignored (the shares are gone), logged as a warning, and the bulk-deleted event still fires,
+so veto from a listener with a higher priority than the one that removes.
+
+The manage list clamps `?page=` to `ShareListQueryEvent::MAX_PAGE` (1,000,000) and to the largest page whose offset
+fits in an integer; a page beyond the last one renders the last page.
 
 Default per-share grant: viewer is the creator. Copy example listeners from [`examples/access-control/`](../examples/access-control/) — see [Access control events](examples/AccessControl.md).
 

@@ -88,10 +88,21 @@ disable it) the `Nowo\YopassBundle\Entity\ShareAccessLog` entity is now excluded
 (conditional mapping through `AccessLogMappingPass`). New installs no longer get an empty
 `<table_prefix>_share_access_logs` table.
 
-If such an empty table already exists, the next `make:migration` / `doctrine:schema:update --dump-sql` proposes
-`DROP TABLE <table_prefix>_share_access_logs`. Review it and either apply it (the table was never written while the log
-was disabled) or keep the table out of the diff with `doctrine.dbal.schema_filter`. Nothing changes when the access
-log is enabled (the default).
+If the table already exists, the next `make:migration` / `doctrine:schema:update --dump-sql` proposes
+`DROP TABLE <table_prefix>_share_access_logs`. **Do not apply it blindly:** if the access log was **ever enabled**
+(it is the default) the table holds the access history recorded until then (time, read number, client IP and user
+agent of every link open), and dropping it deletes that history for good. To keep it, exclude the table from the
+schema diff, e.g.:
+
+```yaml
+# config/packages/doctrine.yaml
+doctrine:
+    dbal:
+        schema_filter: ~^(?!yopass_share_access_logs$)~   # adapt to your table_prefix
+```
+
+Apply the `DROP TABLE` only when you are sure the history is not needed (or the table is empty). Nothing changes when
+the access log is enabled.
 
 ### CSP: nonce and wasm-unsafe-eval
 
@@ -108,8 +119,15 @@ log is enabled (the default).
 
 - `YopassEvents::SHARE_CREATED`, `SHARE_DELETED`, `SHARES_BULK_DELETED`: audit / notification hooks with metadata
   only (never ciphertext, keys, passwords or plaintext).
-- `YopassEvents::SHARE_DELETE_ALL`: scope ("tenant" subject), take over or veto the manage "delete all". Hosts that
-  replaced the `nowo_yopass_delete_all` route to scope it can drop the override and listen to this event instead.
+- `YopassEvents::SHARE_DELETE_ALL`: take over (tenant / team scope with your own query + `markHandled()`) or veto
+  the manage "delete all". Hosts that replaced the `nowo_yopass_delete_all` route to scope it can drop the override
+  and listen to this event instead. `setSubject()` only accepts the viewer or another `nowo_yopass.user_class`
+  instance; any other object throws a `LogicException` before anything is removed (a tenant entity would otherwise be
+  matched by id against user ids). Veto **before** handling: `veto()` after `markHandled()` is ignored and logged.
+- **Behaviour change for `ShareListQueryEvent::setListSubject()`:** a subject that is neither the viewer nor a
+  `nowo_yopass.user_class` instance now throws a `LogicException` unless the listener also calls `overrideList()`.
+  Up to 1.10 such a subject (team / tenant entity) was silently matched by its id against creator ids. A custom
+  `ShareRepositoryInterface` that understood team subjects must now be fed through `overrideList()`.
 - `ShareListQueryEvent` exposes `getPage()` / `getPageSize()` / `getOffset()` / `isPaginated()`; `overrideList()`
   listeners should return only the requested page when paginated.
 
