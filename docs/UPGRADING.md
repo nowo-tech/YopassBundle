@@ -88,6 +88,16 @@
 
 ## Unreleased
 
+From **1.14.0**: `composer update nowo-tech/yopass-bundle`. No configuration change; the constraint stays
+`nowo-tech/ui-kit-bundle ^2.29`.
+
+- **Dialog height** comes from UiKit: update to UiKit **2.31** to get the content height (dialog rule v2); on 2.29 /
+  2.30 a dialog with fields keeps the size's height. The bundle sets no height, so `nowo_ui_kit.theme.dialog.height`
+  (UiKit 2.31) applies to its dialogs as to every other.
+- **Create dialog Done button is secondary** (one primary per dialog). Overrides of `manage/_create_dialog.html.twig`
+  or `_create_form.html.twig` that render Done with `btn_primary` should switch to `btn_secondary`; the
+  `data-testid="yopass-create-done"` / `data-nowo-yopass-create-target="done"` hooks are unchanged.
+
 ## To 1.14.0
 
 From **1.13.0**:
