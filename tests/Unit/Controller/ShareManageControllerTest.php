@@ -142,16 +142,14 @@ final class ShareManageControllerTest extends TestCase
         self::assertNull($twig->captured['nowo_yopass_legacy_layout']);
     }
 
-    public function testIndexPurgesOldSharesBeforeListing(): void
+    public function testIndexNeverPurgesOnGet(): void
     {
         $user = new TestUser();
 
         $shareRepository = $this->createMock(ShareRepositoryInterface::class);
-        $shareRepository->expects(self::once())
-            ->method('removeByCreatorOlderThan')
-            ->with($user, self::isInstanceOf(DateTimeImmutable::class))
-            ->willReturn(2);
-        $shareRepository->expects(self::once())->method('flush');
+        $shareRepository->expects(self::never())->method('removeByCreatorOlderThan');
+        $shareRepository->expects(self::never())->method('removeOlderThan');
+        $shareRepository->expects(self::never())->method('flush');
         $shareRepository->method('countByCreator')->willReturn(0);
         $shareRepository->method('findByCreatorPaginated')->willReturn([]);
 
@@ -162,6 +160,28 @@ final class ShareManageControllerTest extends TestCase
         ControllerContainerBuilder::bind($controller, $user);
 
         $controller->index(Request::create('/tools/yopass'));
+    }
+
+    public function testCreatePurgesTheCreatorsOldSharesOnTheWritePath(): void
+    {
+        $user = new TestUser();
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::once())->method('persist');
+        $shareRepository->expects(self::once())
+            ->method('removeByCreatorOlderThan')
+            ->with($user, self::isInstanceOf(DateTimeImmutable::class))
+            ->willReturn(2);
+
+        $controller = $this->controller(
+            shareRepository: $shareRepository,
+            retentionPurger: new ShareRetentionPurger($shareRepository, DefaultShareOptions::get()),
+        );
+        $container = ControllerContainerBuilder::bind($controller, $user);
+
+        $response = $controller->create($this->createShareFormRequest($container));
+
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
     }
 
     public function testCreateRedirectsToManageWhenCsrfInvalid(): void

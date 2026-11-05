@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-One create action per screen, the manage list on a host page (allow-listed route, signed for the viewer), host list filters. See [UPGRADING](UPGRADING.md#unreleased).
+One create action per screen, the manage list on a host page (allow-listed route, signed for the viewer), host list filters, hardening headers on every route, no purge on GET (indexed retention). See [UPGRADING](UPGRADING.md#unreleased).
 
 ### Added
 
@@ -60,8 +60,12 @@ One create action per screen, the manage list on a host page (allow-listed route
 - **Host list filters:** `YopassEvents::SHARE_LIST_FILTERS` (`ShareListFiltersEvent::getFormBuilder()`): fields a host adds form a GET filter form (`filters[...]`, no CSRF: read-only search) rendered in the UiKit filters region (Symfony form rendering, escaped). Its data reaches `ShareListQueryEvent::getFilters()`; the filter query is kept across pages (scalar leaves only) and the clear link goes back to the list page.
 - `ShareLister::list()` takes the filter data; `ShareListQueryEvent` has `getFilters()`; `CsrfActionType` option `list_token`.
 
+- **Security headers on every bundle route (KIT-70):** new `security_headers.enabled` (default **true**): `SecurityHeadersListener` sends `Cache-Control: no-store, private`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` (appended to the host policy when it has none, or sent alone) on the manage, create, created, preview, extend, revoke, delete, delete-all, reveal and consume routes.
+- **Indexes for the retention purge:** `<table>_created_at_idx` and `<table>_expires_at_idx` on the shares table (ORM, named after the configured table) and on `createdAt` / `expiresAt` (MongoDB). Generate a migration (see UPGRADING).
+
 ### Changed
 
+- **No purge on the list GET (PERF-YOPASS-PURGE-ON-GET):** the manage list no longer deletes the viewer's old shares while rendering. Retention runs on the create write path (the creator's old shares) and in `nowo:yopass:purge-old-shares` (schedule it).
 - **One create action per screen (dialog mode):** the header **New share** action is shown only when the list has rows; an empty list carries it in the empty state alone.
 
 ## [1.12.1] - 2026-11-04

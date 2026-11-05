@@ -136,8 +136,6 @@ final class ShareManageController extends AbstractController
 
         $user = $this->requireUser();
 
-        $this->retentionPurger->purgeForCreator($user);
-
         // The page showing the list (a host page through SHARE_LIST_ROUTE) and the host's filter fields.
         $listRoute                             = $this->listRoutes->resolve($user, $request);
         $listToken                             = $this->listRoutes->sign($user, $listRoute);
@@ -309,7 +307,10 @@ final class ShareManageController extends AbstractController
             return $this->createFailed($json, self::CREATE_ERROR_FILE_NOT_ENABLED, 'yopass.error.file_not_enabled');
         }
 
-        $share = $this->shareCreator->create($this->requireUser(), $data);
+        $creator = $this->requireUser();
+        $share   = $this->shareCreator->create($creator, $data);
+        // Retention runs on write paths and in nowo:yopass:purge-old-shares, never on a list GET (indexed created_at).
+        $this->retentionPurger->purgeForCreator($creator);
 
         if ($json) {
             // Zero-knowledge: ids and paths only (no ciphertext echo, no key, no plaintext).

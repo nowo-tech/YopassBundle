@@ -48,7 +48,12 @@ final readonly class SecureShareMetadataListener
             return;
         }
 
-        $metadata->setPrimaryTable(array_merge($metadata->table, ['name' => $this->tableName]));
+        // Indexes for the retention purge (created_at) and expiry lookups (expires_at), named after the configured
+        // table so two prefixes never collide.
+        $indexes                                       = $metadata->table['indexes'] ?? [];
+        $indexes[$this->tableName . '_created_at_idx'] = ['columns' => ['created_at']];
+        $indexes[$this->tableName . '_expires_at_idx'] = ['columns' => ['expires_at']];
+        $metadata->setPrimaryTable(array_merge($metadata->table, ['name' => $this->tableName, 'indexes' => $indexes]));
 
         if (!isset($metadata->associationMappings['creator'])) {
             return;

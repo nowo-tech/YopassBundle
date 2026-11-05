@@ -591,4 +591,21 @@ final class YopassExtensionTest extends TestCase
         $resolver = $container->getDefinition(ShareListRouteResolver::class);
         self::assertSame('%kernel.secret%', $resolver->getArgument('$secret'));
     }
+
+    public function testSecurityHeadersAreOnByDefaultForEveryBundleRoute(): void
+    {
+        $container = new ContainerBuilder();
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User']], $container);
+
+        self::assertTrue($container->getParameter('nowo_yopass.security_headers.enabled'));
+        $names = $container->getParameter('nowo_yopass.route_names');
+        self::assertIsArray($names);
+        foreach (['nowo_yopass_index', 'nowo_yopass_create', 'nowo_yopass_created', 'nowo_yopass_preview', 'nowo_yopass_extend', 'nowo_yopass_revoke', 'nowo_yopass_delete', 'nowo_yopass_delete_all', 'nowo_yopass_public_share', 'nowo_yopass_public_consume'] as $name) {
+            self::assertContains($name, $names);
+        }
+
+        $off = new ContainerBuilder();
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User', 'security_headers' => ['enabled' => false]]], $off);
+        self::assertFalse($off->getParameter('nowo_yopass.security_headers.enabled'));
+    }
 }

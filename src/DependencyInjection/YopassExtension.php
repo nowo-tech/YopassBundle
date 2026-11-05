@@ -30,8 +30,10 @@ use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
+use function array_column;
 use function array_filter;
 use function array_key_exists;
+use function array_unique;
 use function array_values;
 use function in_array;
 use function is_array;
@@ -95,6 +97,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         // parameter to scope the keyword. The opt-in listener only edits those routes.
         $container->setParameter('nowo_yopass.csp.wasm_routes', WasmCspListener::routeNames($config['routes']));
         $container->setParameter('nowo_yopass.csp.wasm_unsafe_eval', (bool) $config['csp']['wasm_unsafe_eval']);
+        $container->setParameter('nowo_yopass.security_headers.enabled', (bool) $config['security_headers']['enabled']);
+        $container->setParameter('nowo_yopass.route_names', array_values(array_unique(array_column($config['routes'], 'name'))));
 
         $publicRateLimit = $config['public_rate_limit'];
         $container->setParameter('nowo_yopass.public_rate_limit.enabled', $publicRateLimit['enabled']);

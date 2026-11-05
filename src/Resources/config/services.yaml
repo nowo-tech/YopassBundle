@@ -45,6 +45,12 @@ services:
             $routes: '%nowo_yopass.routes%'
             $routePrefix: '%nowo_yopass.route_prefix%'
 
+    # KIT-70: hardening headers on every bundle route (nowo_yopass.security_headers.enabled, default true).
+    Nowo\YopassBundle\EventListener\SecurityHeadersListener:
+        arguments:
+            $routeNames: '%nowo_yopass.route_names%'
+            $enabled: '%nowo_yopass.security_headers.enabled%'
+
     # Opt-in (nowo_yopass.csp.wasm_unsafe_eval): adds 'wasm-unsafe-eval' to the host CSP on the yopass.js routes only.
     Nowo\YopassBundle\EventListener\WasmCspListener:
         arguments:

@@ -13,6 +13,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * MongoDB document mapped to the same logical schema as {@see SecureShare}.
  */
 #[ODM\Document]
+#[ODM\Index(keys: ['createdAt' => 'asc'])]
+#[ODM\Index(keys: ['expiresAt' => 'asc'])]
 class SecureShareDocument
 {
     #[ODM\Field(type: 'string')]

@@ -33,6 +33,10 @@ final class SecureShareMetadataListenerTest extends TestCase
 
         self::assertSame('vault_secure_shares', $metadata->table['name']);
         self::assertSame('App\\Entity\\User', $metadata->associationMappings['creator']['targetEntity']);
+        self::assertSame([
+            'vault_secure_shares_created_at_idx' => ['columns' => ['created_at']],
+            'vault_secure_shares_expires_at_idx' => ['columns' => ['expires_at']],
+        ], $metadata->table['indexes']);
     }
 
     public function testAppliesAccessLogTableName(): void

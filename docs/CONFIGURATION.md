@@ -14,6 +14,7 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
 - [Sharing (encryption & links)](#sharing-encryption--links)
   - [Public link formats](#public-link-formats)
 - [Access log](#access-log)
+- [Security headers](#security-headers)
 - [Content-Security-Policy](#content-security-policy)
 - [Routes](#routes)
 - [Security](#security)
@@ -216,6 +217,20 @@ When disabled (or with the MongoDB / custom non-relational backends, which alway
 `<table_prefix>_share_access_logs` table is created. See [UPGRADING](UPGRADING.md#access-log-table-no-longer-mapped-when-disabled)
 for an existing empty table.
 
+## Security headers
+
+```yaml
+nowo_yopass:
+    security_headers:
+        enabled: true   # default
+```
+
+Every bundle route (manage, create, created, preview, extend, revoke, delete, delete all, reveal, consume) sends
+`Cache-Control: no-store, private`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`,
+`X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` (appended to the host policy when it has no `frame-ancestors`,
+or sent alone without a policy). Report-Only policies are left alone. Only disable it when the host sends equivalent
+headers on these routes.
+
 ## Content-Security-Policy
 
 The pages that load `js/yopass.js` (manage list, "share created", public reveal) run libsodium, which compiles
@@ -383,8 +398,9 @@ fields into a GET form named `filters` (no CSRF: read-only search), rendered in 
 `ShareListQueryEvent::getFilters()`; apply it in your `SHARE_LIST_QUERY` listener (`overrideList()`). Without fields
 there is no filter form.
 
-**Retention** (`shares.retention`) purges the viewer's own old shares when the list opens; shares of other creators
-shown to the viewer are purged by the `nowo:yopass:purge-old-shares` command only.
+**Retention** (`shares.retention`) never runs on a list GET: the creator's old shares are purged when they create a
+share, and every old share by the `nowo:yopass:purge-old-shares` command (schedule it). The `created_at` /
+`expires_at` columns are indexed.
 
 `ShareListQueryEvent` carries the requested page: `getPage()`, `getPageSize()` (0 = not paginated), `getOffset()`,
 `isPaginated()`. An `overrideList($shares, $total)` listener should return that page only and the overall total.
