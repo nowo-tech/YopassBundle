@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.14.0] - 2026-11-05](#1140---2026-11-05)
 - [[1.13.0] - 2026-11-05](#1130---2026-11-05)
 - [[1.12.1] - 2026-11-04](#1121---2026-11-04)
 - [[1.12.0] - 2026-11-04](#1120---2026-11-04)
@@ -51,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-04](#100---2026-07-04)
 
 ## [Unreleased]
+
+## [1.14.0] - 2026-11-05
 
 UiKit 2.29 dialog sizes and anatomy, icons on the create Text / File tabs, a clearer Extend section in the preview
 dialog. Requires `nowo-tech/ui-kit-bundle` **^2.29**. See [UPGRADING](UPGRADING.md#unreleased).
@@ -103,6 +106,8 @@ dialog. Requires `nowo-tech/ui-kit-bundle` **^2.29**. See [UPGRADING](UPGRADING.
   `nowo_yopass.list_route|` (audit EW-I1); docs say the token is bound to the viewer's `getUserIdentifier()` (EW-I2);
   CONFIGURATION / UPGRADING: host filter values are user input — validate them, bind them as query parameters, and
   return from `overrideList()` only shares the viewer may see, since it skips `CreatorSubjectGuard` (EW-I4).
+
+[1.14.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.14.0
 
 ## [1.13.0] - 2026-11-05
 
@@ -740,7 +745,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.14.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7

@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.14.0](#to-1140)
 - [To 1.13.0](#to-1130)
   - [One create action per screen](#one-create-action-per-screen)
   - [The list on a host page](#the-list-on-a-host-page)
@@ -86,6 +87,10 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.14.0
+
+From **1.13.0**:
 
 ```bash
 composer update nowo-tech/yopass-bundle nowo-tech/ui-kit-bundle   # ui-kit-bundle ^2.29 is required
