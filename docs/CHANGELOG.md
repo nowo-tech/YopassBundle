@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.13.0] - 2026-11-05](#1130---2026-11-05)
 - [[1.12.1] - 2026-11-04](#1121---2026-11-04)
 - [[1.12.0] - 2026-11-04](#1120---2026-11-04)
 - [[1.11.0] - 2026-11-04](#1110---2026-11-04)
@@ -51,7 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-One create action per screen, the manage list on a host page (allow-listed route, signed for the viewer), host list filters, hardening headers on every route, no purge on GET (indexed retention). See [UPGRADING](UPGRADING.md#unreleased).
+## [1.13.0] - 2026-11-05
+
+One create action per screen, the manage list on a host page (allow-listed route, signed for the viewer), host list filters, hardening headers on every route, no purge on GET (indexed retention). See [UPGRADING](UPGRADING.md#to-1130).
 
 ### Added
 
@@ -68,6 +71,8 @@ One create action per screen, the manage list on a host page (allow-listed route
 - **Preview dialog layout** (owner review): the status badge sits inline next to the title; the key / password input is full width in an input group with **Show content** (the dialog's only primary button) attached, plus one short help line (`yopass.preview.key_help` reworded in 7 locales); the revealed text is a monospace block with **Copy**; the public link is a full-width read-only input with a copy icon button (UiKit `copy` kind) that shows a toast (`yopass.link.copied`, 7 locales); **Extend** is its own section after a divider with "Current limits" as a muted line, the two selects in a 2-column grid that stacks on phones and a **secondary** "Apply extension" aligned to the end; "Close" on the right; the body scrolls inside the dialog with no horizontal scroll at 390 px. Layout comes from the new `css/yopass.css` (layout only, on UiKit tokens; UiKit has no input-group / field-grid slot yet), loaded by the manage page in `nowo_ui_styles`. The dialogs carry `data-nowo-yopass-dialog` (the 1.12 `class` attr of the create dialog was ignored by UiKit's attribute merge). Extend has no other form (row action → same dialog).
 - **No purge on the list GET (PERF-YOPASS-PURGE-ON-GET):** the manage list no longer deletes the viewer's old shares while rendering. Retention runs on the create write path (the creator's old shares) and in `nowo:yopass:purge-old-shares` (schedule it).
 - **One create action per screen (dialog mode):** the header **New share** action is shown only when the list has rows; an empty list carries it in the empty state alone.
+
+[1.13.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.13.0
 
 ## [1.12.1] - 2026-11-04
 
@@ -683,7 +688,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.12.1...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.13.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7

@@ -3,12 +3,13 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.13.0](#to-1130)
   - [One create action per screen](#one-create-action-per-screen)
   - [The list on a host page](#the-list-on-a-host-page)
-  - [Host list filters](#host-list-filters)
   - [Preview dialog layout and stylesheet](#preview-dialog-layout-and-stylesheet)
   - [Security headers on every route](#security-headers-on-every-route)
   - [Retention: no purge on GET, new indexes (migration)](#retention-no-purge-on-get-new-indexes-migration)
+  - [Host list filters](#host-list-filters)
 - [To 1.12.1](#to-1121)
 - [To 1.12.0](#to-1120)
   - [Create in a dialog (opt-in)](#create-in-a-dialog-opt-in)
@@ -85,6 +86,8 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.13.0
 
 From **1.12.1** (no breaking change):
 
