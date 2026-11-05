@@ -56,6 +56,9 @@ export default class extends Controller {
         'extendExpiresIn',
         'extendMaxReads',
         'extendSuccess',
+        'extendButton',
+        'extendPreview',
+        'extendError',
         'accessLogPanel',
         'accessLogTable',
         'accessLogBody',
@@ -71,6 +74,7 @@ export default class extends Controller {
         errors: { type: Object, default: {} },
         availabilityLabels: { type: Object, default: {} },
         extendSuccessMessage: { type: String, default: 'Updated.' },
+        extendLabels: { type: Object, default: {} },
         allowEmbedInUrl: { type: Boolean, default: false },
         copiedMessage: { type: String, default: 'Copied.' },
     };
@@ -91,6 +95,13 @@ export default class extends Controller {
     declare readonly extendExpiresInTarget: HTMLSelectElement;
     declare readonly extendMaxReadsTarget: HTMLSelectElement;
     declare readonly extendSuccessTarget: HTMLElement;
+    declare readonly extendButtonTarget: HTMLButtonElement;
+    declare readonly extendPreviewTarget: HTMLElement;
+    declare readonly extendErrorTarget: HTMLElement;
+    declare readonly hasExtendButtonTarget: boolean;
+    declare readonly hasExtendPreviewTarget: boolean;
+    declare readonly hasExtendErrorTarget: boolean;
+    declare readonly extendLabelsValue: Partial<Record<'preview' | 'summary' | 'reads_one' | 'reads_other', string>>;
     declare readonly accessLogPanelTarget: HTMLElement;
     declare readonly accessLogTableTarget: HTMLTableElement;
     declare readonly accessLogBodyTarget: HTMLTableSectionElement;
@@ -160,9 +171,59 @@ export default class extends Controller {
         await this.decrypt(this.resolveKeyMaterial());
     }
 
+    /**
+     * Extend row: the button stays disabled while both selects keep "No change…"; the "Will be: …" line previews the
+     * limits the server would set (expiry: max(current, now) + the option's seconds; reads: the raised maximum adds
+     * its difference to the remaining reads, as SecureShare::extendMaxReads()).
+     */
+    syncExtend(): void {
+        const expiresIn = this.extendExpiresInTarget.value.trim();
+        const maxReads = this.extendMaxReadsTarget.value.trim();
+        const pending = expiresIn !== '' || maxReads !== '';
+
+        if (this.hasExtendButtonTarget) {
+            this.extendButtonTarget.disabled = !pending || this.previewData === null;
+        }
+
+        if (!this.hasExtendPreviewTarget) {
+            return;
+        }
+
+        if (!pending || this.previewData === null) {
+            setHidden(this.extendPreviewTarget, true);
+            this.extendPreviewTarget.textContent = '';
+
+            return;
+        }
+
+        const data = this.previewData;
+        let expiresAt = data.expiresAt;
+        const option = this.extendExpiresInTarget.options[this.extendExpiresInTarget.selectedIndex];
+        const seconds = Number.parseInt(option?.dataset.seconds ?? '', 10);
+
+        if (expiresIn !== '' && !Number.isNaN(seconds)) {
+            const current = expiresAt ? new Date(expiresAt).getTime() : Number.NaN;
+            const base = Number.isNaN(current) ? Date.now() : Math.max(current, Date.now());
+            expiresAt = new Date(base + seconds * 1000).toISOString();
+        }
+
+        let readsLeft = data.readsLeft ?? 0;
+        let max = data.maxReads ?? 0;
+        const raised = Number.parseInt(maxReads, 10);
+
+        if (!Number.isNaN(raised) && raised > max) {
+            readsLeft += raised - max;
+            max = raised;
+        }
+
+        this.extendPreviewTarget.textContent = `${this.extendLabelsValue.preview ?? 'Will be'}: ${this.formatLimits(expiresAt, readsLeft, max)}`;
+        setHidden(this.extendPreviewTarget, false);
+    }
+
     async submitExtend(event: Event): Promise<void> {
         event.preventDefault();
         this.hideExtendSuccess();
+        this.hideExtendError();
         this.hideError();
 
         const shareId = this.activeShareId;
@@ -197,7 +258,7 @@ export default class extends Controller {
             const data = await response.json() as ExtendResponse;
 
             if (!response.ok) {
-                this.showError(data.error ?? 'EXTEND_FAILED');
+                this.showExtendError(data.error ?? 'EXTEND_FAILED');
 
                 return;
             }
@@ -211,15 +272,12 @@ export default class extends Controller {
                 expiresAt: data.expiresAt,
             };
 
+            // In place, no reload: header badge, "Now: …", selects reset (button disabled again), inline success.
             this.renderMetadata(this.previewData, shareId);
             this.renderExtendPanel(this.previewData);
             this.showExtendSuccess();
-
-            window.setTimeout(() => {
-                window.location.reload();
-            }, 800);
         } catch {
-            this.showError('EXTEND_FAILED');
+            this.showExtendError('EXTEND_FAILED');
         }
     }
 
@@ -479,9 +537,7 @@ export default class extends Controller {
         setHidden(this.extendPanelTarget, false);
 
         if (this.hasExtendSummaryTarget) {
-            const expires = data.expiresAt ? this.formatDateTime(data.expiresAt) : '—';
-            const reads = `${data.readsLeft ?? 0} / ${data.maxReads ?? 0}`;
-            this.extendSummaryTarget.textContent = `${expires} · ${reads}`;
+            this.extendSummaryTarget.textContent = this.formatLimits(data.expiresAt, data.readsLeft ?? 0, data.maxReads ?? 0);
         }
 
         const currentMaxReads = data.maxReads ?? 0;
@@ -498,6 +554,26 @@ export default class extends Controller {
 
         this.extendExpiresInTarget.value = '';
         this.extendMaxReadsTarget.value = '';
+        this.syncExtend();
+    }
+
+    /**
+     * Limits line ("Now: …" / "Will be: …"): the translated `summary` (%expires%, %reads%) with `reads_one` /
+     * `reads_other` (%count% = reads left) when the page passes them, else the 1.13 "<expiry> · <left> / <max>".
+     */
+    private formatLimits(expiresAt: string | undefined, readsLeft: number, maxReads: number): string {
+        const expires = expiresAt ? this.formatDateTime(expiresAt) : '—';
+        const labels = this.extendLabelsValue;
+
+        if (!labels.summary) {
+            return `${expires} · ${readsLeft} / ${maxReads}`;
+        }
+
+        const reads = (readsLeft === 1 ? labels.reads_one : labels.reads_other) ?? '%count%';
+
+        return labels.summary
+            .replace('%expires%', expires)
+            .replace('%reads%', reads.replace('%count%', String(readsLeft)));
     }
 
     private formatDateTime(value: string): string {
@@ -570,6 +646,7 @@ export default class extends Controller {
 
         this.showDecryptControls();
         this.hideExtendSuccess();
+        this.hideExtendError();
         this.hideError();
     }
 
@@ -646,6 +723,25 @@ export default class extends Controller {
     private hideError(): void {
         if (this.hasErrorTarget) {
             setHidden(this.errorTarget, true);
+        }
+    }
+
+    /** Extend errors show inline next to the row (the dialog-level error region without that target). */
+    private showExtendError(code: string): void {
+        if (!this.hasExtendErrorTarget) {
+            this.showError(code);
+
+            return;
+        }
+
+        this.extendErrorTarget.textContent = this.errorsValue[code] ?? code;
+        setHidden(this.extendErrorTarget, false);
+    }
+
+    private hideExtendError(): void {
+        if (this.hasExtendErrorTarget) {
+            setHidden(this.extendErrorTarget, true);
+            this.extendErrorTarget.textContent = '';
         }
     }
 

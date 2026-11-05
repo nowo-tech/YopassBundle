@@ -42,6 +42,7 @@ final class ConfigurationTest extends TestCase
         self::assertSame(['manage' => null, 'created' => null, 'public' => null], $config['web_ui']['templates']);
         self::assertNull($config['web_ui']['css_framework']);
         self::assertNull($config['web_ui']['icon_set']);
+        self::assertSame(['create_tab_text' => 'tabler:file-text', 'create_tab_file' => 'tabler:file-upload'], $config['web_ui']['icons']);
         self::assertNull($config['route_prefix']);
         self::assertSame(['layout' => null, 'manage' => null, 'created' => null, 'public' => null], $config['templates']);
         self::assertNull($config['file_handler']);

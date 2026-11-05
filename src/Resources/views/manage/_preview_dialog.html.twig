@@ -1,12 +1,15 @@
 {#
   Preview / extend dialog of the manage page (1.13 layout: status badge next to the title; key / password input group
   with the only primary button "Show content"; revealed text in a monospace block with Copy; public link with a copy icon
-  button and a toast; extend in its own section with a 2-column grid and a secondary "Apply"; body scrolls inside the
+  button and a toast; extend in its own section: "Now: …", one row [time] [reads] [Extend (secondary)], a live
+  "Will be: …" preview and an inline result (1.14); body scrolls inside the
   dialog; layout classes nowo-yopass-* from css/yopass.css on UiKit tokens) (REQ-UI-001 modals: native <dialog> through the UiKit `dialog` partial,
   header / body / footer). Opened by the View / Extend row actions (Action::dialogId = YopassPageFactory::PREVIEW_DIALOG_ID,
   data-nowo-ui-dialog-open) and filled by the nowo-yopass-manage-preview controller (metadata, in-browser decryption,
   access log, extend). REQ-TWIG-005: the controls are SharePreviewType fields without a name (never submitted).
   Variables: preview_form (FormView of SharePreviewType), can_extend, bundle.
+  Owner decision (1.14, Beacon UI-PATTERNS §16 input-group rule): the single primary "Show content" stays in the body,
+  attached to the key / password field; the footer holds only Close.
 #}
 {% trans_default_domain 'NowoYopassBundle' %}
 {% set _b = bundle|default('NowoYopassBundle') %}
@@ -84,22 +87,27 @@
         </section>
 
         {% if can_extend %}
-            {# Extend: own section after a divider; the two selects side by side on desktop, stacked on phones. #}
-            <section class="{{ nowo_ui_class('section', _b) }} nowo-yopass-preview__section" hidden data-nowo-yopass-manage-preview-target="extendPanel" data-testid="yopass-extend">
+            {# Extend: own section after a divider. "Now: …" (current limits), one aligned row
+               [time ▾] [reads ▾] [Extend] (bottom-aligned, a column under ~560 px), the live "Will be: …" preview and
+               the inline result (success: aria-live polite; error: role alert). Extend stays a secondary button,
+               disabled while both selects keep "No change…"; the dialog's single footer action stays Close. #}
+            <section class="{{ nowo_ui_class('section', _b) }} nowo-yopass-preview__section nowo-yopass-extend" hidden data-nowo-yopass-manage-preview-target="extendPanel" data-testid="yopass-extend">
                 <h3 class="{{ nowo_ui_class('card_title', _b) }}">{{ 'yopass.extend.title'|trans }}</h3>
-                <p class="{{ nowo_ui_class('muted', _b) }}">
+                <p class="{{ nowo_ui_class('muted', _b) }}" data-testid="yopass-extend-now">
                     {{ 'yopass.extend.current'|trans }}: <span data-nowo-yopass-manage-preview-target="extendSummary"></span>
                 </p>
-                <div class="nowo-yopass-grid-2">
-                    {{ form_row(preview_form.extendExpiresIn) }}
-                    {{ form_row(preview_form.extendMaxReads) }}
+                <div class="nowo-yopass-extend__row">
+                    <div class="nowo-yopass-extend__field">{{ form_row(preview_form.extendExpiresIn) }}</div>
+                    <div class="nowo-yopass-extend__field">{{ form_row(preview_form.extendMaxReads) }}</div>
+                    <div class="nowo-yopass-extend__action">
+                        <button type="button" class="{{ nowo_ui_class('btn_secondary', _b) }}" disabled data-action="nowo-yopass-manage-preview#submitExtend" data-nowo-yopass-manage-preview-target="extendButton" data-testid="yopass-extend-submit">
+                            {{ 'yopass.extend.submit'|trans }}
+                        </button>
+                    </div>
                 </div>
-                <div class="nowo-yopass-actions-end">
-                    <button type="button" class="{{ nowo_ui_class('btn_secondary', _b) }}" data-action="nowo-yopass-manage-preview#submitExtend">
-                        {{ 'yopass.extend.submit'|trans }}
-                    </button>
-                </div>
-                <div class="{{ nowo_ui_class('flash_success', _b) }}" role="status" hidden data-nowo-yopass-manage-preview-target="extendSuccess"></div>
+                <p class="{{ nowo_ui_class('muted', _b) }}" hidden aria-live="polite" data-nowo-yopass-manage-preview-target="extendPreview" data-testid="yopass-extend-preview"></p>
+                <div class="{{ nowo_ui_class('flash_error', _b) }}" role="alert" hidden data-nowo-yopass-manage-preview-target="extendError"></div>
+                <div class="{{ nowo_ui_class('flash_success', _b) }}" role="status" aria-live="polite" hidden data-nowo-yopass-manage-preview-target="extendSuccess"></div>
             </section>
         {% endif %}
         {% for child in preview_form %}

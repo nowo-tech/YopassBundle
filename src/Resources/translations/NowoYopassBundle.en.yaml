@@ -90,12 +90,16 @@ yopass:
         action: Extend
         title: Extend share
         intro: Add time or reads without consuming a view. Leave a field unchanged to keep the current value.
-        current: Current limits
-        expiration_field: Add expiration time
-        reads_field: Increase max reads to
+        current: Now
+        expiration_field: Add time
+        reads_field: Raise reads to
         keep_expiration: Do not change expiration
         keep_reads: Do not change max reads
-        submit: Apply extension
+        submit: Extend
+        preview: Will be
+        summary: 'expires %expires% · %reads%'
+        reads_one: '%count% read'
+        reads_other: '%count% reads'
         success: Share updated.
         failed: Could not update the share.
         revoked: Revoked shares cannot be extended.

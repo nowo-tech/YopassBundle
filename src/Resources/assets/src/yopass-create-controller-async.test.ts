@@ -485,4 +485,55 @@ describe('yopass-create-controller (dialog mode, async)', () => {
             removeItem.mockRestore();
         }
     });
+
+    it('UiKit 2.29 anatomy: the controller wraps the dialog and swaps Cancel / Create for Done in the footer', async () => {
+        document.body.innerHTML = `
+            <div data-controller="create"
+                 data-create-max-secret-chars-value="100"
+                 data-create-errors-value='${ERRORS}'
+                 data-create-async-value="true">
+                <dialog id="create-dialog" open>
+                    <div class="body">
+                        <form id="create-form" data-create-target="form" action="/tools/yopass/create" method="post" data-action="submit->create#submit">
+                            <input type="hidden" name="share_create[ciphertext]" data-create-target="ciphertext">
+                            <input type="hidden" name="share_create[payloadKind]" value="text" data-create-target="payloadKind">
+                            <div data-create-target="textPanel"><textarea data-create-target="secret"></textarea></div>
+                            <div data-create-target="error" hidden></div>
+                        </form>
+                        <section data-create-target="result" hidden>
+                            <input id="short" readonly data-create-target="resultShortLink">
+                            <div data-create-target="resultKeyRow"><input id="key" readonly data-create-target="resultKey"></div>
+                            <p data-create-target="passwordNote" hidden>note</p>
+                        </section>
+                    </div>
+                    <footer>
+                        <button type="button" id="cancel" data-create-target="cancel">Cancel</button>
+                        <button type="submit" form="create-form" data-create-target="submit">Create</button>
+                        <button type="button" id="done" hidden data-create-target="done" data-action="create#done">Done</button>
+                    </footer>
+                </dialog>
+            </div>`;
+        app = new Application(document.documentElement);
+        await app.start();
+        app.register('create', YopassCreateController);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        respond(201, { id: 'share-w', public_path: '/share/share-w' });
+        typeSecret(PLAINTEXT);
+        submitForm();
+        await vi.waitFor(() => expect(target('result').hidden).toBe(false));
+
+        expect(el('#cancel').hidden).toBe(true);
+        expect(target('submit').hidden).toBe(true);
+        expect(el('#done').hidden).toBe(false);
+
+        // The close listener was found below the controller (querySelector('dialog')): closing wipes and resets.
+        closeDialog();
+        expect(dumpDom()).not.toContain(KEY);
+        expect(target('result').hidden).toBe(true);
+        expect(el('#cancel').hidden).toBe(false);
+        expect(target('submit').hidden).toBe(false);
+        expect(target<HTMLButtonElement>('submit').disabled).toBe(false);
+        expect(el('#done').hidden).toBe(true);
+    });
 });

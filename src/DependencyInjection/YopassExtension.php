@@ -181,12 +181,12 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         }
 
         return [
-            'enabled'                => (bool) $webUi['enabled'],
-            'create_mode'            => ($webUi['create_mode'] ?? 'page') === 'dialog' ? 'dialog' : 'page',
-            'list_routes'            => array_values(array_filter((array) ($webUi['list_routes'] ?? []), is_string(...))),
-            'icons'                  => [
-                'create_tab_text' => self::iconName($icons['create_tab_text'] ?? null),
-                'create_tab_file' => self::iconName($icons['create_tab_file'] ?? null),
+            'enabled'     => (bool) $webUi['enabled'],
+            'create_mode' => ($webUi['create_mode'] ?? 'page') === 'dialog' ? 'dialog' : 'page',
+            'list_routes' => array_values(array_filter((array) ($webUi['list_routes'] ?? []), is_string(...))),
+            'icons'       => [
+                'create_tab_text' => $this->iconName($icons['create_tab_text'] ?? null),
+                'create_tab_file' => $this->iconName($icons['create_tab_file'] ?? null),
             ],
             'path_prefix'            => (string) ($webUi['path_prefix'] ?? ''),
             'layout_template'        => $layout,
@@ -200,7 +200,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
     /**
      * Icon name of a `web_ui.icons` entry: a non-empty string, else null (label only).
      */
-    private static function iconName(mixed $icon): ?string
+    private function iconName(mixed $icon): ?string
     {
         return is_string($icon) && trim($icon) !== '' ? trim($icon) : null;
     }

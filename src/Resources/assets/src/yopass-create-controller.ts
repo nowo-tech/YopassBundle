@@ -407,8 +407,8 @@ export default class extends Controller {
 
     /** Dialog footer (UiKit 2.29 anatomy): Cancel + Create while editing, Done once the links are shown. */
     private syncFooter(showResult: boolean): void {
-        this.element.querySelectorAll<HTMLElement>('[data-nowo-yopass-create-target="cancel"]').forEach((el) => setHidden(el, showResult));
-        this.element.querySelectorAll<HTMLElement>('[data-nowo-yopass-create-target="done"]').forEach((el) => setHidden(el, !showResult));
+        this.element.querySelectorAll<HTMLElement>(`[data-${this.identifier}-target="cancel"]`).forEach((el) => setHidden(el, showResult));
+        this.element.querySelectorAll<HTMLElement>(`[data-${this.identifier}-target="done"]`).forEach((el) => setHidden(el, !showResult));
         if (this.hasSubmitTarget && this.submitTarget.closest('footer') !== null) {
             setHidden(this.submitTarget, showResult);
         }

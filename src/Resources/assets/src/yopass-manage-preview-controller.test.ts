@@ -25,7 +25,14 @@ const CSRF_PLACEHOLDER = 'REDACTED-TEST-CSRF';
 let app: Application | null = null;
 let fetchMock: ReturnType<typeof vi.fn>;
 
-type MountOptions = { extendPath?: string; optionalTargets?: boolean; allowEmbed?: boolean };
+type MountOptions = { extendPath?: string; optionalTargets?: boolean; allowEmbed?: boolean; extendLabels?: boolean; extendRow?: boolean };
+
+const EXTEND_LABELS = JSON.stringify({
+    preview: 'Will be',
+    summary: 'expires %expires% · %reads%',
+    reads_one: '%count% read',
+    reads_other: '%count% reads',
+});
 
 function markup(options: MountOptions = {}): string {
     const optional = options.optionalTargets === false
@@ -64,7 +71,8 @@ function markup(options: MountOptions = {}): string {
              data-preview-availability-labels-value='{"active":"Active"}'
              data-preview-extend-success-message-value="Limits extended."
              data-preview-copied-message-value="Copied to clipboard."
-             ${options.allowEmbed === true ? 'data-preview-allow-embed-in-url-value="true"' : ''}>
+             ${options.allowEmbed === true ? 'data-preview-allow-embed-in-url-value="true"' : ''}
+             ${options.extendLabels === true ? `data-preview-extend-labels-value='${EXTEND_LABELS}'` : ''}>
             <button id="open" data-share-id="share-1" data-action="preview#open">Preview</button>
             <button id="open-extend" data-share-id="share-1" data-action="preview#openExtend">Extend</button>
             <button id="open-missing" data-action="preview#open">Broken</button>
@@ -75,17 +83,22 @@ function markup(options: MountOptions = {}): string {
                     <input data-preview-target="key">
                 </form>
                 <form id="extend-form" data-action="submit->preview#submitExtend">
-                    <select data-preview-target="extendExpiresIn">
+                    <select data-preview-target="extendExpiresIn" data-action="change->preview#syncExtend">
                         <option value="">Keep</option>
-                        <option value="1d">1 day</option>
+                        <option value="1d" data-seconds="86400">1 day</option>
+                        <option value="odd">no seconds</option>
                     </select>
-                    <select data-preview-target="extendMaxReads">
+                    <select data-preview-target="extendMaxReads" data-action="change->preview#syncExtend">
                         <option value="">Keep</option>
                         <option value="1">1</option>
                         <option value="3">3</option>
                         <option value="5">5</option>
                         <option value="x">bogus</option>
                     </select>
+                    ${options.extendRow === false ? '' : `
+                    <button type="button" id="extend-submit" disabled data-preview-target="extendButton" data-action="preview#submitExtend">Extend</button>
+                    <p data-preview-target="extendPreview" hidden aria-live="polite"></p>
+                    <div data-preview-target="extendError" role="alert" hidden></div>`}
                 </form>
                 <button id="close" data-action="preview#close">Close</button>
             </dialog>
@@ -443,22 +456,9 @@ describe('yopass-manage-preview-controller', () => {
             expect(target('extendSummary').textContent).toBe('— · 0 / 0');
         });
 
-        it('posts the new limits with the CSRF token and schedules a reload', async () => {
+        it('posts the new limits with the CSRF token and updates the dialog in place (no reload)', async () => {
             const reload = vi.fn();
-            const timers: Array<{ fn: () => void; delay?: number }> = [];
-            const realSetTimeout = window.setTimeout.bind(window);
-            vi.spyOn(window, 'setTimeout').mockImplementation(((fn: () => void, delay?: number) => {
-                if (delay === 800) {
-                    timers.push({ fn, delay });
-
-                    return 0;
-                }
-
-                return realSetTimeout(fn, delay);
-            }) as typeof window.setTimeout);
-            onTestFinished(() => {
-                vi.mocked(window.setTimeout).mockRestore();
-            });
+            Object.defineProperty(window.location, 'reload', { value: reload, configurable: true });
             respond({ ...extendable, publicPath: '/s/share-1' });
             storeShareKey('share-1', 'key', 'REDACTED-TEST-KEY');
 
@@ -488,11 +488,13 @@ describe('yopass-manage-preview-controller', () => {
             expect(target('extendSummary').textContent).toContain('4 / 5');
             // The re-rendered link keeps the key of the active share (renderMetadata receives the share id).
             expect(target<HTMLInputElement>('publicLink').value).toBe(linkBefore);
-            expect(timers).toHaveLength(1);
-
-            Object.defineProperty(window.location, 'reload', { value: reload, configurable: true });
-            timers[0].fn();
-            expect(reload).toHaveBeenCalledTimes(1);
+            // Selects reset, Extend disabled again, no "Will be" line, never a reload.
+            expect(target<HTMLSelectElement>('extendExpiresIn').value).toBe('');
+            expect(target<HTMLSelectElement>('extendMaxReads').value).toBe('');
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(true);
+            expect(visible('extendPreview')).toBe(false);
+            await new Promise((resolve) => setTimeout(resolve, 900));
+            expect(reload).not.toHaveBeenCalled();
         });
 
         it('sends an empty body when nothing changes and shows server errors', async () => {
@@ -503,19 +505,127 @@ describe('yopass-manage-preview-controller', () => {
 
             respond({ status: 'error', error: 'NOT_EXTENDABLE' }, false);
             submit('extend-form');
-            await vi.waitFor(() => expect(target('error').textContent).toBe('NOT_EXTENDABLE'));
+            await vi.waitFor(() => expect(target('extendError').textContent).toBe('NOT_EXTENDABLE'));
             expect(fetchMock.mock.calls[1][1].body).toBe('{}');
             expect(visible('extendSuccess')).toBe(false);
 
             respond({ status: 'error' }, false);
             submit('extend-form');
-            await vi.waitFor(() => expect(target('error').textContent).toBe('Extend failed.'));
+            await vi.waitFor(() => expect(target('extendError').textContent).toBe('Extend failed.'));
 
-            target('error').hidden = true;
+            target('extendError').hidden = true;
             fetchMock.mockRejectedValueOnce(new Error('offline'));
             submit('extend-form');
-            await vi.waitFor(() => expect(visible('error')).toBe(true));
-            expect(target('error').textContent).toBe('Extend failed.');
+            await vi.waitFor(() => expect(visible('extendError')).toBe(true));
+            expect(target('extendError').textContent).toBe('Extend failed.');
+        });
+
+        it('shows extend errors in the dialog error region without an inline extend error target', async () => {
+            respond(extendable);
+            await mount({ extendRow: false });
+            byId('open').click();
+            await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+
+            respond({ status: 'error', error: 'NOT_EXTENDABLE' }, false);
+            submit('extend-form');
+            await vi.waitFor(() => expect(target('error').textContent).toBe('NOT_EXTENDABLE'));
+            // syncExtend without the button / preview targets is a no-op.
+            target<HTMLSelectElement>('extendMaxReads').value = '5';
+            target('extendMaxReads').dispatchEvent(new Event('change'));
+        });
+
+        it('keeps Extend disabled until a select changes and previews the result', async () => {
+            vi.useFakeTimers({ now: new Date('2026-04-30T10:00:00Z'), toFake: ['Date'] });
+            onTestFinished(() => {
+                vi.useRealTimers();
+            });
+            respond(extendable);
+            await mount({ extendLabels: true });
+
+            const select = (name: string, value: string): void => {
+                target<HTMLSelectElement>(name).value = value;
+                target(name).dispatchEvent(new Event('change'));
+            };
+
+            // Before the share loads: nothing to extend.
+            select('extendMaxReads', '5');
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(true);
+            expect(visible('extendPreview')).toBe(false);
+
+            byId('open').click();
+            await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+            const now = new Date('2026-05-01T10:00:00Z').toLocaleString();
+            expect(target('extendSummary').textContent).toBe(`expires ${now} · 2 reads`);
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(true);
+            expect(visible('extendPreview')).toBe(false);
+
+            // Later expiry: base is the current expiry (still in the future) + 1 day.
+            select('extendExpiresIn', '1d');
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(false);
+            expect(visible('extendPreview')).toBe(true);
+            expect(target('extendPreview').textContent)
+                .toBe(`Will be: expires ${new Date('2026-05-02T10:00:00Z').toLocaleString()} · 2 reads`);
+
+            // Raising the maximum adds the difference to the reads left (3 → 5: 2 + 2).
+            select('extendMaxReads', '5');
+            expect(target('extendPreview').textContent)
+                .toBe(`Will be: expires ${new Date('2026-05-02T10:00:00Z').toLocaleString()} · 4 reads`);
+
+            // An option without seconds keeps the current expiry; a value that does not raise keeps the reads.
+            select('extendExpiresIn', 'odd');
+            select('extendMaxReads', '1');
+            expect(target('extendPreview').textContent).toBe(`Will be: expires ${now} · 2 reads`);
+
+            // Back to "No change" on both: disabled, no preview.
+            select('extendExpiresIn', '');
+            select('extendMaxReads', '');
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(true);
+            expect(visible('extendPreview')).toBe(false);
+            expect(target('extendPreview').textContent).toBe('');
+        });
+
+        it('previews from now when the share has no or a past expiry, with singular reads', async () => {
+            vi.useFakeTimers({ now: new Date('2026-06-01T10:00:00Z'), toFake: ['Date'] });
+            onTestFinished(() => {
+                vi.useRealTimers();
+            });
+            respond({ status: 'ok', mode: 'key', extendable: true, maxReads: 1, readsLeft: 1, expiresAt: '2026-05-01T10:00:00Z', accessLog: [] });
+            await mount({ extendLabels: true });
+            byId('open').click();
+            await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+
+            target<HTMLSelectElement>('extendExpiresIn').value = '1d';
+            target('extendExpiresIn').dispatchEvent(new Event('change'));
+            expect(target('extendPreview').textContent)
+                .toBe(`Will be: expires ${new Date('2026-06-02T10:00:00Z').toLocaleString()} · 1 read`);
+
+            app?.stop();
+            respond({ status: 'ok', mode: 'key', extendable: true, accessLog: [] });
+            await mount({ extendLabels: true });
+            byId('open').click();
+            await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+            expect(target('extendSummary').textContent).toBe('expires — · 0 reads');
+            target<HTMLSelectElement>('extendExpiresIn').value = '1d';
+            target('extendExpiresIn').dispatchEvent(new Event('change'));
+            expect(target('extendPreview').textContent)
+                .toBe(`Will be: expires ${new Date('2026-06-02T10:00:00Z').toLocaleString()} · 0 reads`);
+        });
+
+        it('falls back to the raw count without reads labels', async () => {
+            respond(extendable);
+            document.body.innerHTML = markup().replace(
+                'data-preview-copied-message-value',
+                `data-preview-extend-labels-value='{"summary":"%expires% / %reads%"}' data-preview-copied-message-value`,
+            );
+            app = new Application(document.documentElement);
+            await app.start();
+            app.register('preview', YopassManagePreviewController);
+            byId('open').click();
+            await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+            expect(target('extendSummary').textContent).toBe(`${new Date('2026-05-01T10:00:00Z').toLocaleString()} / 2`);
+            target<HTMLSelectElement>('extendMaxReads').value = '5';
+            target('extendMaxReads').dispatchEvent(new Event('change'));
+            expect(target('extendPreview').textContent).toBe(`Will be: ${new Date('2026-05-01T10:00:00Z').toLocaleString()} / 4`);
         });
 
         it('does nothing without an open share or extend URL', async () => {

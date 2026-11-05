@@ -212,7 +212,26 @@ describe('yopass-create-controller', () => {
             expect(target('secretCounter').textContent).toBe('3 / 10');
         });
 
-        it('defaults to the text tab when the button has no tab attribute', async () => {
+        it('UiKit tabs links: never navigate and drop the server-rendered aria-current', async () => {
+            await mount({ fileEnabled: true });
+            const link = document.createElement('a');
+            link.href = '#';
+            link.setAttribute('data-yopass-tab', 'file');
+            link.setAttribute('aria-current', 'page');
+            link.setAttribute('data-action', 'create#switchTab');
+            target('form').appendChild(link);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+            link.dispatchEvent(click);
+
+            expect(click.defaultPrevented).toBe(true);
+            expect(link.hasAttribute('aria-current')).toBe(false);
+            expect(link.getAttribute('aria-selected')).toBe('true');
+            expect(target('filePanel').hidden).toBe(false);
+        });
+
+                it('defaults to the text tab when the button has no tab attribute', async () => {
             await mount({ fileEnabled: true });
             el<HTMLButtonElement>('#tab-file').click();
 

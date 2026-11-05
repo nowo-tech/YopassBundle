@@ -42,7 +42,9 @@ final class YopassPagesTest extends TestCase
         self::assertNull((new YopassPages('', ''))->layout());
         self::assertNull((new YopassPages('', ''))->publicLayout());
         self::assertSame('guest.html.twig', (new YopassPages(publicLayoutTemplate: 'guest.html.twig'))->publicLayout());
-        self::assertSame(['page' => 1, 'nowo_yopass_legacy_layout' => null, 'nowo_yopass_legacy_blocks' => []], $pages->context(['page' => 1]));
+        self::assertSame(['page' => 1, 'nowo_yopass_legacy_layout' => null, 'nowo_yopass_legacy_blocks' => [], 'nowo_yopass_icons' => []], $pages->context(['page' => 1]));
+        $icons = ['create_tab_text' => 'tabler:file-text', 'create_tab_file' => null];
+        self::assertSame($icons, (new YopassPages(icons: $icons))->context([])['nowo_yopass_icons']);
     }
 
     public function testCanonicalLayoutIsUsedAsIs(): void
