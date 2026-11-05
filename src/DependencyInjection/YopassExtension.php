@@ -30,7 +30,11 @@ use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
+use function array_column;
+use function array_filter;
 use function array_key_exists;
+use function array_unique;
+use function array_values;
 use function in_array;
 use function is_array;
 use function is_string;
@@ -75,6 +79,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.web_ui.enabled', $webUi['enabled']);
         $container->setParameter('nowo_yopass.web_ui.path_prefix', $webUi['path_prefix']);
         $container->setParameter('nowo_yopass.web_ui.create_mode', $webUi['create_mode']);
+        $container->setParameter('nowo_yopass.web_ui.list_routes', $webUi['list_routes']);
+        $container->setParameter('nowo_yopass.manage_route_name', $config['routes']['manage']['name']);
         $container->setParameter('nowo_yopass.web_ui.layout_template', $webUi['layout_template']);
         $container->setParameter('nowo_yopass.web_ui.public_layout_template', $webUi['public_layout_template']);
         $container->setParameter('nowo_yopass.web_ui.templates', $webUi['templates']);
@@ -91,6 +97,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         // parameter to scope the keyword. The opt-in listener only edits those routes.
         $container->setParameter('nowo_yopass.csp.wasm_routes', WasmCspListener::routeNames($config['routes']));
         $container->setParameter('nowo_yopass.csp.wasm_unsafe_eval', (bool) $config['csp']['wasm_unsafe_eval']);
+        $container->setParameter('nowo_yopass.security_headers.enabled', (bool) $config['security_headers']['enabled']);
+        $container->setParameter('nowo_yopass.route_names', array_values(array_unique(array_column($config['routes'], 'name'))));
 
         $publicRateLimit = $config['public_rate_limit'];
         $container->setParameter('nowo_yopass.public_rate_limit.enabled', $publicRateLimit['enabled']);
@@ -142,6 +150,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
      *     enabled: bool,
      *     path_prefix: string,
      *     create_mode: string,
+     *     list_routes: list<string>,
      *     layout_template: string|null,
      *     public_layout_template: string|null,
      *     templates: array{manage: string|null, created: string|null, public: string|null},
@@ -169,6 +178,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         return [
             'enabled'                => (bool) $webUi['enabled'],
             'create_mode'            => ($webUi['create_mode'] ?? 'page') === 'dialog' ? 'dialog' : 'page',
+            'list_routes'            => array_values(array_filter((array) ($webUi['list_routes'] ?? []), is_string(...))),
             'path_prefix'            => (string) ($webUi['path_prefix'] ?? ''),
             'layout_template'        => $layout,
             'public_layout_template' => $publicLayout,

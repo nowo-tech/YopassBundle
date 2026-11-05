@@ -1275,6 +1275,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     access_log?: array{ // Records successful public link opens (consume) for the share creator audit trail. Requires Doctrine ORM.
  *         enabled?: bool|Param, // When false, opens are not persisted, the history UI stays hidden and the ShareAccessLog entity is not mapped (no table). // Default: true
  *     },
+ *     security_headers?: array{ // Hardening headers on every bundle route (Cache-Control no-store, Referrer-Policy no-referrer, X-Robots-Tag noindex, X-Frame-Options DENY, CSP frame-ancestors none).
+ *         enabled?: bool|Param, // Default true. Set false only when the host sends equivalent headers on the bundle routes. // Default: true
+ *     },
  *     csp?: array{ // Content-Security-Policy helpers. libsodium compiles WebAssembly, so the pages that load yopass.js (manage, created, public reveal) need 'wasm-unsafe-eval' in script-src.
  *         wasm_unsafe_eval?: bool|Param, // Opt-in: append 'wasm-unsafe-eval' to script-src (or to a script-src derived from default-src) of the Content-Security-Policy / -Report-Only response headers on the yopass.js routes only. Never creates a policy and never touches other routes. Default false (the host adds it). // Default: false
  *     },
@@ -1289,7 +1292,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             id?: scalar|Param|null, // Stable identifier sent as expiresIn in the create API.
  *             interval?: scalar|Param|null, // PHP relative datetime modifier (e.g. "1 hour", "7 days").
  *         }>,
- *         retention?: array{ // Automatically delete shares older than max_age from the manage list and via the purge console command.
+ *         retention?: array{ // Automatically delete shares older than max_age: the creator's own when they create a share, and all of them via the purge console command (never on a list GET).
  *             enabled?: bool|Param, // When false, shares are kept until manually deleted or revoked. // Default: true
  *             max_age?: scalar|Param|null, // PHP relative datetime modifier (e.g. "1 month", "30 days"). Shares with createdAt before now − max_age are removed. // Default: "1 month"
  *         },
@@ -1320,6 +1323,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         enabled?: bool|Param, // Manage Web UI feature flag (default true). Access is still enforced by security.access_roles and the host firewall. The public share routes are always registered. // Default: true
  *         path_prefix?: scalar|Param|null, // Prefix prepended to every bundle route path, manage and public (e.g. /{_locale}). Replaces route_prefix. // Default: ""
  *         create_mode?: "page"|"dialog"|Param, // Where the create form lives: "page" (card above the list, POST + redirect to the created page; 1.11 behaviour) or "dialog" (a "New share" header / empty-state action opens a <dialog>; the browser encrypts, posts the ciphertext with fetch and shows the links in the dialog; the key stays in memory and is wiped on close). // Default: "page"
+ *         list_routes?: list<scalar|Param|null>,
  *         layout_template?: scalar|Param|null, // Layout the manage pages extend (page.layout). Null = nowo_ui_kit.layouts.admin. A 1.x layout without the UiKit canonical blocks is wrapped in a deprecated bridge. // Default: null
  *         public_layout_template?: scalar|Param|null, // Layout of the public reveal page. Null = nowo_ui_kit.layouts.guest. // Default: null
  *         templates?: array{ // Per-page template overrides (a host template extending @!NowoYopassBundle/... and overriding a data block). Null = the bundle template.

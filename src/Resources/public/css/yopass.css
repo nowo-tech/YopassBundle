@@ -1,0 +1,94 @@
+/*
+ * YopassBundle layout layer (1.13). Only layout for the bundle's own nowo-yopass-* hooks, on UiKit tokens
+ * (--nowo-ui-*); colours, fonts, buttons and inputs come from UiKit / the host theme. No inline styles (CSP):
+ * loaded as a stylesheet from the nowo_yopass asset package. UiKit has no input-group / 2-column field grid slot yet.
+ */
+
+/* Dialogs: header and footer stay, the body scrolls on short screens; never wider than the viewport. */
+dialog[data-nowo-yopass-dialog][open] {
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 2rem);
+}
+
+dialog[data-nowo-yopass-dialog] > .nowo-ui-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Title with the status badge inline. */
+.nowo-yopass-dialog-title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Input group: full-width field with a button attached on the right. */
+.nowo-yopass-input-group {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  width: 100%;
+}
+
+.nowo-yopass-input-group__field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nowo-yopass-input-group__field .nowo-ui-input {
+  width: 100%;
+  max-width: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.nowo-yopass-input-group > button {
+  flex: 0 0 auto;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  margin-left: -1px;
+}
+
+/* Sections after a divider (access log, extend). */
+.nowo-yopass-preview__section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--nowo-ui-border, rgba(0, 0, 0, 0.12));
+}
+
+/* Two columns on desktop, stacked on phones; the usual label-to-control gap stays on the rows. */
+.nowo-yopass-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+}
+
+@media (max-width: 36rem) {
+  .nowo-yopass-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.nowo-yopass-actions-end {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Revealed text: monospace block that wraps instead of widening the dialog. */
+.nowo-yopass-secret {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+/* Copy fields of the created page / create dialog wrap under ~420 px. */
+.nowo-yopass-copy-field {
+  min-width: 0;
+}

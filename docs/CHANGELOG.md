@@ -51,6 +51,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+One create action per screen, the manage list on a host page (allow-listed route, signed for the viewer), host list filters, hardening headers on every route, no purge on GET (indexed retention). See [UPGRADING](UPGRADING.md#unreleased).
+
+### Added
+
+- **Host page for the list:** `YopassEvents::SHARE_LIST_ROUTE` (`ShareListRouteEvent::setRoute($name, $params)`) lets a host that shows the manage list on its own page (e.g. `/projects/{id}/secrets`, forwarding to the list controller) set that page's route. The pager, the filter form and the redirects after revoke / delete / delete all use it. The route must be the manage route or listed in the new `web_ui.list_routes`; parameters must be scalars.
+- **Redirect safety (REQ-SEC-004):** the action forms carry the list route as a hidden `_list` token: route name + scalar parameters, HMAC-SHA256 signed with `kernel.secret` for the viewer that rendered the list. The handlers verify the signature for the current viewer and the allow-list, then let the router build the URL; a missing, forged, foreign, not-allowed or unbuildable value falls back to the manage route. No URL is ever posted or accepted.
+- **Host list filters:** `YopassEvents::SHARE_LIST_FILTERS` (`ShareListFiltersEvent::getFormBuilder()`): fields a host adds form a GET filter form (`filters[...]`, no CSRF: read-only search) rendered in the UiKit filters region (Symfony form rendering, escaped). Its data reaches `ShareListQueryEvent::getFilters()`; the filter query is kept across pages (scalar leaves only) and the clear link goes back to the list page.
+- `ShareLister::list()` takes the filter data; `ShareListQueryEvent` has `getFilters()`; `CsrfActionType` option `list_token`.
+
+- **Security headers on every bundle route (KIT-70):** new `security_headers.enabled` (default **true**): `SecurityHeadersListener` sends `Cache-Control: no-store, private`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` (appended to the host policy when it has none, or sent alone) on the manage, create, created, preview, extend, revoke, delete, delete-all, reveal and consume routes.
+- **Indexes for the retention purge:** `<table>_created_at_idx` and `<table>_expires_at_idx` on the shares table (ORM, named after the configured table) and on `createdAt` / `expiresAt` (MongoDB). Generate a migration (see UPGRADING).
+
+### Changed
+
+- **Preview dialog layout** (owner review): the status badge sits inline next to the title; the key / password input is full width in an input group with **Show content** (the dialog's only primary button) attached, plus one short help line (`yopass.preview.key_help` reworded in 7 locales); the revealed text is a monospace block with **Copy**; the public link is a full-width read-only input with a copy icon button (UiKit `copy` kind) that shows a toast (`yopass.link.copied`, 7 locales); **Extend** is its own section after a divider with "Current limits" as a muted line, the two selects in a 2-column grid that stacks on phones and a **secondary** "Apply extension" aligned to the end; "Close" on the right; the body scrolls inside the dialog with no horizontal scroll at 390 px. Layout comes from the new `css/yopass.css` (layout only, on UiKit tokens; UiKit has no input-group / field-grid slot yet), loaded by the manage page in `nowo_ui_styles`. The dialogs carry `data-nowo-yopass-dialog` (the 1.12 `class` attr of the create dialog was ignored by UiKit's attribute merge). Extend has no other form (row action → same dialog).
+- **No purge on the list GET (PERF-YOPASS-PURGE-ON-GET):** the manage list no longer deletes the viewer's old shares while rendering. Retention runs on the create write path (the creator's old shares) and in `nowo:yopass:purge-old-shares` (schedule it).
+- **One create action per screen (dialog mode):** the header **New share** action is shown only when the list has rows; an empty list carries it in the empty state alone.
+
 ## [1.12.1] - 2026-11-04
 
 ### Fixed

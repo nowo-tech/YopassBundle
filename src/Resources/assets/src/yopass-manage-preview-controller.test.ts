@@ -32,7 +32,11 @@ function markup(options: MountOptions = {}): string {
         ? ''
         : `
             <div data-preview-target="error" hidden></div>
-            <pre data-preview-target="output" hidden></pre>
+            <div data-preview-target="unlock"></div>
+            <div data-preview-target="outputPanel" hidden>
+                <pre data-preview-target="output" hidden></pre>
+                <button id="copy-output" data-action="preview#copyOutput">Copy</button>
+            </div>
             <a data-preview-target="downloadLink" hidden></a>
             <input data-preview-target="publicLink">
             <button id="copy" data-action="preview#copyPublicLink">Copy</button>
@@ -59,6 +63,7 @@ function markup(options: MountOptions = {}): string {
              data-preview-errors-value='${ERRORS}'
              data-preview-availability-labels-value='{"active":"Active"}'
              data-preview-extend-success-message-value="Limits extended."
+             data-preview-copied-message-value="Copied to clipboard."
              ${options.allowEmbed === true ? 'data-preview-allow-embed-in-url-value="true"' : ''}>
             <button id="open" data-share-id="share-1" data-action="preview#open">Preview</button>
             <button id="open-extend" data-share-id="share-1" data-action="preview#openExtend">Extend</button>
@@ -181,9 +186,19 @@ describe('yopass-manage-preview-controller', () => {
         expect(visible('extendPanel')).toBe(false);
         expect(visible('decryptButton')).toBe(false);
         expect(visible('keyPanel')).toBe(false);
+        expect(visible('unlock')).toBe(false);
+        expect(visible('outputPanel')).toBe(true);
         expect(target<HTMLInputElement>('key').value).toBe(key);
 
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        byId('copy-output').click();
+        expect(writeText).toHaveBeenCalledWith('preview me');
+        expect(modal.querySelector('[data-nowo-ui-toast]')?.textContent).toBe('Copied to clipboard.');
+
         byId('close').click();
+        expect(visible('outputPanel')).toBe(false);
+        expect(visible('unlock')).toBe(true);
         expect(modal.open).toBe(false);
         expect(target('output').textContent).toBe('');
         expect(visible('output')).toBe(false);
@@ -373,6 +388,23 @@ describe('yopass-manage-preview-controller', () => {
         byId('copy').click();
 
         expect(writeText).toHaveBeenCalledWith('https://example.test/s/share-1');
+        // Toast inside the open <dialog> (top layer), UiKit markup, no inline style.
+        const toast = target('modal').querySelector<HTMLElement>('[data-nowo-ui-toast-stack] [data-nowo-ui-toast]');
+        expect(toast?.className).toBe('nowo-ui-toast');
+        expect(toast?.getAttribute('role')).toBe('status');
+        expect(toast?.textContent).toBe('Copied to clipboard.');
+        expect(toast?.hasAttribute('style')).toBe(false);
+    });
+
+    it('does not copy an empty output', async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        await mount();
+
+        byId('copy-output').click();
+
+        expect(writeText).not.toHaveBeenCalled();
+        expect(target('modal').querySelector('[data-nowo-ui-toast]')).toBeNull();
     });
 
     describe('extend', () => {

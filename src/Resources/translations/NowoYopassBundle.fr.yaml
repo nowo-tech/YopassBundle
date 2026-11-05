@@ -72,7 +72,7 @@ yopass:
         intro: Le déchiffrement se fait dans votre navigateur. L'aperçu ne consomme pas de lecture.
         decrypt: Afficher le contenu
         key_field: Clé de déchiffrement
-        key_help: Saisissez la clé affichée lors de la création de ce partage (stockée dans cette session du navigateur lorsque possible).
+        key_help: 'Affichée lors de la création du secret ; conservée dans cette session du navigateur.'
         key_required: Saisissez la clé de déchiffrement pour ce partage.
         public_link: Lien public
         close: Fermer
@@ -136,6 +136,7 @@ yopass:
     link:
         label: Lien généré (copiez-le maintenant, il ne sera plus affiché)
         copy: Copier
+        copied: 'Copié dans le presse-papiers.'
     public:
         title: Secret partagé
         intro: Cliquez pour révéler le contenu. Chaque lecture consomme une vue.

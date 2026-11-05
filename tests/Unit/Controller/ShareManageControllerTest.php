@@ -16,7 +16,9 @@ use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
 use Nowo\YopassBundle\Event\ShareDeletedEvent;
 use Nowo\YopassBundle\Event\ShareExtendedEvent;
 use Nowo\YopassBundle\Event\ShareListColumnsEvent;
+use Nowo\YopassBundle\Event\ShareListFiltersEvent;
 use Nowo\YopassBundle\Event\ShareListQueryEvent;
+use Nowo\YopassBundle\Event\ShareListRouteEvent;
 use Nowo\YopassBundle\Event\ShareRevokedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
@@ -29,6 +31,7 @@ use Nowo\YopassBundle\Service\ShareDeleter;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
+use Nowo\YopassBundle\Service\ShareListRouteResolver;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Service\ShareRevoker;
@@ -36,17 +39,21 @@ use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\ControllerContainerBuilder;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
+use Nowo\YopassBundle\Ui\ListRoute;
 use Nowo\YopassBundle\Ui\ShareListColumn;
 use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\Ui\YopassPages;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
@@ -135,16 +142,14 @@ final class ShareManageControllerTest extends TestCase
         self::assertNull($twig->captured['nowo_yopass_legacy_layout']);
     }
 
-    public function testIndexPurgesOldSharesBeforeListing(): void
+    public function testIndexNeverPurgesOnGet(): void
     {
         $user = new TestUser();
 
         $shareRepository = $this->createMock(ShareRepositoryInterface::class);
-        $shareRepository->expects(self::once())
-            ->method('removeByCreatorOlderThan')
-            ->with($user, self::isInstanceOf(DateTimeImmutable::class))
-            ->willReturn(2);
-        $shareRepository->expects(self::once())->method('flush');
+        $shareRepository->expects(self::never())->method('removeByCreatorOlderThan');
+        $shareRepository->expects(self::never())->method('removeOlderThan');
+        $shareRepository->expects(self::never())->method('flush');
         $shareRepository->method('countByCreator')->willReturn(0);
         $shareRepository->method('findByCreatorPaginated')->willReturn([]);
 
@@ -155,6 +160,28 @@ final class ShareManageControllerTest extends TestCase
         ControllerContainerBuilder::bind($controller, $user);
 
         $controller->index(Request::create('/tools/yopass'));
+    }
+
+    public function testCreatePurgesTheCreatorsOldSharesOnTheWritePath(): void
+    {
+        $user = new TestUser();
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::once())->method('persist');
+        $shareRepository->expects(self::once())
+            ->method('removeByCreatorOlderThan')
+            ->with($user, self::isInstanceOf(DateTimeImmutable::class))
+            ->willReturn(2);
+
+        $controller = $this->controller(
+            shareRepository: $shareRepository,
+            retentionPurger: new ShareRetentionPurger($shareRepository, DefaultShareOptions::get()),
+        );
+        $container = ControllerContainerBuilder::bind($controller, $user);
+
+        $response = $controller->create($this->createShareFormRequest($container));
+
+        self::assertSame(Response::HTTP_FOUND, $response->getStatusCode());
     }
 
     public function testCreateRedirectsToManageWhenCsrfInvalid(): void
@@ -909,10 +936,10 @@ final class ShareManageControllerTest extends TestCase
         self::assertInstanceOf(ListPage::class, $page);
         self::assertSame('dialog', $twig->captured['create_mode']);
         self::assertInstanceOf(FormView::class, $twig->captured['links_form']);
-        self::assertCount(1, $page->header->actions, 'New share only: no "Delete all" without own shares');
-        self::assertSame(YopassPageFactory::CREATE_DIALOG_ID, $page->header->actions[0]->dialogId);
-        self::assertSame('yopass-create-open', $page->header->actions[0]->attributes['data-testid']);
+        // One create action per screen: an empty list carries it in the empty state only.
+        self::assertSame([], $page->header->actions, 'no header New share (nor Delete all) on an empty list');
         self::assertSame(YopassPageFactory::CREATE_DIALOG_ID, $page->empty?->action?->dialogId);
+        self::assertSame('yopass-create-open-empty', $page->empty?->action?->attributes['data-testid']);
     }
 
     public function testIndexGatesRowActionsPerShareAndAddsHostColumns(): void
@@ -1045,6 +1072,128 @@ final class ShareManageControllerTest extends TestCase
         };
     }
 
+    public function testIndexOnAHostPageUsesTheHostRouteForPagerFiltersAndActionForms(): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-0000000000f1', $user);
+        $share->setCiphertext('PLACEHOLDER-CT')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('countByCreator')->willReturn(45);
+        $shareRepository->method('findByCreatorPaginated')->willReturn([$share]);
+
+        $seenFilters = null;
+        $dispatcher  = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_ROUTE, static function (ShareListRouteEvent $event): void {
+            $event->setRoute('app_project_secrets', ['id' => '7']);
+        });
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_FILTERS, static function (ShareListFiltersEvent $event): void {
+            self::assertInstanceOf(TestUser::class, $event->getViewer());
+            $event->getFormBuilder()->add('sharedWith', TextType::class, ['required' => false]);
+        });
+        $dispatcher->addListener(YopassEvents::SHARE_LIST_QUERY, static function (ShareListQueryEvent $event) use (&$seenFilters): void {
+            $seenFilters = $event->getFilters();
+        });
+
+        $twig       = $this->capturingTwig();
+        $resolver   = new ShareListRouteResolver('nowo_yopass_index', ['app_project_secrets'], 'placeholder-secret', $dispatcher);
+        $controller = $this->controller(accessChecker: $this->accessChecker(), shareRepository: $shareRepository, dispatcher: $dispatcher, listRoutes: $resolver);
+        ControllerContainerBuilder::bind($controller, $user, ['twig' => $twig, 'router' => $this->paramRouter()]);
+
+        $controller->index(Request::create('/projects/7/secrets', 'GET', ['page' => 2, 'filters' => ['sharedWith' => '<b>team</b>', 'junk' => ['x' => 'y']]]));
+
+        $page = $twig->captured['page'];
+        self::assertInstanceOf(ListPage::class, $page);
+        self::assertNotNull($page->pagination);
+        self::assertSame('app_project_secrets', $page->pagination->route);
+        self::assertSame(['id' => '7'], $page->pagination->routeParams);
+        self::assertSame(['filters' => ['sharedWith' => '<b>team</b>', 'junk' => ['x' => 'y']]], $page->pagination->query);
+        self::assertInstanceOf(FormView::class, $page->filters);
+        self::assertSame('GET', $page->filters->vars['method']);
+        self::assertSame('/generated/app_project_secrets?id=7', $page->filters->vars['action']);
+        self::assertSame('/generated/app_project_secrets?id=7', $page->filtersClearHref);
+        self::assertSame(['sharedWith' => '<b>team</b>'], $seenFilters);
+        self::assertSame('app_project_secrets', $twig->captured['list_route']->name);
+
+        $token = $twig->captured['revoke_forms'][$share->getId()]->children[ShareListRouteResolver::FIELD]->vars['value'];
+        self::assertSame($resolver->sign($user, $twig->captured['list_route']), $token);
+        self::assertSame($token, $twig->captured['delete_forms'][$share->getId()]->children[ShareListRouteResolver::FIELD]->vars['value']);
+        self::assertSame($token, $twig->captured['delete_all_form']->children[ShareListRouteResolver::FIELD]->vars['value']);
+    }
+
+    public function testIndexWithoutFilterFieldsHasNoFilterForm(): void
+    {
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('findByCreatorPaginated')->willReturn([]);
+
+        $twig       = $this->capturingTwig();
+        $controller = $this->controller(accessChecker: $this->accessChecker(), shareRepository: $shareRepository);
+        ControllerContainerBuilder::bind($controller, new TestUser(), ['twig' => $twig]);
+
+        $controller->index(Request::create('/tools/yopass'));
+
+        self::assertNull($twig->captured['page']->filters);
+        self::assertSame([], $twig->captured['list_filters']);
+        self::assertArrayNotHasKey(ShareListRouteResolver::FIELD, $twig->captured['delete_all_form']->children);
+    }
+
+    /**
+     * @return iterable<string, array{string|null, string}>
+     */
+    public static function listTokens(): iterable
+    {
+        yield 'valid host token' => ['valid', '/generated/app_project_secrets?id=7'];
+        yield 'no token' => [null, '/generated/nowo_yopass_index'];
+        yield 'forged token' => ['forged', '/generated/nowo_yopass_index'];
+        yield 'free URL' => ['https://evil.example/x', '/generated/nowo_yopass_index'];
+        yield 'route the router cannot build' => ['broken', '/generated/nowo_yopass_index'];
+    }
+
+    #[DataProvider('listTokens')]
+    public function testRevokeDeleteAndDeleteAllRedirectToTheVerifiedListPage(?string $kind, string $expected): void
+    {
+        $user  = new TestUser();
+        $share = new SecureShare('00000000-0000-4000-8000-0000000000f2', $user);
+        $share->setCiphertext('PLACEHOLDER-CT')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+        $shareRepository->method('removeAllByCreator')->willReturn(1);
+
+        $resolver = new ShareListRouteResolver('nowo_yopass_index', ['app_project_secrets', 'app_broken'], 'placeholder-secret');
+        $token    = match ($kind) {
+            'valid'  => $resolver->sign($user, new ListRoute('app_project_secrets', ['id' => '7'])),
+            'forged' => (new ShareListRouteResolver('nowo_yopass_index', ['app_project_secrets'], 'other-secret'))->sign($user, new ListRoute('app_project_secrets', ['id' => '7'])),
+            'broken' => $resolver->sign($user, new ListRoute('app_broken')),
+            default  => $kind,
+        };
+
+        $controller = $this->controller(shareRepository: $shareRepository, listRoutes: $resolver);
+        $container  = ControllerContainerBuilder::bind($controller, $user, ['router' => $this->paramRouter()]);
+        $post       = static fn (string $csrfId): Request => Request::create('/', 'POST', array_filter([
+            '_token'                      => ControllerContainerBuilder::csrfToken($container, $csrfId),
+            ShareListRouteResolver::FIELD => $token,
+        ], static fn (?string $value): bool => $value !== null));
+
+        self::assertSame($expected, $controller->revoke($share->getId(), $post('revoke-share-' . $share->getId()))->getTargetUrl());
+        self::assertSame($expected, $controller->delete($share->getId(), $post('delete-share-' . $share->getId()))->getTargetUrl());
+        self::assertSame($expected, $controller->deleteAll($post('yopass_delete_all'))->getTargetUrl());
+    }
+
+    private function paramRouter(): UrlGenerator
+    {
+        return new class(new RouteCollection(), new RequestContext()) extends UrlGenerator {
+            public function generate(string $name, array $parameters = [], int $referenceType = self::ABSOLUTE_PATH): string
+            {
+                if ($name === 'app_broken') {
+                    throw new RouteNotFoundException('placeholder');
+                }
+
+                return '/generated/' . $name . ($parameters !== [] ? '?' . http_build_query($parameters) : '');
+            }
+        };
+    }
+
     private function controller(
         ?YopassAccessCheckerInterface $accessChecker = null,
         ?ShareRepositoryInterface $shareRepository = null,
@@ -1060,6 +1209,7 @@ final class ShareManageControllerTest extends TestCase
         ?EventDispatcher $dispatcher = null,
         string $createMode = 'page',
         ?ShareRevoker $shareRevoker = null,
+        ?ShareListRouteResolver $listRoutes = null,
     ): ShareManageController {
         $translator = $this->createMock(TranslatorInterface::class);
         $translator->method('trans')->willReturnArgument(0);
@@ -1107,6 +1257,7 @@ final class ShareManageControllerTest extends TestCase
             $shareRevoker ?? new ShareRevoker($shareRepository, $eventDispatcher),
             $eventDispatcher,
             $createMode,
+            $listRoutes,
         );
     }
 

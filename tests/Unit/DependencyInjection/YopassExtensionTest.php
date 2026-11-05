@@ -23,6 +23,7 @@ use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
+use Nowo\YopassBundle\Service\ShareListRouteResolver;
 use Nowo\YopassBundle\Twig\YopassTwigExtension;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
@@ -574,5 +575,37 @@ final class YopassExtensionTest extends TestCase
     {
         $this->expectException(InvalidConfigurationException::class);
         (new YopassExtension())->load([['user_class' => 'App\\Entity\\User', 'web_ui' => ['create_mode' => 'modal']]], new ContainerBuilder());
+    }
+
+    public function testListRoutesAndManageRouteNameParameters(): void
+    {
+        $container = new ContainerBuilder();
+        (new YopassExtension())->load([[
+            'user_class' => 'App\\Entity\\User',
+            'web_ui'     => ['list_routes' => ['app_project_secrets']],
+            'routes'     => ['manage' => ['name' => 'app_secrets']],
+        ]], $container);
+
+        self::assertSame(['app_project_secrets'], $container->getParameter('nowo_yopass.web_ui.list_routes'));
+        self::assertSame('app_secrets', $container->getParameter('nowo_yopass.manage_route_name'));
+        $resolver = $container->getDefinition(ShareListRouteResolver::class);
+        self::assertSame('%kernel.secret%', $resolver->getArgument('$secret'));
+    }
+
+    public function testSecurityHeadersAreOnByDefaultForEveryBundleRoute(): void
+    {
+        $container = new ContainerBuilder();
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User']], $container);
+
+        self::assertTrue($container->getParameter('nowo_yopass.security_headers.enabled'));
+        $names = $container->getParameter('nowo_yopass.route_names');
+        self::assertIsArray($names);
+        foreach (['nowo_yopass_index', 'nowo_yopass_create', 'nowo_yopass_created', 'nowo_yopass_preview', 'nowo_yopass_extend', 'nowo_yopass_revoke', 'nowo_yopass_delete', 'nowo_yopass_delete_all', 'nowo_yopass_public_share', 'nowo_yopass_public_consume'] as $name) {
+            self::assertContains($name, $names);
+        }
+
+        $off = new ContainerBuilder();
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User', 'security_headers' => ['enabled' => false]]], $off);
+        self::assertFalse($off->getParameter('nowo_yopass.security_headers.enabled'));
     }
 }

@@ -14,6 +14,7 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
 - [Sharing (encryption & links)](#sharing-encryption--links)
   - [Public link formats](#public-link-formats)
 - [Access log](#access-log)
+- [Security headers](#security-headers)
 - [Content-Security-Policy](#content-security-policy)
 - [Routes](#routes)
 - [Security](#security)
@@ -216,6 +217,20 @@ When disabled (or with the MongoDB / custom non-relational backends, which alway
 `<table_prefix>_share_access_logs` table is created. See [UPGRADING](UPGRADING.md#access-log-table-no-longer-mapped-when-disabled)
 for an existing empty table.
 
+## Security headers
+
+```yaml
+nowo_yopass:
+    security_headers:
+        enabled: true   # default
+```
+
+Every bundle route (manage, create, created, preview, extend, revoke, delete, delete all, reveal, consume) sends
+`Cache-Control: no-store, private`, `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`,
+`X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` (appended to the host policy when it has no `frame-ancestors`,
+or sent alone without a policy). Report-Only policies are left alone. Only disable it when the host sends equivalent
+headers on these routes.
+
 ## Content-Security-Policy
 
 The pages that load `js/yopass.js` (manage list, "share created", public reveal) run libsodium, which compiles
@@ -369,8 +384,23 @@ public function __invoke(ShareListColumnsEvent $event): void
 Keys are `[a-zA-Z][a-zA-Z0-9_]*` and may not reuse a built-in key. Values are plain text (scalar, `Stringable` or
 null → "—") printed with Twig auto-escaping; never return secret material.
 
-**Retention** (`shares.retention`) purges the viewer's own old shares when the list opens; shares of other creators
-shown to the viewer are purged by the `nowo:yopass:purge-old-shares` command only.
+**The list on a host page:** `YopassEvents::SHARE_LIST_ROUTE` (`ShareListRouteEvent::setRoute($name, $params)`, with
+`getViewer()` / `getRequest()`) sets the page that shows the list when a host renders it on its own page (forwarding
+to the list controller). Allowed routes: the manage route plus `web_ui.list_routes`; parameters: scalars with string
+keys (anything else throws). The pager, the filter form action and clear link, and the redirects after revoke / delete /
+delete all use it. The action forms carry a hidden `_list` token (route name + parameters, HMAC-SHA256 with
+`kernel.secret`, bound to the viewer's user identifier); the handlers accept it only when the signature matches the
+current viewer and the route is still allowed, and the router builds the redirect URL. Anything else redirects to the
+manage route. No URL is posted or accepted. The target page enforces its own access.
+
+**Host filters:** `YopassEvents::SHARE_LIST_FILTERS` (`ShareListFiltersEvent::getFormBuilder()`) collects filter
+fields into a GET form named `filters` (no CSRF: read-only search), rendered in the UiKit filters region. Its data is
+`ShareListQueryEvent::getFilters()`; apply it in your `SHARE_LIST_QUERY` listener (`overrideList()`). Without fields
+there is no filter form.
+
+**Retention** (`shares.retention`) never runs on a list GET: the creator's old shares are purged when they create a
+share, and every old share by the `nowo:yopass:purge-old-shares` command (schedule it). The `created_at` /
+`expires_at` columns are indexed.
 
 `ShareListQueryEvent` carries the requested page: `getPage()`, `getPageSize()` (0 = not paginated), `getOffset()`,
 `isPaginated()`. An `overrideList($shares, $total)` listener should return that page only and the overall total.
@@ -455,6 +485,7 @@ nowo_yopass:
         enabled: true
         path_prefix: ''                  # prefix of every bundle route (e.g. /{_locale})
         create_mode: page                # page (create card) | dialog (New share opens a <dialog>)
+        list_routes: []                  # host routes allowed to show the list (ShareListRouteEvent)
         layout_template: ~               # null = nowo_ui_kit.layouts.admin
         public_layout_template: ~        # null = nowo_ui_kit.layouts.guest
         templates:
@@ -467,6 +498,7 @@ nowo_yopass:
 |--------|---------|-------------|
 | `web_ui.enabled` | `true` | Manage Web UI feature flag. When false, only the public routes (`/share/{id}`, `/share/{id}/consume`) are registered and the CSRF / SecurityBundle compile checks of the manage UI are skipped. When true, access is enforced by `security.*` and the host firewall. |
 | `web_ui.path_prefix` | `''` | Prefix prepended to every bundle route path (manage and public). Replaces `route_prefix`. |
+| `web_ui.list_routes` | `[]` | Host routes allowed to show the manage list (`ShareListRouteEvent::setRoute()`); the manage route is always allowed. |
 | `web_ui.create_mode` | `page` | `page`: create card above the list, POST + redirect to the created page. `dialog`: **New share** (header + empty state) opens a `<dialog>`; the browser encrypts, posts with `fetch` and shows the links in the dialog. See [Create mode](#create-mode). |
 | `web_ui.layout_template` | `null` | Layout the manage pages extend (`page.layout`). Null = `nowo_ui_kit.layouts.admin`. **Set the project admin layout in UiKit once** (`nowo_ui_kit.layouts.admin`); use this key only for a Yopass-specific layout. A 1.x layout without the UiKit canonical blocks (e.g. a `base.html.twig` with `body`) is wrapped in the deprecated `_legacy_layout.html.twig` bridge. The 1.x default `@NowoYopassBundle/layout.html.twig` maps to null. |
 | `web_ui.public_layout_template` | `null` | Layout of the public reveal page. Null = `nowo_ui_kit.layouts.guest`. **Must not load third-party scripts** (they could read the decryption key and the decrypted secret); see [Usage — layout security](USAGE.md#public-reveal-page-layout-security). |

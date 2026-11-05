@@ -3,6 +3,12 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [One create action per screen](#one-create-action-per-screen)
+  - [The list on a host page](#the-list-on-a-host-page)
+  - [Host list filters](#host-list-filters)
+  - [Preview dialog layout and stylesheet](#preview-dialog-layout-and-stylesheet)
+  - [Security headers on every route](#security-headers-on-every-route)
+  - [Retention: no purge on GET, new indexes (migration)](#retention-no-purge-on-get-new-indexes-migration)
 - [To 1.12.1](#to-1121)
 - [To 1.12.0](#to-1120)
   - [Create in a dialog (opt-in)](#create-in-a-dialog-opt-in)
@@ -79,6 +85,99 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+From **1.12.1** (no breaking change):
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console cache:clear
+```
+
+### One create action per screen
+
+In `web_ui.create_mode: dialog` the header **New share** action now appears only when the list has rows; an empty list
+shows it in the empty state only. Hosts that removed the duplicate in a `nowo_ui_page_header` override can drop it.
+
+### The list on a host page
+
+A host page that renders the list (forwarding to the list controller) declares itself:
+
+```yaml
+nowo_yopass:
+    web_ui:
+        list_routes: [app_project_secrets]   # host routes allowed to show the list
+```
+
+```php
+#[AsEventListener(event: YopassEvents::SHARE_LIST_ROUTE)]
+public function __invoke(ShareListRouteEvent $event): void
+{
+    $project = $event->getRequest()->attributes->get('project'); // set by the host before forwarding
+    if (\is_string($project)) {
+        $event->setRoute('app_project_secrets', ['id' => $project]); // scalars only
+    }
+}
+```
+
+The pager, the filter form and the redirects after revoke / delete / delete all then use that route. The action forms
+carry it as a token signed for the viewer (`kernel.secret` must be set; without it the redirects keep going to the
+manage route). Hosts that rewrote the bundle's redirects (a "return" subscriber or session trick) can drop it.
+
+### Preview dialog layout and stylesheet
+
+The manage page now links `css/yopass.css` (asset package `nowo_yopass`) in the `nowo_ui_styles` block: run
+`php bin/console assets:install` (or your asset pipeline). Your admin layout must render the canonical
+`nowo_ui_styles` block (the UiKit layouts and bridge do). The file only lays out the bundle's `nowo-yopass-*` hooks with
+UiKit tokens and is CSP-safe (`style-src 'self'`).
+
+`manage/_preview_dialog.html.twig` was restructured (badge in the title, input groups, copy toast, extend grid). An
+override of it should start again from the 1.13 partial; the Stimulus targets are unchanged, plus the optional
+`unlock` and `outputPanel` targets and the `copyOutput` action. Wording changed: `yopass.preview.key_help`; new key
+`yopass.link.copied`.
+
+### Security headers on every route
+
+Every bundle route now sends `Cache-Control: no-store, private`, `Referrer-Policy: no-referrer`,
+`X-Robots-Tag: noindex, nofollow`, `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'` (appended to your
+`Content-Security-Policy` when it has no `frame-ancestors`, or sent as the only directive when there is no policy).
+Hosts that added these headers themselves (e.g. a response subscriber for the secrets pages) can remove that code. To
+keep your own headers instead: `nowo_yopass.security_headers.enabled: false`.
+
+### Retention: no purge on GET, new indexes (migration)
+
+- The manage list no longer deletes old shares while rendering. With `shares.retention.enabled`, old shares are removed
+  when the user creates a share (their own) and by `php bin/console nowo:yopass:purge-old-shares` (all shares):
+  **schedule the command** (cron, Symfony Scheduler) if you relied on the list visit.
+- New indexes on the shares table: `created_at` (retention purge) and `expires_at`. Doctrine ORM:
+
+  ```bash
+  php bin/console make:migration      # or doctrine:migrations:diff
+  # CREATE INDEX <table>_created_at_idx ON <table> (created_at);
+  # CREATE INDEX <table>_expires_at_idx ON <table> (expires_at);
+  php bin/console doctrine:migrations:migrate
+  ```
+
+  `<table>` is your `table_prefix` + `secure_shares` (default `yopass_secure_shares`). MongoDB: run
+  `php bin/console doctrine:mongodb:schema:update` (indexes on `createdAt` / `expiresAt`).
+
+### Host list filters
+
+Add filter fields instead of overriding `nowo_ui_list_filters`:
+
+```php
+#[AsEventListener(event: YopassEvents::SHARE_LIST_FILTERS)]
+public function addFilters(ShareListFiltersEvent $event): void
+{
+    $event->getFormBuilder()->add('sharedWith', ChoiceType::class, ['required' => false, 'choices' => $this->audiences()]);
+}
+
+#[AsEventListener(event: YopassEvents::SHARE_LIST_QUERY)]
+public function query(ShareListQueryEvent $event): void
+{
+    $sharedWith = $event->getFilters()['sharedWith'] ?? null;
+    // … $event->overrideList($shares, $total) for that audience and page
+}
+```
 
 ## To 1.12.1
 

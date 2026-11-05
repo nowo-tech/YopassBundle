@@ -72,7 +72,7 @@ yopass:
         intro: Ontsleuteling gebeurt in uw browser. Voorvertoning verbruikt geen lezing.
         decrypt: Inhoud tonen
         key_field: Ontsleutelingssleutel
-        key_help: Voer de sleutel in die werd getoond bij het aanmaken van dit geheim (indien mogelijk opgeslagen in deze browsersessie).
+        key_help: 'Getoond bij het aanmaken van het geheim; bewaard in deze browsersessie.'
         key_required: Voer de ontsleutelingssleutel voor dit geheim in.
         public_link: Openbare link
         close: Sluiten
@@ -136,6 +136,7 @@ yopass:
     link:
         label: Gegenereerde link (kopieer nu, wordt niet opnieuw getoond)
         copy: Kopiëren
+        copied: 'Gekopieerd naar het klembord.'
     public:
         title: Gedeeld geheim
         intro: Klik om de inhoud te tonen. Elke lezing verbruikt een weergave.

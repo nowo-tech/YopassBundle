@@ -81,7 +81,7 @@ Purge shares older than the configured retention age:
 php bin/console nowo:yopass:purge-old-shares
 ```
 
-Retention also runs when the manage list is loaded (per creator).
+Retention also runs when a user creates a share (their own old shares); it never runs on a list GET. Schedule the command.
 
 ## Custom access control
 

@@ -72,7 +72,7 @@ yopass:
         intro: Decryption happens in your browser. Preview does not consume a read.
         decrypt: Show content
         key_field: Decryption key
-        key_help: Enter the key shown when you created this share (stored in this browser session when possible).
+        key_help: 'Shown when you created the secret; kept in this browser session.'
         key_required: Enter the decryption key for this share.
         public_link: Public link
         close: Close
@@ -136,6 +136,7 @@ yopass:
     link:
         label: Generated link (copy it now, it will not be shown again)
         copy: Copy
+        copied: 'Copied to clipboard.'
     public:
         title: Shared secret
         intro: Click to reveal the content. Each read consumes one view.

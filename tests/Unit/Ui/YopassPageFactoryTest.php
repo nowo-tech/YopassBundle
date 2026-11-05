@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Nowo\UiKitBundle\View\Action;
 use Nowo\UiKitBundle\View\Column;
 use Nowo\UiKitBundle\View\Label;
+use Nowo\UiKitBundle\View\ListPage;
 use Nowo\UiKitBundle\View\Pagination;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
@@ -136,6 +137,32 @@ final class YopassPageFactoryTest extends TestCase
         self::assertSame([], $kinds($missing));
         self::assertSame([], $page->header->actions, 'no Delete all when the viewer owns nothing');
         self::assertNull($page->empty?->action);
+    }
+
+    public function testDialogModeCarriesOneCreateActionPerScreen(): void
+    {
+        $factory = new YopassPageFactory(new YopassPages());
+        $build   = static fn (array $shares): ListPage => $factory->managePage(
+            shares: $shares,
+            pagination: null,
+            canExtend: false,
+            canRevoke: false,
+            revokeForms: [],
+            deleteForms: [],
+            deleteAllForm: null,
+            backHref: null,
+            retentionEnabled: false,
+            retentionMaxAge: '',
+            createDialog: true,
+        );
+
+        $empty = $build([]);
+        self::assertSame([], $empty->header->actions, 'empty list: no header New share');
+        self::assertSame('yopass-create-open-empty', $empty->empty?->action?->attributes['data-testid']);
+
+        $filled = $build([$this->share('00000000-0000-4000-8000-0000000000e9')]);
+        self::assertCount(1, $filled->header->actions);
+        self::assertSame('yopass-create-open', $filled->header->actions[0]->attributes['data-testid']);
     }
 
     private function share(string $id): SecureShare

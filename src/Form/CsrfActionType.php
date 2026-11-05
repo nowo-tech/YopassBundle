@@ -6,10 +6,14 @@ namespace Nowo\YopassBundle\Form;
 
 use Nowo\FormKitBundle\Attribute\FormKitConfig;
 use Nowo\FormKitBundle\Form\FormOptionsTrait;
+use Nowo\YopassBundle\Service\ShareListRouteResolver;
 use Override;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+
+use function is_string;
 
 /**
  * CSRF-only form for the revoke / delete / delete-all row actions (REQ-TWIG-005).
@@ -29,7 +33,13 @@ final class CsrfActionType extends AbstractType
      */
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        // CSRF only — no application fields.
+        // CSRF only — plus, on a host list page, the signed list-route token (ShareListRouteResolver; never a URL).
+        if (is_string($options['list_token']) && $options['list_token'] !== '') {
+            $builder->add(ShareListRouteResolver::FIELD, HiddenType::class, [
+                'mapped' => false,
+                'data'   => $options['list_token'],
+            ]);
+        }
     }
 
     /**
@@ -41,7 +51,9 @@ final class CsrfActionType extends AbstractType
             'csrf_protection'    => true,
             'csrf_field_name'    => '_token',
             'allow_extra_fields' => true,
+            'list_token'         => null,
         ]);
+        $resolver->setAllowedTypes('list_token', ['null', 'string']);
         $resolver->setRequired('csrf_token_id');
         $resolver->setAllowedTypes('csrf_token_id', 'string');
     }
