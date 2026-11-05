@@ -64,4 +64,47 @@ test.describe('Yopass demo', () => {
     await confirm.locator('button[type="submit"]').click();
     await expect(page.locator('[data-testid="yopass-manage"] tbody tr').first()).toContainText(/Revoked/);
   });
+
+  test('preview dialog at 390 px: no horizontal scroll, input groups, stacked extend selects, copy toast', async ({ page }) => {
+    await createShare(page);
+    await page.setViewportSize({ width: 390, height: 700 });
+    await page.goto('/tools/yopass');
+
+    await page.locator('button[aria-controls="nowo-yopass-preview"]').first().click();
+    const dialog = page.locator('dialog#nowo-yopass-preview');
+    await expect(dialog).toBeVisible();
+    // Status badge inline in the title.
+    await expect(dialog.locator('h2 [data-nowo-yopass-manage-preview-target="availability"]')).not.toBeEmpty();
+
+    const overflow = await page.evaluate(() => {
+      const el = document.querySelector('dialog#nowo-yopass-preview') as HTMLDialogElement;
+      const body = el.querySelector('.nowo-ui-dialog__body') as HTMLElement;
+
+      return {
+        page: document.documentElement.scrollWidth - window.innerWidth,
+        dialog: el.scrollWidth - el.clientWidth,
+        body: body.scrollWidth - body.clientWidth,
+        bodyOverflowY: getComputedStyle(body).overflowY,
+        dialogRight: el.getBoundingClientRect().right,
+      };
+    });
+    expect(overflow.page).toBeLessThanOrEqual(0);
+    expect(overflow.dialog).toBeLessThanOrEqual(0);
+    expect(overflow.body).toBeLessThanOrEqual(0);
+    expect(overflow.bodyOverflowY).toBe('auto');
+    expect(overflow.dialogRight).toBeLessThanOrEqual(390);
+
+    // Public link: full-width input with the copy icon attached; copying shows a toast.
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => undefined);
+    await dialog.locator('[data-testid="yopass-preview-copy-link"]').click();
+    await expect(dialog.locator('[data-nowo-ui-toast]')).toBeVisible();
+
+    // Extend: the two selects stack on a phone.
+    const extend = dialog.locator('[data-testid="yopass-extend"]');
+    if (await extend.isVisible()) {
+      const first = await extend.locator('select').nth(0).boundingBox();
+      const second = await extend.locator('select').nth(1).boundingBox();
+      expect(first && second && second.y >= first.y + first.height).toBeTruthy();
+    }
+  });
 });

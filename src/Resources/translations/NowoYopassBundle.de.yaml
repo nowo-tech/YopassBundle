@@ -72,7 +72,7 @@ yopass:
         intro: Entschlüsselung erfolgt in Ihrem Browser. Die Vorschau verbraucht keine Lesung.
         decrypt: Inhalt anzeigen
         key_field: Entschlüsselungsschlüssel
-        key_help: Geben Sie den Schlüssel ein, der beim Erstellen dieser Freigabe angezeigt wurde (wenn möglich in dieser Browsersitzung gespeichert).
+        key_help: 'Wurde beim Erstellen des Geheimnisses angezeigt; bleibt in dieser Browsersitzung gespeichert.'
         key_required: Geben Sie den Entschlüsselungsschlüssel für diese Freigabe ein.
         public_link: Öffentlicher Link
         close: Schließen
@@ -136,6 +136,7 @@ yopass:
     link:
         label: Generierter Link (jetzt kopieren, er wird nicht erneut angezeigt)
         copy: Kopieren
+        copied: 'In die Zwischenablage kopiert.'
     public:
         title: Geteiltes Geheimnis
         intro: Klicken Sie, um den Inhalt anzuzeigen. Jede Lesung verbraucht eine Ansicht.

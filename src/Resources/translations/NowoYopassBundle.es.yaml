@@ -72,7 +72,7 @@ yopass:
         intro: El descifrado ocurre en tu navegador. La vista previa no consume una lectura.
         decrypt: Mostrar contenido
         key_field: Clave de descifrado
-        key_help: Introduce la clave que se mostró al crear el secreto (se guarda en esta sesión del navegador cuando es posible).
+        key_help: 'Se mostró al crear el secreto; se guarda en esta sesión del navegador.'
         key_required: Introduce la clave de descifrado de este secreto.
         public_link: Enlace público
         close: Cerrar
@@ -136,6 +136,7 @@ yopass:
     link:
         label: Enlace generado (cópialo ahora, no se volverá a mostrar)
         copy: Copiar
+        copied: 'Copiado al portapapeles.'
     public:
         title: Secreto compartido
         intro: Pulsa para revelar el contenido. Cada lectura consume una vista.

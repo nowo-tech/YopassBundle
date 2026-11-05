@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { showToast } from './yopass-toast';
 import { setHidden, syncHidden } from './visibility';
 import { decryptPayload, payloadToDisplayAsync } from './yopass-crypto';
 import { loadShareKey } from './yopass-share-keys';
@@ -59,6 +60,8 @@ export default class extends Controller {
         'accessLogTable',
         'accessLogBody',
         'accessLogEmpty',
+        'unlock',
+        'outputPanel',
     ];
 
     static values = {
@@ -69,6 +72,7 @@ export default class extends Controller {
         availabilityLabels: { type: Object, default: {} },
         extendSuccessMessage: { type: String, default: 'Updated.' },
         allowEmbedInUrl: { type: Boolean, default: false },
+        copiedMessage: { type: String, default: 'Copied.' },
     };
 
     declare readonly modalTarget: HTMLDialogElement;
@@ -103,6 +107,11 @@ export default class extends Controller {
     declare readonly extendSuccessMessageValue: string;
     declare readonly allowEmbedInUrlValue: boolean;
     declare readonly hasOutputTarget: boolean;
+    declare readonly unlockTarget: HTMLElement;
+    declare readonly hasUnlockTarget: boolean;
+    declare readonly outputPanelTarget: HTMLElement;
+    declare readonly hasOutputPanelTarget: boolean;
+    declare readonly copiedMessageValue: string;
     declare readonly hasErrorTarget: boolean;
     declare readonly hasPasswordPanelTarget: boolean;
     declare readonly hasKeyPanelTarget: boolean;
@@ -216,7 +225,30 @@ export default class extends Controller {
 
     copyPublicLink(): void {
         if (this.hasPublicLinkTarget) {
-            void navigator.clipboard?.writeText(this.publicLinkTarget.value);
+            this.copy(this.publicLinkTarget.value);
+        }
+    }
+
+    /** Copies the decrypted text shown in the monospace block. */
+    copyOutput(): void {
+        if (this.hasOutputTarget && this.outputTarget.textContent) {
+            this.copy(this.outputTarget.textContent);
+        }
+    }
+
+    private copy(value: string): void {
+        void navigator.clipboard?.writeText(value);
+        showToast(this.modalTarget, this.copiedMessageValue);
+    }
+
+    private setOutput(text: string | null): void {
+        if (this.hasOutputTarget) {
+            this.outputTarget.textContent = text ?? '';
+            setHidden(this.outputTarget, text === null);
+        }
+
+        if (this.hasOutputPanelTarget) {
+            setHidden(this.outputPanelTarget, text === null);
         }
     }
 
@@ -319,18 +351,13 @@ export default class extends Controller {
             const display = await payloadToDisplayAsync(payload);
 
             if (display.type === 'text') {
-                if (this.hasOutputTarget) {
-                    this.outputTarget.textContent = display.text;
-                    setHidden(this.outputTarget, false);
-                }
+                this.setOutput(display.text);
 
                 if (this.hasDownloadLinkTarget) {
                     setHidden(this.downloadLinkTarget, true);
                 }
             } else {
-                if (this.hasOutputTarget) {
-                    setHidden(this.outputTarget, true);
-                }
+                this.setOutput(null);
 
                 if (this.hasDownloadLinkTarget) {
                     this.downloadLinkTarget.href = URL.createObjectURL(display.blob);
@@ -497,10 +524,7 @@ export default class extends Controller {
     }
 
     private resetDisplay(): void {
-        if (this.hasOutputTarget) {
-            this.outputTarget.textContent = '';
-            setHidden(this.outputTarget, true);
-        }
+        this.setOutput(null);
 
         if (this.hasDownloadLinkTarget) {
             this.clearDownloadLink();
@@ -564,6 +588,10 @@ export default class extends Controller {
     }
 
     private hideDecryptControls(): void {
+        if (this.hasUnlockTarget) {
+            setHidden(this.unlockTarget, true);
+        }
+
         if (this.hasDecryptButtonTarget) {
             setHidden(this.decryptButtonTarget, true);
         }
@@ -578,6 +606,10 @@ export default class extends Controller {
     }
 
     private showDecryptControls(): void {
+        if (this.hasUnlockTarget) {
+            setHidden(this.unlockTarget, false);
+        }
+
         if (this.hasDecryptButtonTarget) {
             setHidden(this.decryptButtonTarget, false);
         }

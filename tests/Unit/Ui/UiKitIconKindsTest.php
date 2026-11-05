@@ -68,7 +68,9 @@ final class UiKitIconKindsTest extends TestCase
             $code = (string) file_get_contents($file->getPathname());
             // PHP named argument / array key, Twig hash key: icon: 'x', 'icon' => 'x', icon_name: 'x'.
             preg_match_all("/\\b(?:icon|icon_name)'?\\s*(?::|=>)\\s*'([a-z_]+)'/", $code, $matches);
-            foreach ($matches[1] as $icon) {
+            // Twig: include('@NowoUiKitBundle/components/_icon.html.twig', {name: 'x'}).
+            preg_match_all("/_icon\\.html\\.twig'\\s*,\\s*\\{\\s*name:\\s*'([a-z_]+)'/", $code, $includes);
+            foreach ([...$matches[1], ...$includes[1]] as $icon) {
                 self::assertContains($icon, $kinds, sprintf('%s passes the unknown UiKit icon kind "%s".', $file->getPathname(), $icon));
             }
         }

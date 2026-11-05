@@ -6,6 +6,7 @@
   - [One create action per screen](#one-create-action-per-screen)
   - [The list on a host page](#the-list-on-a-host-page)
   - [Host list filters](#host-list-filters)
+  - [Preview dialog layout and stylesheet](#preview-dialog-layout-and-stylesheet)
   - [Security headers on every route](#security-headers-on-every-route)
   - [Retention: no purge on GET, new indexes (migration)](#retention-no-purge-on-get-new-indexes-migration)
 - [To 1.12.1](#to-1121)
@@ -121,6 +122,18 @@ public function __invoke(ShareListRouteEvent $event): void
 The pager, the filter form and the redirects after revoke / delete / delete all then use that route. The action forms
 carry it as a token signed for the viewer (`kernel.secret` must be set; without it the redirects keep going to the
 manage route). Hosts that rewrote the bundle's redirects (a "return" subscriber or session trick) can drop it.
+
+### Preview dialog layout and stylesheet
+
+The manage page now links `css/yopass.css` (asset package `nowo_yopass`) in the `nowo_ui_styles` block: run
+`php bin/console assets:install` (or your asset pipeline). Your admin layout must render the canonical
+`nowo_ui_styles` block (the UiKit layouts and bridge do). The file only lays out the bundle's `nowo-yopass-*` hooks with
+UiKit tokens and is CSP-safe (`style-src 'self'`).
+
+`manage/_preview_dialog.html.twig` was restructured (badge in the title, input groups, copy toast, extend grid). An
+override of it should start again from the 1.13 partial; the Stimulus targets are unchanged, plus the optional
+`unlock` and `outputPanel` targets and the `copyOutput` action. Wording changed: `yopass.preview.key_help`; new key
+`yopass.link.copied`.
 
 ### Security headers on every route
 

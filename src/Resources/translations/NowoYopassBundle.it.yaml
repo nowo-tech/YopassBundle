@@ -72,7 +72,7 @@ yopass:
         intro: La decrittografia avviene nel browser. L'anteprima non consuma una lettura.
         decrypt: Mostra contenuto
         key_field: Chiave di decrittografia
-        key_help: Inserisci la chiave mostrata quando hai creato questo segreto (memorizzata in questa sessione del browser quando possibile).
+        key_help: 'Mostrata alla creazione del segreto; conservata in questa sessione del browser.'
         key_required: Inserisci la chiave di decrittografia per questo segreto.
         public_link: Link pubblico
         close: Chiudi
@@ -136,6 +136,7 @@ yopass:
     link:
         label: Link generato (copialo ora, non verrà mostrato di nuovo)
         copy: Copia
+        copied: 'Copiato negli appunti.'
     public:
         title: Segreto condiviso
         intro: Clicca per rivelare il contenuto. Ogni lettura consuma una vista.

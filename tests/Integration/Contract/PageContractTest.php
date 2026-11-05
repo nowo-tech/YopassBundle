@@ -102,6 +102,29 @@ final class PageContractTest extends PageContractTestCase
         self::assertStringNotContainsString('role="tablist"', $html);
     }
 
+    public function testPreviewDialogLayout(): void
+    {
+        $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage()))->html;
+
+        self::assertSame(1, preg_match('#<dialog id="nowo-yopass-preview".*?</dialog>#s', $html, $match));
+        $dialog = $match[0];
+
+        // Status badge inline in the title.
+        self::assertMatchesRegularExpression('#<h2[^>]*id="nowo-yopass-preview-title"[^>]*>.*?data-nowo-yopass-manage-preview-target="availability".*?</h2>#s', $dialog);
+        // One primary button per dialog ("Show content"), attached to the key input group.
+        self::assertSame(1, preg_match_all('#class="[^"]*nowo-ui-btn--primary[^"]*"#', $dialog));
+        self::assertMatchesRegularExpression('#class="nowo-yopass-input-group".*?data-nowo-yopass-manage-preview-target="decryptButton"#s', $dialog);
+        // Revealed content block with Copy; public link copy icon button (UiKit `copy` kind).
+        self::assertStringContainsString('data-action="nowo-yopass-manage-preview#copyOutput"', $dialog);
+        self::assertMatchesRegularExpression('#data-testid="yopass-preview-copy-link"#', $dialog);
+        // Extend: own section, 2-column grid, secondary Apply aligned to the end.
+        self::assertMatchesRegularExpression('#data-testid="yopass-extend".*?class="nowo-yopass-grid-2".*?class="nowo-yopass-actions-end">\s*<button type="button" class="[^"]*nowo-ui-btn--secondary#s', $dialog);
+        // Layout hook for the scrolling body; no inline style anywhere.
+        self::assertStringContainsString('data-nowo-yopass-dialog="preview"', $dialog);
+        self::assertStringNotContainsString('style=', $dialog);
+        self::assertStringContainsString('css/yopass.css', $html);
+    }
+
     public function testHostColumnValuesAreEscaped(): void
     {
         $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, true, false, true)))->html;
