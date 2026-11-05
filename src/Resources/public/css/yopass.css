@@ -65,9 +65,11 @@
   min-width: 0;
 }
 
-.nowo-yopass-extend__field > *,
-.nowo-yopass-extend__field .nowo-ui-input {
-  margin-bottom: 0;
+/* The host form theme's row margin (e.g. Bootstrap's `mb-3`, an !important utility) would push the selects above the
+   button: the row's gap spaces it instead. */
+.nowo-yopass-extend .nowo-yopass-extend__field > *,
+.nowo-yopass-extend .nowo-yopass-extend__field .nowo-ui-input {
+  margin-bottom: 0 !important;
 }
 
 .nowo-yopass-extend__field .nowo-ui-input {
