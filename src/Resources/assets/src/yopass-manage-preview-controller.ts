@@ -137,6 +137,8 @@ export default class extends Controller {
     private activeShareId: string | null = null;
     private previewData: PreviewResponse | null = null;
     private focusExtendOnOpen = false;
+    /** In-flight extend request: aborted on close / reopen, so a stale response never lands in another share. */
+    private extendRequest: AbortController | null = null;
 
     /**
      * The dialog may also be closed by UiKit (close button, Escape, backdrop): reset the preview state and wipe the
@@ -182,7 +184,7 @@ export default class extends Controller {
         const pending = expiresIn !== '' || maxReads !== '';
 
         if (this.hasExtendButtonTarget) {
-            this.extendButtonTarget.disabled = !pending || this.previewData === null;
+            this.extendButtonTarget.disabled = !pending || this.previewData === null || this.extendRequest !== null;
         }
 
         if (!this.hasExtendPreviewTarget) {
@@ -228,9 +230,14 @@ export default class extends Controller {
 
         const shareId = this.activeShareId;
 
-        if (!shareId || this.extendPathTemplateValue === '') {
+        // One request at a time (FO-I1: a double click would apply the additive expiry twice).
+        if (!shareId || this.extendPathTemplateValue === '' || this.extendRequest !== null) {
             return;
         }
+
+        const request = new AbortController();
+        this.extendRequest = request;
+        this.syncExtendButton();
 
         const body: Record<string, string | number> = {};
         const expiresIn = this.extendExpiresInTarget.value.trim();
@@ -253,9 +260,15 @@ export default class extends Controller {
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify(body),
+                signal: request.signal,
             });
 
             const data = await response.json() as ExtendResponse;
+
+            // FO-L1: the dialog was closed (or another share opened) while the request was in flight.
+            if (this.isStaleExtend(request, shareId)) {
+                return;
+            }
 
             if (!response.ok) {
                 this.showExtendError(data.error ?? 'EXTEND_FAILED');
@@ -277,7 +290,26 @@ export default class extends Controller {
             this.renderExtendPanel(this.previewData);
             this.showExtendSuccess();
         } catch {
-            this.showExtendError('EXTEND_FAILED');
+            if (!this.isStaleExtend(request, shareId)) {
+                this.showExtendError('EXTEND_FAILED');
+            }
+        } finally {
+            if (this.extendRequest === request) {
+                this.extendRequest = null;
+                this.syncExtendButton();
+            }
+        }
+    }
+
+    private isStaleExtend(request: AbortController, shareId: string): boolean {
+        return request.signal.aborted || this.activeShareId !== shareId;
+    }
+
+    /** Extend button state only (the "Will be" line is left as it is while a request runs). */
+    private syncExtendButton(): void {
+        if (this.hasExtendButtonTarget) {
+            const pending = this.extendExpiresInTarget.value.trim() !== '' || this.extendMaxReadsTarget.value.trim() !== '';
+            this.extendButtonTarget.disabled = !pending || this.previewData === null || this.extendRequest !== null;
         }
     }
 
@@ -324,6 +356,8 @@ export default class extends Controller {
             return;
         }
 
+        this.extendRequest?.abort();
+        this.extendRequest = null;
         this.activeShareId = shareId;
         this.previewData = null;
         this.resetDisplay();
@@ -706,6 +740,8 @@ export default class extends Controller {
     }
 
     private resetState(): void {
+        this.extendRequest?.abort();
+        this.extendRequest = null;
         this.activeShareId = null;
         this.previewData = null;
         this.focusExtendOnOpen = false;

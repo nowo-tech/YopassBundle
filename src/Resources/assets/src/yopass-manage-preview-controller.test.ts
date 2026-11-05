@@ -482,6 +482,7 @@ describe('yopass-manage-preview-controller', () => {
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify({ expiresIn: '1d', maxReads: 5 }),
+                signal: expect.any(AbortSignal),
             });
             expect(target('extendSuccess').textContent).toBe('Limits extended.');
             expect(target('availability').textContent).toBe('Active');
@@ -628,7 +629,89 @@ describe('yopass-manage-preview-controller', () => {
             expect(target('extendPreview').textContent).toBe(`Will be: ${new Date('2026-05-01T10:00:00Z').toLocaleString()} / 4`);
         });
 
-        it('does nothing without an open share or extend URL', async () => {
+        it('FO-L1: a stale extend response after close + reopen never lands in the other share', async () => {
+            storeShareKey('share-1', 'key', 'KEY-OF-A');
+            storeShareKey('share-2', 'key', 'KEY-OF-B');
+            await mount({ allowEmbed: true });
+            const open2 = document.createElement('button');
+            open2.id = 'open-2';
+            open2.dataset.shareId = 'share-2';
+            open2.dataset.action = 'preview#open';
+            document.querySelector('[data-controller="preview"]')!.prepend(open2);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            respond({ ...extendable, publicPath: '/s/share-1' });
+            byId('open').click();
+            await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+
+            // Extend share-1; hold its response.
+            let release: (value: unknown) => void = () => undefined;
+            fetchMock.mockReturnValueOnce(new Promise((resolve) => {
+                release = resolve;
+            }));
+            target<HTMLSelectElement>('extendExpiresIn').value = '1d';
+            target('extendExpiresIn').dispatchEvent(new Event('change'));
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(false);
+            submit('extend-form');
+            // FO-I1: disabled while in flight; a second submit sends nothing.
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(true);
+            target('extendMaxReads').dispatchEvent(new Event('change'));
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(true);
+            submit('extend-form');
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            const signal = (fetchMock.mock.calls[1][1] as RequestInit).signal!;
+
+            // Close: the request is aborted. Open share-2.
+            byId('close').click();
+            expect(signal.aborted).toBe(true);
+            respond({ status: 'ok', mode: 'key', extendable: true, maxReads: 10, readsLeft: 10, expiresAt: '2026-06-01T10:00:00Z', publicPath: '/s/share-2' });
+            open2.click();
+            await vi.waitFor(() => expect(target<HTMLInputElement>('publicLink').value).toContain('/s/share-2'));
+            const linkB = target<HTMLInputElement>('publicLink').value;
+            const summaryB = target('extendSummary').textContent;
+            expect(linkB).toBe(`${window.location.origin}/s/share-2#decrypt_key=KEY-OF-B`);
+
+            release({ ok: true, json: () => Promise.resolve({ status: 'ok', availability: 'active', maxReads: 3, readsLeft: 2, expiresAt: '2026-05-02T10:00:00Z' }) });
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(target<HTMLInputElement>('publicLink').value).toBe(linkB);
+            expect(target<HTMLInputElement>('publicLink').value).not.toContain('KEY-OF-A');
+            expect(target('extendSummary').textContent).toBe(summaryB);
+            expect(visible('extendSuccess')).toBe(false);
+            expect(fetchMock.mock.calls.map((call) => call[0])).toEqual(['/manage/share-1/preview', '/manage/share-1/extend', '/manage/share-2/preview']);
+        });
+
+        it('FO-L1: an aborted or stale failing request shows no error; reopening the same share aborts too', async () => {
+            respond(extendable);
+            await mount();
+            byId('open').click();
+            await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+
+            let reject: (reason: unknown) => void = () => undefined;
+            fetchMock.mockReturnValueOnce(new Promise((_resolve, rejectFn) => {
+                reject = rejectFn;
+            }));
+            target<HTMLSelectElement>('extendMaxReads').value = '5';
+            submit('extend-form');
+            const signal = (fetchMock.mock.calls[1][1] as RequestInit).signal!;
+
+            // Reopen (no close in between): the in-flight request is aborted.
+            respond(extendable);
+            byId('open').click();
+            expect(signal.aborted).toBe(true);
+            await vi.waitFor(() => expect(visible('extendPanel')).toBe(true));
+            reject(new DOMException('aborted', 'AbortError'));
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(visible('extendError')).toBe(false);
+            // The new dialog can extend again.
+            target<HTMLSelectElement>('extendMaxReads').value = '5';
+            target('extendMaxReads').dispatchEvent(new Event('change'));
+            expect(target<HTMLButtonElement>('extendButton').disabled).toBe(false);
+        });
+
+                it('does nothing without an open share or extend URL', async () => {
             await mount();
             submit('extend-form');
 
