@@ -98,6 +98,13 @@ final class ClientOnlyFieldsTest extends TestCase
         ])->createView();
         self::assertSame([], $noInterval['extendExpiresIn']->vars['choices'][0]->attr);
 
+        // FO-I3: a malformed interval (bypassing the config validation) never fails the form build (no 500).
+        $malformed = $factory->create(SharePreviewType::class, null, [
+            'share_options'  => ['max_reads_options' => [1], 'expiration_options' => [['id' => 'x', 'interval' => 'bogus']]],
+            'extend_enabled' => true,
+        ])->createView();
+        self::assertSame([], $malformed['extendExpiresIn']->vars['choices'][0]->attr);
+
         $noExtend = $factory->create(SharePreviewType::class)->createView();
         self::assertArrayNotHasKey('extendExpiresIn', $noExtend->children);
 

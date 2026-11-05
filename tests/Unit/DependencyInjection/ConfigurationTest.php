@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\DependencyInjection;
 
 use Nowo\YopassBundle\DependencyInjection\Configuration;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
@@ -158,6 +159,62 @@ final class ConfigurationTest extends TestCase
         self::assertSame('vault_', $config['table_prefix']);
         self::assertSame('/yopass', $config['routes']['manage']['path']);
         self::assertSame('app_yopass_index', $config['routes']['manage']['name']);
+    }
+
+    public function testCreateTabIconsAcceptTheKitGrammarNullAndBlank(): void
+    {
+        $config = $this->process(['user_class' => 'App\\Entity\\User', 'web_ui' => ['icons' => [
+            'create_tab_text' => ' bi:file-earmark-text ',
+            'create_tab_file' => null,
+        ]]]);
+        self::assertSame(' bi:file-earmark-text ', $config['web_ui']['icons']['create_tab_text']);
+        self::assertNull($config['web_ui']['icons']['create_tab_file']);
+
+        $config = $this->process(['user_class' => 'App\\Entity\\User', 'web_ui' => ['icons' => ['create_tab_text' => '', 'create_tab_file' => 'upload']]]);
+        self::assertSame('', $config['web_ui']['icons']['create_tab_text']);
+        self::assertSame('upload', $config['web_ui']['icons']['create_tab_file']);
+    }
+
+    /**
+     * @return iterable<string, array{mixed}>
+     */
+    public static function invalidTabIcons(): iterable
+    {
+        yield 'attribute breakout' => ['x" onmouseover="alert(1)'];
+        yield 'uppercase' => ['Tabler:File'];
+        yield 'double prefix' => ['a:b:c'];
+        yield 'double hyphen' => ['file--text'];
+        yield 'underscore' => ['file_text'];
+        yield 'space inside' => ['file text'];
+        yield 'array' => [['tabler:file']];
+    }
+
+    #[DataProvider('invalidTabIcons')]
+    public function testCreateTabIconsRejectMalformedNames(mixed $icon): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->process(['user_class' => 'App\\Entity\\User', 'web_ui' => ['icons' => ['create_tab_text' => $icon]]]);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function invalidIntervals(): iterable
+    {
+        yield 'malformed' => ['bogus'];
+        yield 'backwards' => ['-1 hour'];
+        yield 'no move' => ['0 seconds'];
+    }
+
+    #[DataProvider('invalidIntervals')]
+    public function testExpirationIntervalsAreValidatedAtBuild(string $interval): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('Invalid expiration interval');
+        $this->process(['user_class' => 'App\\Entity\\User', 'shares' => [
+            'default_expiration' => '1h',
+            'expiration_options' => [['id' => '1h', 'interval' => $interval]],
+        ]]);
     }
 
     /**

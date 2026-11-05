@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Form;
 
-use DateTimeImmutable;
 use Nowo\FormKitBundle\Attribute\FormKitConfig;
 use Nowo\FormKitBundle\Form\FormOptionsTrait;
+use Nowo\YopassBundle\Support\RelativeInterval;
 use Nowo\YopassBundle\YopassBundle;
 use Override;
 use Symfony\Component\Form\AbstractType;
@@ -20,7 +20,6 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 use function array_column;
 use function array_combine;
-use function ltrim;
 
 /**
  * Manage page preview / extend modal controls (REQ-TWIG-005).
@@ -76,7 +75,7 @@ final class SharePreviewType extends AbstractType
         // Seconds each option adds, so the browser can preview the new expiry ("Will be: …") before applying it.
         $expirationSeconds = [];
         foreach ($expirationOptions as $option) {
-            $expirationSeconds[$option['id']] = $this->intervalSeconds($option['interval'] ?? '');
+            $expirationSeconds[$option['id']] = RelativeInterval::seconds($option['interval'] ?? '');
         }
         /** @var list<int> $maxReadsOptions */
         $maxReadsOptions = $options['share_options']['max_reads_options'] ?? [];
@@ -140,18 +139,6 @@ final class SharePreviewType extends AbstractType
         ]);
         $resolver->setAllowedTypes('share_options', 'array');
         $resolver->setAllowedTypes('extend_enabled', 'bool');
-    }
-
-    /**
-     * Seconds a `shares.expiration_options` interval adds (PHP relative modifier, as ShareExtender applies it), or
-     * null when it has none (no live preview of the new expiry for that option).
-     */
-    private function intervalSeconds(string $interval): ?int
-    {
-        $interval = ltrim($interval, '+ ');
-        $end      = $interval === '' ? false : (new DateTimeImmutable('@0'))->modify('+' . $interval);
-
-        return $end instanceof DateTimeImmutable && $end->getTimestamp() > 0 ? $end->getTimestamp() : null;
     }
 
     /**

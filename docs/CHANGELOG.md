@@ -81,8 +81,21 @@ dialog. Requires `nowo-tech/ui-kit-bundle` **^2.29**. See [UPGRADING](UPGRADING.
 - `web_ui.icons.create_tab_text` / `web_ui.icons.create_tab_file` (defaults `tabler:file-text` / `tabler:file-upload`;
   null or blank = label only); Twig context variable `nowo_yopass_icons`.
 - Expiration `<option>`s of the extend select carry `data-seconds` (the interval in seconds) for the live preview.
+- **Configuration validation at container build:** `web_ui.icons.*` must match the kits' icon grammar
+  (`Configuration::TAB_ICON_PATTERN`, `[prefix:]name`, as WikiBundle 1.18; null / `''` = no icon), and every
+  `shares.expiration_options.*.interval` must be a PHP relative modifier that moves time forward (a malformed one
+  used to fail only on create / extend). New `Support\RelativeInterval`.
 - Translations `yopass.tab.label`, `yopass.create.cancel`, `yopass.extend.preview`, `yopass.extend.summary`,
   `yopass.extend.reads_one`, `yopass.extend.reads_other` (7 locales).
+
+### Fixed (pre-release audit FO)
+
+- **FO-L1:** an extend response arriving after the preview dialog was closed (or another share opened) is ignored and
+  its request aborted, so it can no longer write the previous share's limits — or its embedded key — into the open
+  share's dialog.
+- **FO-I1:** Extend is disabled while its request is in flight (a double click no longer extends twice).
+- **FO-I3:** a malformed expiration interval no longer makes the manage page fail (500) when the preview form is
+  built; the option simply has no live preview.
 
 ### Documentation
 

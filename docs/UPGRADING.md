@@ -107,6 +107,9 @@ php bin/console assets:install
   on the reload to refresh its list should listen to `YopassEvents::SHARE_EXTENDED` server-side or reload on close.
   An override of `_preview_dialog.html.twig` needs the new targets `extendButton`, `extendPreview` and `extendError`
   (without them Extend works as before, and errors show in the dialog-level error region).
+- **Stricter configuration:** `web_ui.icons.*` must match `[prefix:]name` (lowercase letters, digits, single
+  hyphens) or be null / `''`, and each `shares.expiration_options.*.interval` must be a valid forward PHP relative
+  modifier; an invalid value now fails the container build instead of a page.
 - **Translations:** `yopass.extend.current` / `submit` / `expiration_field` / `reads_field` were reworded (7 locales);
   new keys listed in the CHANGELOG.
 

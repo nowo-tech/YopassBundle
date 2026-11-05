@@ -6,14 +6,19 @@ namespace Nowo\YopassBundle\DependencyInjection;
 
 use DateTimeImmutable;
 use Nowo\YopassBundle\Database\DatabaseDriver;
+use Nowo\YopassBundle\Support\RelativeInterval;
 use Nowo\YopassBundle\Ui\CssFramework;
 use Nowo\YopassBundle\Ui\IconSet;
+use Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
 use function array_key_exists;
 use function in_array;
 use function is_array;
+use function is_string;
+use function preg_match;
+use function trim;
 
 /**
  * Configuration tree for YopassBundle.
@@ -21,6 +26,12 @@ use function is_array;
 final class Configuration implements ConfigurationInterface
 {
     public const ALIAS = 'nowo_yopass';
+
+    /**
+     * `web_ui.icons.*` grammar, shared with the other kits (WikiBundle 1.18 `TAB_ICON_PATTERN`): "[prefix:]name" with
+     * lowercase letters, digits and single hyphens (e.g. "tabler:file-text", "bi:pencil").
+     */
+    public const TAB_ICON_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?$/';
 
     /**
      * Builds the "nowo_yopass" configuration tree.
@@ -173,6 +184,10 @@ final class Configuration implements ConfigurationInterface
                                     ->scalarNode('interval')
                                         ->cannotBeEmpty()
                                         ->info('PHP relative datetime modifier (e.g. "1 hour", "7 days").')
+                                        ->validate()
+                                            ->ifTrue(static fn (mixed $value): bool => !is_string($value) || RelativeInterval::seconds($value) === null)
+                                            ->thenInvalid('Invalid expiration interval %s: expected a PHP relative datetime modifier that moves time forward (e.g. "1 hour", "7 days").')
+                                        ->end()
                                     ->end()
                                 ->end()
                             ->end()
@@ -340,8 +355,8 @@ final class Configuration implements ConfigurationInterface
                             ->addDefaultsIfNotSet()
                             ->info('Icons of the create form\'s Text / File tabs (UiKit `tabs` item icon: a canonical kind or a prefixed name such as "tabler:file-text" / "bi:file-earmark-text" that the nowo_ui_kit.icon_set renders). The host tab style (data-tab-style: text, icon-text, icon) picks what shows. Null or "" = label only.')
                             ->children()
-                                ->scalarNode('create_tab_text')->defaultValue('tabler:file-text')->info('Icon of the "Text" tab.')->end()
-                                ->scalarNode('create_tab_file')->defaultValue('tabler:file-upload')->info('Icon of the "File" tab.')->end()
+                                ->append($this->tabIconNode('create_tab_text', 'tabler:file-text', 'Icon of the "Text" tab.'))
+                                ->append($this->tabIconNode('create_tab_file', 'tabler:file-upload', 'Icon of the "File" tab.'))
                             ->end()
                         ->end()
                         ->scalarNode('layout_template')
@@ -555,5 +570,27 @@ final class Configuration implements ConfigurationInterface
         }
 
         return $security;
+    }
+
+    /**
+     * `web_ui.icons.<tab>`: an icon name ({@see self::TAB_ICON_PATTERN}, checked when the container is built, so a
+     * malformed name never fails at render time; surrounding spaces are trimmed), or null / '' for no icon.
+     */
+    private function tabIconNode(string $name, string $default, string $info): ScalarNodeDefinition
+    {
+        $node = new ScalarNodeDefinition($name);
+        $node
+            ->defaultValue($default)
+            ->info($info)
+            ->validate()
+                ->ifTrue(static fn (mixed $value): bool => $value !== null && !is_string($value))
+                ->thenInvalid('Expected an icon name (string) or null, got %s.')
+            ->end()
+            ->validate()
+                ->ifTrue(static fn (mixed $value): bool => is_string($value) && trim($value) !== '' && preg_match(self::TAB_ICON_PATTERN, trim($value)) !== 1)
+                ->thenInvalid('Invalid icon name %s: expected "[prefix:]name" with lowercase letters, digits and single hyphens (e.g. "tabler:file-text", "bi:pencil"), or null / "" for no icon.')
+            ->end();
+
+        return $node;
     }
 }
