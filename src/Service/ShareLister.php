@@ -38,13 +38,15 @@ final readonly class ShareLister
      * A list subject other than the viewer or a {@code nowo_yopass.user_class} instance is refused with a
      * LogicException unless a listener supplied the result ({@see ShareListQueryEvent::overrideList()}).
      *
+     * @param array<string, mixed> $filters Data of the host filter form (ShareListFiltersEvent), handed to the query event
+     *
      * @throws LogicException When a listener set an unsupported list subject without overriding the list
      *
      * @return array{shares: list<SecureShare>, total: int, own_total: int}
      */
-    public function list(UserInterface $viewer, int $pageSize, int $page): array
+    public function list(UserInterface $viewer, int $pageSize, int $page, array $filters = []): array
     {
-        $queryEvent = new ShareListQueryEvent($viewer, $viewer, $pageSize, $page);
+        $queryEvent = new ShareListQueryEvent($viewer, $viewer, $pageSize, $page, $filters);
         $this->eventDispatcher->dispatch($queryEvent, YopassEvents::SHARE_LIST_QUERY);
 
         if (!$queryEvent->hasOverride()) {

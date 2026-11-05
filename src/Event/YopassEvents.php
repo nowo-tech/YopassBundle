@@ -57,6 +57,18 @@ final class YopassEvents
     public const SHARE_LIST_COLUMNS = 'nowo_yopass.share_list_columns';
 
     /**
+     * Fired when the manage list is rendered ({@see ShareListRouteEvent}): a host page showing the list sets its route
+     * (allow-listed in `web_ui.list_routes`, scalar parameters) for the pager, the filters and the action redirects.
+     */
+    public const SHARE_LIST_ROUTE = 'nowo_yopass.share_list_route';
+
+    /**
+     * Fired before the manage list is loaded ({@see ShareListFiltersEvent}): hosts add GET filter fields whose data
+     * reaches {@see ShareListQueryEvent::getFilters()}.
+     */
+    public const SHARE_LIST_FILTERS = 'nowo_yopass.share_list_filters';
+
+    /**
      * Fired before the manage "delete all" action ({@see ShareDeleteAllEvent}).
      * Listeners may scope the removal (tenant / team subject), perform it themselves, or veto it.
      */

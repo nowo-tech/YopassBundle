@@ -14,7 +14,8 @@ export async function waitForToolbar(page: Page): Promise<void> {
 
 /** Open the create dialog (web_ui.create_mode: dialog) from the header or the empty state. */
 export async function openCreateDialog(page: Page): Promise<void> {
-  await page.locator('[data-testid="yopass-create-open"]').first().click();
+  // One create action per screen: the header on a filled list, the empty state on an empty one.
+  await page.locator('[data-testid="yopass-create-open"], [data-testid="yopass-create-open-empty"]').first().click();
   await expect(page.locator('dialog#nowo-yopass-create-dialog')).toBeVisible();
 }
 

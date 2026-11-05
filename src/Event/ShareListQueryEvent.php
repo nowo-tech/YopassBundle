@@ -47,12 +47,14 @@ final class ShareListQueryEvent extends Event
      *
      * @param int $pageSize Shares per page (0 = no pagination)
      * @param int $page 1-based page number
+     * @param array<string, mixed> $filters Data of the host filter form ({@see ShareListFiltersEvent}; empty without fields)
      */
     public function __construct(
         private readonly UserInterface $viewer,
         private object $listSubject,
         int $pageSize = 0,
         int $page = 1,
+        private readonly array $filters = [],
     ) {
         $this->pageSize = max(0, $pageSize);
         $maxPage        = $this->pageSize > 0 ? min(self::MAX_PAGE, intdiv(PHP_INT_MAX, $this->pageSize)) : 1;
@@ -174,5 +176,16 @@ final class ShareListQueryEvent extends Event
     public function getOwnTotal(): ?int
     {
         return $this->ownTotal;
+    }
+
+    /**
+     * Returns the submitted data of the host filter fields ({@see ShareListFiltersEvent}); empty when the host added no
+     * field or nothing was submitted. Apply it in an {@see overrideList()} / {@see setListSubject()} listener.
+     *
+     * @return array<string, mixed>
+     */
+    public function getFilters(): array
+    {
+        return $this->filters;
     }
 }

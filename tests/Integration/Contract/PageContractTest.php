@@ -81,6 +81,7 @@ final class PageContractTest extends PageContractTestCase
         $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(true, false, true)))->html;
 
         self::assertStringContainsString('data-testid="yopass-create-open-empty"', $html);
+        self::assertStringNotContainsString('data-testid="yopass-create-open"', $html, 'one create action per screen');
         self::assertStringNotContainsString('data-testid="yopass-delete-all"', $html);
     }
 

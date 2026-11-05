@@ -55,6 +55,12 @@ both create modes). A close aborts the request in flight and a request token dis
 key stays in the dialog's memory and result fields (never `sessionStorage`) and every close wipes the form, the result
 and the key. `public_path` from the response is only used when it is a same-origin path.
 
+**List page redirects.** After revoke / delete / delete all the bundle returns to the page that showed the list (a host
+page set through `ShareListRouteEvent`). The action forms carry only a route name + scalar parameters in a token signed
+with `kernel.secret` for the viewer; the handlers check the signature against the current viewer and the
+`web_ui.list_routes` allow-list and let the router build the URL. Free URLs are never posted or accepted (no open
+redirect); every failure falls back to the manage route.
+
 **CSP.** libsodium compiles WebAssembly, so the pages that load `yopass.js` need `'wasm-unsafe-eval'` in
 `script-src` (never `'unsafe-eval'`). Scope it to the route names in `nowo_yopass.csp.wasm_routes`, or opt in to
 `nowo_yopass.csp.wasm_unsafe_eval` (edits existing policies on those routes only). The script tag carries the

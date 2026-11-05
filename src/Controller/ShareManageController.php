@@ -10,6 +10,7 @@ use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareAccessAction;
 use Nowo\YopassBundle\Event\ShareListColumnsEvent;
+use Nowo\YopassBundle\Event\ShareListFiltersEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Form\CsrfActionType;
@@ -26,12 +27,14 @@ use Nowo\YopassBundle\Service\ShareDeleter;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareLister;
+use Nowo\YopassBundle\Service\ShareListRouteResolver;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Service\ShareRevoker;
 use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\YopassBundle;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -39,9 +42,13 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
+
+use function is_array;
+use function is_scalar;
 
 /**
  * Authenticated Yopass-style share management (E2E encrypted in the browser).
@@ -59,9 +66,14 @@ final class ShareManageController extends AbstractController
 
     public const CREATE_ERROR_CROSS_SITE = 'CROSS_SITE';
 
+    /** Name of the host filter form (query `filters[<field>]`). */
+    public const FILTERS_FORM = 'filters';
+
     private readonly ShareDeleter $shareDeleter;
 
     private readonly ShareRevoker $shareRevoker;
+
+    private readonly ShareListRouteResolver $listRoutes;
 
     /**
      * Creates the manage controller with routes, templates, limits and share options.
@@ -107,9 +119,11 @@ final class ShareManageController extends AbstractController
         ?ShareRevoker $shareRevoker = null,
         private readonly ?EventDispatcherInterface $eventDispatcher = null,
         private readonly string $createMode = 'page',
+        ?ShareListRouteResolver $listRoutes = null,
     ) {
         $this->shareDeleter = $shareDeleter ?? new ShareDeleter($shareRepository);
         $this->shareRevoker = $shareRevoker ?? new ShareRevoker($shareRepository);
+        $this->listRoutes   = $listRoutes ?? new ShareListRouteResolver($routes['manage']['name']);
     }
 
     /**
@@ -124,9 +138,15 @@ final class ShareManageController extends AbstractController
 
         $this->retentionPurger->purgeForCreator($user);
 
+        // The page showing the list (a host page through SHARE_LIST_ROUTE) and the host's filter fields.
+        $listRoute                             = $this->listRoutes->resolve($user, $request);
+        $listToken                             = $this->listRoutes->sign($user, $listRoute);
+        $listHref                              = $this->generateUrl($listRoute->name, $listRoute->params);
+        [$filtersForm, $filters, $filterQuery] = $this->buildFilters($user, $request, $listHref);
+
         $pageSize   = (int) ($this->shareOptions['list_page_size'] ?? 0);
         $page       = max(1, $request->query->getInt('page', 1));
-        $list       = $this->shareLister->list($user, $pageSize, $page);
+        $list       = $this->shareLister->list($user, $pageSize, $page, $filters);
         $shares     = $list['shares'];
         $total      = $list['total'];
         $totalPages = $pageSize > 0 ? (int) max(1, ceil($total / $pageSize)) : 1;
@@ -159,10 +179,10 @@ final class ShareManageController extends AbstractController
                 'delete' => $canRevoke && $this->shareAccessGuard->canManage($user, $share, ShareAccessAction::Delete),
             ];
             if ($rowAccess[$shareId]['revoke']) {
-                $revokeForms[$shareId] = $this->createCsrfActionForm($this->routes['revoke']['name'], 'revoke-share-' . $shareId, $shareId)->createView();
+                $revokeForms[$shareId] = $this->createCsrfActionForm($this->routes['revoke']['name'], 'revoke-share-' . $shareId, $shareId, $listToken)->createView();
             }
             if ($rowAccess[$shareId]['delete']) {
-                $deleteForms[$shareId] = $this->createCsrfActionForm($this->routes['delete']['name'], 'delete-share-' . $shareId, $shareId)->createView();
+                $deleteForms[$shareId] = $this->createCsrfActionForm($this->routes['delete']['name'], 'delete-share-' . $shareId, $shareId, $listToken)->createView();
             }
         }
 
@@ -177,13 +197,13 @@ final class ShareManageController extends AbstractController
             }
         }
 
-        $deleteAllForm = $this->createCsrfActionForm($this->routes['delete_all']['name'], 'yopass_delete_all')->createView();
+        $deleteAllForm = $this->createCsrfActionForm($this->routes['delete_all']['name'], 'yopass_delete_all', null, $listToken)->createView();
         $retention     = $this->shareOptions['retention'] ?? [];
 
         $listPage = $this->pages->managePage(
             shares: $shares,
             pagination: $pageSize > 0 && $totalPages > 1
-                ? new Pagination($page, $pageSize, $total, $totalPages, $this->routes['manage']['name'])
+                ? new Pagination($page, $pageSize, $total, $totalPages, $listRoute->name, $filterQuery, $listRoute->params)
                 : null,
             canExtend: $canExtend,
             canRevoke: $canRevoke,
@@ -197,6 +217,8 @@ final class ShareManageController extends AbstractController
             rowAccess: $rowAccess,
             createDialog: $createDialog,
             extraColumns: $extraColumns,
+            filters: $filtersForm,
+            filtersClearHref: $filtersForm instanceof FormView ? $listHref : null,
         );
 
         // REQ-UI-003: `page` (View\ListPage) feeds the list scaffold; the other variables stay for web_ui.templates
@@ -214,6 +236,8 @@ final class ShareManageController extends AbstractController
             'extra_columns'  => $extraColumns,
             'extra_cells'    => $extraCells,
             'own_total'      => $list['own_total'],
+            'list_route'     => $listRoute,
+            'list_filters'   => $filters,
             'links_form'     => $createDialog ? $this->createForm(ShareCreatedLinksType::class, null, [
                 'allow_embed_in_url' => $this->sharingOptions['allow_embed_in_url'],
                 'target_controller'  => 'nowo-yopass-create',
@@ -438,7 +462,7 @@ final class ShareManageController extends AbstractController
 
         $this->addFlash('success', $this->translator->trans('yopass.revoked', [], YopassBundle::TRANSLATION_DOMAIN));
 
-        return $this->redirectToRoute($this->routes['manage']['name']);
+        return $this->redirectToList($user, $request);
     }
 
     /**
@@ -465,7 +489,7 @@ final class ShareManageController extends AbstractController
 
         $this->addFlash('success', $this->translator->trans('yopass.deleted', [], YopassBundle::TRANSLATION_DOMAIN));
 
-        return $this->redirectToRoute($this->routes['manage']['name']);
+        return $this->redirectToList($user, $request);
     }
 
     /**
@@ -488,7 +512,7 @@ final class ShareManageController extends AbstractController
             // A nowo_yopass.share_delete_all listener vetoed the removal.
             $this->addFlash('error', $this->translator->trans('yopass.error.delete_all_denied', [], YopassBundle::TRANSLATION_DOMAIN));
 
-            return $this->redirectToRoute($this->routes['manage']['name']);
+            return $this->redirectToList($user, $request);
         }
 
         $this->addFlash(
@@ -496,7 +520,7 @@ final class ShareManageController extends AbstractController
             $this->translator->trans('yopass.deleted_all', ['%count%' => $removed], YopassBundle::TRANSLATION_DOMAIN),
         );
 
-        return $this->redirectToRoute($this->routes['manage']['name']);
+        return $this->redirectToList($user, $request);
     }
 
     /**
@@ -577,12 +601,84 @@ final class ShareManageController extends AbstractController
      *
      * @return FormInterface<mixed>
      */
-    private function createCsrfActionForm(string $route, string $csrfTokenId, ?string $id = null): FormInterface
+    private function createCsrfActionForm(string $route, string $csrfTokenId, ?string $id = null, ?string $listToken = null): FormInterface
     {
         return $this->createForm(CsrfActionType::class, null, [
             'action'        => $this->generateUrl($route, $id === null ? [] : ['id' => $id]),
             'csrf_token_id' => $csrfTokenId,
+            'list_token'    => $listToken,
         ]);
+    }
+
+    /**
+     * Redirect after revoke / delete / delete all: back to the list page the action came from. The posted value is a
+     * token signed for this viewer and checked against the list-route allow-list (ShareListRouteResolver); the URL is
+     * generated by the router. Missing, forged, foreign or not-allowed tokens fall back to the manage route.
+     */
+    private function redirectToList(UserInterface $user, Request $request): RedirectResponse
+    {
+        $route = $this->listRoutes->fromToken($user, $request->request->get(ShareListRouteResolver::FIELD));
+
+        try {
+            return $this->redirectToRoute($route->name, $route->params);
+        } catch (RoutingException) {
+            // The host route needs other parameters / no longer exists: stay safe on the manage page.
+            return $this->redirectToRoute($this->routes['manage']['name']);
+        }
+    }
+
+    /**
+     * GET filter form of the host's filter fields ({@see YopassEvents::SHARE_LIST_FILTERS}); null when no listener
+     * added a field. Returns the form view, the submitted data (for ShareListQueryEvent) and the query to keep across
+     * pages.
+     *
+     * @return array{0: FormView|null, 1: array<string, mixed>, 2: array<string, mixed>}
+     */
+    private function buildFilters(UserInterface $user, Request $request, string $listHref): array
+    {
+        $builder = $this->container->get('form.factory')->createNamedBuilder(self::FILTERS_FORM, FormType::class, null, [
+            'method'             => 'GET',
+            'action'             => $listHref,
+            'csrf_protection'    => false,
+            'allow_extra_fields' => true,
+            'translation_domain' => YopassBundle::TRANSLATION_DOMAIN,
+        ]);
+        $this->eventDispatcher?->dispatch(new ShareListFiltersEvent($user, $builder), YopassEvents::SHARE_LIST_FILTERS);
+
+        if ($builder->count() === 0) {
+            return [null, [], []];
+        }
+
+        $form = $builder->getForm();
+        $form->handleRequest($request);
+        /** @var array<string, mixed> $data */
+        $data = $form->isSubmitted() && $form->isValid() ? (array) $form->getData() : [];
+
+        $query = $request->query->all(self::FILTERS_FORM);
+        $query = $query !== [] ? [self::FILTERS_FORM => self::scalarTree($query)] : [];
+
+        return [$form->createView(), $data, $query];
+    }
+
+    /**
+     * Keeps only scalar leaves (strings from the query string) of the filter query carried by the pager.
+     *
+     * @param array<mixed> $values
+     *
+     * @return array<string, mixed>
+     */
+    private static function scalarTree(array $values): array
+    {
+        $clean = [];
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
+                $clean[(string) $key] = self::scalarTree($value);
+            } elseif (is_scalar($value)) {
+                $clean[(string) $key] = $value;
+            }
+        }
+
+        return $clean;
     }
 
     /**

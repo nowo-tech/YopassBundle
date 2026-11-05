@@ -60,6 +60,13 @@ services:
         arguments:
             $creatorClass: '%nowo_yopass.user_class%'
 
+    # List page of the manage list (host pages via ShareListRouteEvent; allow-list web_ui.list_routes; signed tokens).
+    Nowo\YopassBundle\Service\ShareListRouteResolver:
+        arguments:
+            $manageRoute: '%nowo_yopass.manage_route_name%'
+            $listRoutes: '%nowo_yopass.web_ui.list_routes%'
+            $secret: '%kernel.secret%'
+
     Nowo\YopassBundle\Service\ShareCreator:
         arguments:
             # Allowed expiration ids/intervals from nowo_yopass.shares.expiration_options.

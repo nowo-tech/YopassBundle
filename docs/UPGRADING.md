@@ -3,6 +3,9 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [One create action per screen](#one-create-action-per-screen)
+  - [The list on a host page](#the-list-on-a-host-page)
+  - [Host list filters](#host-list-filters)
 - [To 1.12.1](#to-1121)
 - [To 1.12.0](#to-1120)
   - [Create in a dialog (opt-in)](#create-in-a-dialog-opt-in)
@@ -79,6 +82,62 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+From **1.12.1** (no breaking change):
+
+```bash
+composer update nowo-tech/yopass-bundle
+php bin/console cache:clear
+```
+
+### One create action per screen
+
+In `web_ui.create_mode: dialog` the header **New share** action now appears only when the list has rows; an empty list
+shows it in the empty state only. Hosts that removed the duplicate in a `nowo_ui_page_header` override can drop it.
+
+### The list on a host page
+
+A host page that renders the list (forwarding to the list controller) declares itself:
+
+```yaml
+nowo_yopass:
+    web_ui:
+        list_routes: [app_project_secrets]   # host routes allowed to show the list
+```
+
+```php
+#[AsEventListener(event: YopassEvents::SHARE_LIST_ROUTE)]
+public function __invoke(ShareListRouteEvent $event): void
+{
+    $project = $event->getRequest()->attributes->get('project'); // set by the host before forwarding
+    if (\is_string($project)) {
+        $event->setRoute('app_project_secrets', ['id' => $project]); // scalars only
+    }
+}
+```
+
+The pager, the filter form and the redirects after revoke / delete / delete all then use that route. The action forms
+carry it as a token signed for the viewer (`kernel.secret` must be set; without it the redirects keep going to the
+manage route). Hosts that rewrote the bundle's redirects (a "return" subscriber or session trick) can drop it.
+
+### Host list filters
+
+Add filter fields instead of overriding `nowo_ui_list_filters`:
+
+```php
+#[AsEventListener(event: YopassEvents::SHARE_LIST_FILTERS)]
+public function addFilters(ShareListFiltersEvent $event): void
+{
+    $event->getFormBuilder()->add('sharedWith', ChoiceType::class, ['required' => false, 'choices' => $this->audiences()]);
+}
+
+#[AsEventListener(event: YopassEvents::SHARE_LIST_QUERY)]
+public function query(ShareListQueryEvent $event): void
+{
+    $sharedWith = $event->getFilters()['sharedWith'] ?? null;
+    // … $event->overrideList($shares, $total) for that audience and page
+}
+```
 
 ## To 1.12.1
 

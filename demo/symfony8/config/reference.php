@@ -1320,6 +1320,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         enabled?: bool|Param, // Manage Web UI feature flag (default true). Access is still enforced by security.access_roles and the host firewall. The public share routes are always registered. // Default: true
  *         path_prefix?: scalar|Param|null, // Prefix prepended to every bundle route path, manage and public (e.g. /{_locale}). Replaces route_prefix. // Default: ""
  *         create_mode?: "page"|"dialog"|Param, // Where the create form lives: "page" (card above the list, POST + redirect to the created page; 1.11 behaviour) or "dialog" (a "New share" header / empty-state action opens a <dialog>; the browser encrypts, posts the ciphertext with fetch and shows the links in the dialog; the key stays in memory and is wiped on close). // Default: "page"
+ *         list_routes?: list<scalar|Param|null>,
  *         layout_template?: scalar|Param|null, // Layout the manage pages extend (page.layout). Null = nowo_ui_kit.layouts.admin. A 1.x layout without the UiKit canonical blocks is wrapped in a deprecated bridge. // Default: null
  *         public_layout_template?: scalar|Param|null, // Layout of the public reveal page. Null = nowo_ui_kit.layouts.guest. // Default: null
  *         templates?: array{ // Per-page template overrides (a host template extending @!NowoYopassBundle/... and overriding a data block). Null = the bundle template.

@@ -77,6 +77,8 @@ final readonly class YopassPageFactory
      *                                                                                                   per-row grants from {@see ShareAccessGuard} (null = page-wide flags only)
      * @param bool $createDialog true when `web_ui.create_mode` is `dialog`: "New share" header and empty-state actions
      * @param list<ShareListColumn> $extraColumns host columns appended after the built-in ones
+     * @param FormView|null $filters host filter form (ShareListFiltersEvent), rendered in the UiKit filters region
+     * @param string|null $filtersClearHref list page without filters (the "clear" link of the filters region)
      */
     public function managePage(
         array $shares,
@@ -94,11 +96,14 @@ final readonly class YopassPageFactory
         ?array $rowAccess = null,
         bool $createDialog = false,
         array $extraColumns = [],
+        ?FormView $filters = null,
+        ?string $filtersClearHref = null,
     ): ListPage {
         $headerActions = [];
-        $createAction  = $createDialog ? $this->createDialogAction('yopass-create-open') : null;
-        if ($createAction instanceof Action) {
-            $headerActions[] = $createAction;
+        // One create action per screen: the header carries it only when the list has rows; an empty list shows it in
+        // the empty state alone.
+        if ($createDialog && $shares !== []) {
+            $headerActions[] = $this->createDialogAction('yopass-create-open');
         }
 
         if ($canRevoke && $deleteAllForm instanceof FormView && ($ownTotal ?? count($shares)) > 0) {
@@ -185,6 +190,7 @@ final readonly class YopassPageFactory
                 ),
             ],
             $shares,
+            filters: $filters,
             rowActions: $rowActions,
             pagination: $pagination,
             empty: new EmptyState(
@@ -192,6 +198,7 @@ final readonly class YopassPageFactory
                 YopassPages::label('yopass.list.empty'),
                 $createDialog ? $this->createDialogAction('yopass-create-open-empty') : null,
             ),
+            filtersClearHref: $filtersClearHref,
             caption: $retentionEnabled
                 ? YopassPages::label('yopass.list.retention_notice', ['%max_age%' => $retentionMaxAge])
                 : YopassPages::label('yopass.list.title'),

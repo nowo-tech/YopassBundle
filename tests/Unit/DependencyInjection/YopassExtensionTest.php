@@ -23,6 +23,7 @@ use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
+use Nowo\YopassBundle\Service\ShareListRouteResolver;
 use Nowo\YopassBundle\Twig\YopassTwigExtension;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
@@ -574,5 +575,20 @@ final class YopassExtensionTest extends TestCase
     {
         $this->expectException(InvalidConfigurationException::class);
         (new YopassExtension())->load([['user_class' => 'App\\Entity\\User', 'web_ui' => ['create_mode' => 'modal']]], new ContainerBuilder());
+    }
+
+    public function testListRoutesAndManageRouteNameParameters(): void
+    {
+        $container = new ContainerBuilder();
+        (new YopassExtension())->load([[
+            'user_class' => 'App\\Entity\\User',
+            'web_ui'     => ['list_routes' => ['app_project_secrets']],
+            'routes'     => ['manage' => ['name' => 'app_secrets']],
+        ]], $container);
+
+        self::assertSame(['app_project_secrets'], $container->getParameter('nowo_yopass.web_ui.list_routes'));
+        self::assertSame('app_secrets', $container->getParameter('nowo_yopass.manage_route_name'));
+        $resolver = $container->getDefinition(ShareListRouteResolver::class);
+        self::assertSame('%kernel.secret%', $resolver->getArgument('$secret'));
     }
 }
