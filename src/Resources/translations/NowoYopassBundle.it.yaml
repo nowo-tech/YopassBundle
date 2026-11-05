@@ -8,6 +8,7 @@ yopass:
     feature:
         denied: Non hai il permesso per questa azione.
     tab:
+        label: Tipo di segreto
         text: Testo
         file: Archivio
     type:
@@ -89,12 +90,16 @@ yopass:
         action: Estendi
         title: Estendi segreto
         intro: Aggiungi tempo o letture senza consumare una vista. Lascia un campo invariato per mantenere il valore attuale.
-        current: Limiti attuali
-        expiration_field: Aggiungi tempo di scadenza
-        reads_field: Aumenta letture max a
+        current: Ora
+        expiration_field: Aggiungi tempo
+        reads_field: Porta le letture a
         keep_expiration: Non modificare la scadenza
         keep_reads: Non modificare le letture max
-        submit: Applica estensione
+        submit: Estendi
+        preview: Diventerà
+        summary: 'scade il %expires% · %reads%'
+        reads_one: '%count% lettura'
+        reads_other: '%count% letture'
         success: Segreto aggiornato.
         failed: Impossibile aggiornare il segreto.
         revoked: I segreti revocati non possono essere estesi.
@@ -111,6 +116,7 @@ yopass:
     reads:
         field: Letture max
     create:
+        cancel: Annulla
         title: Condividi un segreto
         submit: Crea link
         open: Condividi un segreto

@@ -8,6 +8,7 @@ yopass:
     feature:
         denied: U heeft geen toestemming voor deze actie.
     tab:
+        label: Soort geheim
         text: Tekst
         file: Bestand
     type:
@@ -89,12 +90,16 @@ yopass:
         action: Verlengen
         title: Geheim verlengen
         intro: Voeg tijd of lezingen toe zonder een weergave te verbruiken. Laat een veld ongewijzigd om de huidige waarde te behouden.
-        current: Huidige limieten
-        expiration_field: Verlooptijd toevoegen
-        reads_field: Max. lezingen verhogen naar
+        current: Nu
+        expiration_field: Tijd toevoegen
+        reads_field: Lezingen verhogen naar
         keep_expiration: Vervaldatum niet wijzigen
         keep_reads: Max. lezingen niet wijzigen
-        submit: Verlenging toepassen
+        submit: Verlengen
+        preview: Wordt
+        summary: 'verloopt op %expires% · %reads%'
+        reads_one: '%count% lezing'
+        reads_other: '%count% lezingen'
         success: Geheim bijgewerkt.
         failed: Geheim kon niet worden bijgewerkt.
         revoked: Ingetrokken geheimen kunnen niet worden verlengd.
@@ -111,6 +116,7 @@ yopass:
     reads:
         field: Max. lezingen
     create:
+        cancel: Annuleren
         title: Nieuw geheim
         submit: Link aanmaken
         open: Nieuw geheim

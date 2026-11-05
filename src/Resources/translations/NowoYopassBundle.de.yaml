@@ -8,6 +8,7 @@ yopass:
     feature:
         denied: Sie haben keine Berechtigung für diese Aktion.
     tab:
+        label: Art des Geheimnisses
         text: Textinhalt
         file: Datei
     type:
@@ -89,12 +90,16 @@ yopass:
         action: Verlängern
         title: Freigabe verlängern
         intro: Fügen Sie Zeit oder Lesungen hinzu, ohne eine Ansicht zu verbrauchen. Lassen Sie ein Feld unverändert, um den aktuellen Wert beizubehalten.
-        current: Aktuelle Limits
-        expiration_field: Ablaufzeit hinzufügen
-        reads_field: Max. Lesungen erhöhen auf
+        current: Jetzt
+        expiration_field: Zeit hinzufügen
+        reads_field: Lesungen erhöhen auf
         keep_expiration: Ablauf nicht ändern
         keep_reads: Max. Lesungen nicht ändern
-        submit: Verlängerung anwenden
+        submit: Verlängern
+        preview: Danach
+        summary: 'läuft ab am %expires% · %reads%'
+        reads_one: '%count% Lesung'
+        reads_other: '%count% Lesungen'
         success: Freigabe aktualisiert.
         failed: Freigabe konnte nicht aktualisiert werden.
         revoked: Widerrufene Freigaben können nicht verlängert werden.
@@ -111,6 +116,7 @@ yopass:
     reads:
         field: Max. Lesungen
     create:
+        cancel: Abbrechen
         title: Neue Freigabe
         submit: Link erstellen
         open: Neue Freigabe

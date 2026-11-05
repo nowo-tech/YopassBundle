@@ -40,6 +40,7 @@ use function is_array;
 use function is_string;
 use function rtrim;
 use function sprintf;
+use function trim;
 
 /**
  * Loads bundle configuration and registers services.
@@ -80,6 +81,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setParameter('nowo_yopass.web_ui.path_prefix', $webUi['path_prefix']);
         $container->setParameter('nowo_yopass.web_ui.create_mode', $webUi['create_mode']);
         $container->setParameter('nowo_yopass.web_ui.list_routes', $webUi['list_routes']);
+        $container->setParameter('nowo_yopass.web_ui.icons', $webUi['icons']);
         $container->setParameter('nowo_yopass.manage_route_name', $config['routes']['manage']['name']);
         $container->setParameter('nowo_yopass.web_ui.layout_template', $webUi['layout_template']);
         $container->setParameter('nowo_yopass.web_ui.public_layout_template', $webUi['public_layout_template']);
@@ -151,6 +153,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
      *     path_prefix: string,
      *     create_mode: string,
      *     list_routes: list<string>,
+     *     icons: array{create_tab_text: string|null, create_tab_file: string|null},
      *     layout_template: string|null,
      *     public_layout_template: string|null,
      *     templates: array{manage: string|null, created: string|null, public: string|null},
@@ -169,6 +172,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             ? $webUi['public_layout_template']
             : null;
 
+        $icons = is_array($webUi['icons'] ?? null) ? $webUi['icons'] : [];
+
         $templates = [];
         foreach (['manage', 'created', 'public'] as $page) {
             $template         = $webUi['templates'][$page] ?? null;
@@ -176,9 +181,13 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         }
 
         return [
-            'enabled'                => (bool) $webUi['enabled'],
-            'create_mode'            => ($webUi['create_mode'] ?? 'page') === 'dialog' ? 'dialog' : 'page',
-            'list_routes'            => array_values(array_filter((array) ($webUi['list_routes'] ?? []), is_string(...))),
+            'enabled'     => (bool) $webUi['enabled'],
+            'create_mode' => ($webUi['create_mode'] ?? 'page') === 'dialog' ? 'dialog' : 'page',
+            'list_routes' => array_values(array_filter((array) ($webUi['list_routes'] ?? []), is_string(...))),
+            'icons'       => [
+                'create_tab_text' => $this->iconName($icons['create_tab_text'] ?? null),
+                'create_tab_file' => $this->iconName($icons['create_tab_file'] ?? null),
+            ],
             'path_prefix'            => (string) ($webUi['path_prefix'] ?? ''),
             'layout_template'        => $layout,
             'public_layout_template' => $publicLayout,
@@ -186,6 +195,14 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             'css_framework'          => is_string($webUi['css_framework'] ?? null) ? $webUi['css_framework'] : null,
             'icon_set'               => is_string($webUi['icon_set'] ?? null) ? $webUi['icon_set'] : null,
         ];
+    }
+
+    /**
+     * Icon name of a `web_ui.icons` entry: a non-empty string, else null (label only).
+     */
+    private function iconName(mixed $icon): ?string
+    {
+        return is_string($icon) && trim($icon) !== '' ? trim($icon) : null;
     }
 
     private function registerFileHandler(ContainerBuilder $container, mixed $fileHandlerId): void

@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Form;
 
 use Nowo\FormKitBundle\Attribute\FormKitConfig;
 use Nowo\FormKitBundle\Form\FormOptionsTrait;
+use Nowo\YopassBundle\Support\RelativeInterval;
 use Nowo\YopassBundle\YopassBundle;
 use Override;
 use Symfony\Component\Form\AbstractType;
@@ -68,9 +69,14 @@ final class SharePreviewType extends AbstractType
             return;
         }
 
-        /** @var list<array{id: string}> $expirationOptions */
+        /** @var list<array{id: string, interval?: string}> $expirationOptions */
         $expirationOptions = $options['share_options']['expiration_options'] ?? [];
         $expirationIds     = array_column($expirationOptions, 'id');
+        // Seconds each option adds, so the browser can preview the new expiry ("Will be: …") before applying it.
+        $expirationSeconds = [];
+        foreach ($expirationOptions as $option) {
+            $expirationSeconds[$option['id']] = RelativeInterval::seconds($option['interval'] ?? '');
+        }
         /** @var list<int> $maxReadsOptions */
         $maxReadsOptions = $options['share_options']['max_reads_options'] ?? [];
 
@@ -81,7 +87,14 @@ final class SharePreviewType extends AbstractType
             'placeholder'  => 'yopass.extend.keep_expiration',
             'choices'      => $expirationIds === [] ? [] : array_combine($expirationIds, $expirationIds),
             'choice_label' => static fn (string $value): string => 'yopass.expires.' . $value,
-            'attr'         => ['class' => 'nowo-ui-input', self::TARGET => 'extendExpiresIn'],
+            'choice_attr'  => static fn (string $value): array => ($expirationSeconds[$value] ?? null) !== null
+                ? ['data-seconds' => (string) $expirationSeconds[$value]]
+                : [],
+            'attr' => [
+                'class'       => 'nowo-ui-input',
+                self::TARGET  => 'extendExpiresIn',
+                'data-action' => 'change->nowo-yopass-manage-preview#syncExtend',
+            ],
         ]);
         $builder->add('extendMaxReads', ChoiceType::class, [
             'mapped'                    => false,
@@ -90,7 +103,11 @@ final class SharePreviewType extends AbstractType
             'placeholder'               => 'yopass.extend.keep_reads',
             'choices'                   => $maxReadsOptions === [] ? [] : array_combine($maxReadsOptions, $maxReadsOptions),
             'choice_translation_domain' => false,
-            'attr'                      => ['class' => 'nowo-ui-input', self::TARGET => 'extendMaxReads'],
+            'attr'                      => [
+                'class'       => 'nowo-ui-input',
+                self::TARGET  => 'extendMaxReads',
+                'data-action' => 'change->nowo-yopass-manage-preview#syncExtend',
+            ],
         ]);
     }
 

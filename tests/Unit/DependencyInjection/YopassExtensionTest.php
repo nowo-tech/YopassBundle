@@ -592,6 +592,31 @@ final class YopassExtensionTest extends TestCase
         self::assertSame('%kernel.secret%', $resolver->getArgument('$secret'));
     }
 
+    public function testCreateTabIconsParameterDefaultsAndNormalisation(): void
+    {
+        $defaults = new ContainerBuilder();
+        (new YopassExtension())->load([['user_class' => 'App\\Entity\\User']], $defaults);
+        self::assertSame(
+            ['create_tab_text' => 'tabler:file-text', 'create_tab_file' => 'tabler:file-upload'],
+            $defaults->getParameter('nowo_yopass.web_ui.icons'),
+        );
+
+        // Trimmed; null or blank = label only.
+        $custom = new ContainerBuilder();
+        (new YopassExtension())->load([[
+            'user_class' => 'App\\Entity\\User',
+            'web_ui'     => ['icons' => ['create_tab_text' => '  bi:file-earmark-text ', 'create_tab_file' => '   ']],
+        ]], $custom);
+        self::assertSame(['create_tab_text' => 'bi:file-earmark-text', 'create_tab_file' => null], $custom->getParameter('nowo_yopass.web_ui.icons'));
+
+        $none = new ContainerBuilder();
+        (new YopassExtension())->load([[
+            'user_class' => 'App\\Entity\\User',
+            'web_ui'     => ['icons' => ['create_tab_text' => null, 'create_tab_file' => '']],
+        ]], $none);
+        self::assertSame(['create_tab_text' => null, 'create_tab_file' => null], $none->getParameter('nowo_yopass.web_ui.icons'));
+    }
+
     public function testSecurityHeadersAreOnByDefaultForEveryBundleRoute(): void
     {
         $container = new ContainerBuilder();

@@ -396,7 +396,9 @@ manage route. No URL is posted or accepted. The target page enforces its own acc
 **Host filters:** `YopassEvents::SHARE_LIST_FILTERS` (`ShareListFiltersEvent::getFormBuilder()`) collects filter
 fields into a GET form named `filters` (no CSRF: read-only search), rendered in the UiKit filters region. Its data is
 `ShareListQueryEvent::getFilters()`; apply it in your `SHARE_LIST_QUERY` listener (`overrideList()`). Without fields
-there is no filter form.
+there is no filter form. The filter values are user input: validate them (prefer `ChoiceType`), bind them as query
+parameters (never concatenate them into DQL / SQL / a MongoDB query), and return from `overrideList()` only shares the
+viewer may see — `overrideList()` skips `CreatorSubjectGuard`, so the listener owns that check.
 
 **Retention** (`shares.retention`) never runs on a list GET: the creator's old shares are purged when they create a
 share, and every old share by the `nowo:yopass:purge-old-shares` command (schedule it). The `created_at` /
@@ -486,6 +488,9 @@ nowo_yopass:
         path_prefix: ''                  # prefix of every bundle route (e.g. /{_locale})
         create_mode: page                # page (create card) | dialog (New share opens a <dialog>)
         list_routes: []                  # host routes allowed to show the list (ShareListRouteEvent)
+        icons:                           # create form Text / File tab icons (UiKit tabs item icon; ~ or '' = label only)
+            create_tab_text: 'tabler:file-text'
+            create_tab_file: 'tabler:file-upload'
         layout_template: ~               # null = nowo_ui_kit.layouts.admin
         public_layout_template: ~        # null = nowo_ui_kit.layouts.guest
         templates:
@@ -499,6 +504,7 @@ nowo_yopass:
 | `web_ui.enabled` | `true` | Manage Web UI feature flag. When false, only the public routes (`/share/{id}`, `/share/{id}/consume`) are registered and the CSRF / SecurityBundle compile checks of the manage UI are skipped. When true, access is enforced by `security.*` and the host firewall. |
 | `web_ui.path_prefix` | `''` | Prefix prepended to every bundle route path (manage and public). Replaces `route_prefix`. |
 | `web_ui.list_routes` | `[]` | Host routes allowed to show the manage list (`ShareListRouteEvent::setRoute()`); the manage route is always allowed. |
+| `web_ui.icons.create_tab_text` / `web_ui.icons.create_tab_file` | `tabler:file-text` / `tabler:file-upload` | Icons of the create form's **Text** / **File** tabs (UiKit `tabs` item `icon`): a canonical UiKit kind or a prefixed name. A prefixed name renders only with an icon set that has it (`ux_icon`, or `tabler-icons` for `tabler:` / `bootstrap-icons` for `bi:`); any other set shows the label only. The host tab style (`data-tab-style`: `text`, `icon-text`, `icon`) picks what shows. `~` or `''` = label only. Checked when the container is built: `[prefix:]name` with lowercase letters, digits and single hyphens (the kits' shared grammar, as WikiBundle `web_ui.tab_icons`); anything else is an `InvalidConfigurationException`. |
 | `web_ui.create_mode` | `page` | `page`: create card above the list, POST + redirect to the created page. `dialog`: **New share** (header + empty state) opens a `<dialog>`; the browser encrypts, posts with `fetch` and shows the links in the dialog. See [Create mode](#create-mode). |
 | `web_ui.layout_template` | `null` | Layout the manage pages extend (`page.layout`). Null = `nowo_ui_kit.layouts.admin`. **Set the project admin layout in UiKit once** (`nowo_ui_kit.layouts.admin`); use this key only for a Yopass-specific layout. A 1.x layout without the UiKit canonical blocks (e.g. a `base.html.twig` with `body`) is wrapped in the deprecated `_legacy_layout.html.twig` bridge. The 1.x default `@NowoYopassBundle/layout.html.twig` maps to null. |
 | `web_ui.public_layout_template` | `null` | Layout of the public reveal page. Null = `nowo_ui_kit.layouts.guest`. **Must not load third-party scripts** (they could read the decryption key and the decrypted secret); see [Usage — layout security](USAGE.md#public-reveal-page-layout-security). |

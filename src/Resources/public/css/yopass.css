@@ -4,20 +4,7 @@
  * loaded as a stylesheet from the nowo_yopass asset package. UiKit has no input-group / 2-column field grid slot yet.
  */
 
-/* Dialogs: header and footer stay, the body scrolls on short screens; never wider than the viewport. */
-dialog[data-nowo-yopass-dialog][open] {
-  display: flex;
-  flex-direction: column;
-  max-width: calc(100vw - 2rem);
-}
-
-dialog[data-nowo-yopass-dialog] > .nowo-ui-dialog__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
+/* Dialog sizes, height and body scrolling come from UiKit 2.29 (nowo-ui-dialog, --nowo-dialog-* tokens). */
 
 /* Title with the status badge inline. */
 .nowo-yopass-dialog-title {
@@ -61,17 +48,54 @@ dialog[data-nowo-yopass-dialog] > .nowo-ui-dialog__body {
   border-top: 1px solid var(--nowo-ui-border, rgba(0, 0, 0, 0.12));
 }
 
-/* Two columns on desktop, stacked on phones; the usual label-to-control gap stays on the rows. */
-.nowo-yopass-grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 1rem;
+/* Extend: [time ▾] [reads ▾] [Extend] on one row, the button bottom-aligned with the selects; a column under ~560 px
+   of the section (container query: the dialog, not the viewport, sets the width). */
+.nowo-yopass-extend {
+  container-type: inline-size;
 }
 
-@media (max-width: 36rem) {
-  .nowo-yopass-grid-2 {
-    grid-template-columns: minmax(0, 1fr);
+.nowo-yopass-extend__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.nowo-yopass-extend__field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* The host form theme's row margin (e.g. Bootstrap's `mb-3`, an !important utility) would push the selects above the
+   button: the row's gap spaces it instead. */
+.nowo-yopass-extend .nowo-yopass-extend__field > *,
+.nowo-yopass-extend .nowo-yopass-extend__field .nowo-ui-input {
+  margin-bottom: 0 !important;
+}
+
+.nowo-yopass-extend__field .nowo-ui-input {
+  width: 100%;
+  max-width: none;
+}
+
+.nowo-yopass-extend__action {
+  flex: 0 0 auto;
+}
+
+@container (max-width: 35rem) {
+  .nowo-yopass-extend__row {
+    flex-direction: column;
+    align-items: stretch;
   }
+
+  .nowo-yopass-extend__action > button {
+    width: 100%;
+  }
+}
+
+.nowo-yopass-extend > [data-nowo-yopass-manage-preview-target="extendPreview"],
+.nowo-yopass-extend > [role="alert"],
+.nowo-yopass-extend > [role="status"] {
+  margin-top: 0.5rem;
 }
 
 .nowo-yopass-actions-end {

@@ -1,13 +1,19 @@
 {#
   Create dialog of the manage page (web_ui.create_mode: dialog; REQ-UI-001 modals: native <dialog> through the UiKit
-  `dialog` partial). Opened by the "New share" header / empty-state actions (Action::dialogId =
-  YopassPageFactory::CREATE_DIALOG_ID). The body is the shared create form (manage/_create_form.html.twig, async) with
-  its result region: the browser encrypts, posts the ciphertext with fetch and renders the links here; the key never
-  leaves the browser memory. Every close (Done, close button, Escape, backdrop) wipes the form, the result and the key.
-  Variables: create_form, links_form, can_share_file, max_file_bytes, max_secret_chars, sharing_options, bundle.
+  `dialog` partial, UiKit 2.29 anatomy). Opened by the "New share" header / empty-state actions (Action::dialogId =
+  YopassPageFactory::CREATE_DIALOG_ID). Medium size (the form's own height never changes the dialog's). The body is
+  the shared create form (manage/_create_form.html.twig, async) with its result region: the browser encrypts, posts
+  the ciphertext with fetch and renders the links here; the key never leaves the browser memory. The footer sits
+  outside the scrolling body: Cancel + Create (submit bound with form="<id>-form") while editing, Done once the links
+  are shown; one primary, on the right. The nowo-yopass-create controller sits on a wrapper around the <dialog> so
+  the footer buttons are in its scope. Every close (Done, Cancel, close button, Escape, backdrop) wipes the form, the
+  result and the key.
+  Variables: create_form, links_form, can_share_file, max_file_bytes, max_secret_chars, sharing_options, icons, bundle.
 #}
 {% trans_default_domain 'NowoYopassBundle' %}
 {% set _b = bundle|default('NowoYopassBundle') %}
+{% set _id = constant('Nowo\\YopassBundle\\Ui\\YopassPageFactory::CREATE_DIALOG_ID') %}
+{% set _form_id = _id ~ '-form' %}
 {% set _body %}
     <p class="{{ nowo_ui_class('muted', _b) }}">{{ 'yopass.e2e_notice'|trans }}</p>
     {{ include('@NowoYopassBundle/manage/_create_form.html.twig', {
@@ -18,15 +24,40 @@
         max_secret_chars: max_secret_chars,
         sharing_options: sharing_options,
         async: true,
+        controller_root: false,
+        form_id: _form_id,
+        footer_actions: true,
+        icons: icons|default({}),
         bundle: _b,
     }, with_context: false) }}
 {% endset %}
-{{ include(nowo_ui_partial('dialog', _b), {
-    id: constant('Nowo\\YopassBundle\\Ui\\YopassPageFactory::CREATE_DIALOG_ID'),
-    title: 'yopass.create.title'|trans,
-    body: _body,
-    size: 'lg',
-    attr: {'data-testid': 'yopass-create-dialog', 'data-nowo-yopass-dialog': 'create'},
-    close_label: 'yopass.preview.close'|trans,
+{% set _footer %}
+    <button type="button" class="{{ nowo_ui_class('btn_secondary', _b) }}" data-nowo-ui-dialog-close data-nowo-yopass-create-target="cancel" data-testid="yopass-create-cancel">
+        {{ 'yopass.create.cancel'|trans }}
+    </button>
+    <button type="submit" form="{{ _form_id }}" class="{{ nowo_ui_class('btn_primary', _b) }}" data-nowo-yopass-create-target="submit" data-testid="yopass-create-submit">
+        {{ 'yopass.create.submit'|trans }}
+    </button>
+    <button type="button" class="{{ nowo_ui_class('btn_primary', _b) }}" hidden data-nowo-ui-dialog-close data-action="nowo-yopass-create#done" data-nowo-yopass-create-target="done" data-testid="yopass-create-done">
+        {{ 'yopass.create.done'|trans }}
+    </button>
+{% endset %}
+<div class="nowo-yopass-create__root" {{ include('@NowoYopassBundle/manage/_create_controller_attrs.html.twig', {
+    can_share_file: can_share_file,
+    max_file_bytes: max_file_bytes,
+    max_secret_chars: max_secret_chars,
+    async: true,
+    sharing_options: sharing_options,
     bundle: _b,
-}, with_context: false) }}
+}, with_context: false) }}>
+    {{ include(nowo_ui_partial('dialog', _b), {
+        id: _id,
+        title: 'yopass.create.title'|trans,
+        body: _body,
+        footer: _footer,
+        size: 'md',
+        attr: {'data-testid': 'yopass-create-dialog', 'data-nowo-yopass-dialog': 'create'},
+        close_label: 'yopass.preview.close'|trans,
+        bundle: _b,
+    }, with_context: false) }}
+</div>

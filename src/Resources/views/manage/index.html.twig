@@ -28,6 +28,7 @@
                 max_file_bytes: max_file_bytes,
                 max_secret_chars: max_secret_chars,
                 sharing_options: sharing_options,
+                icons: nowo_yopass_icons|default({}),
                 bundle: _b,
             }, with_context: false) }}
         {% else %}
@@ -36,6 +37,7 @@
                 can_share_file: can_share_file,
                 max_file_bytes: max_file_bytes,
                 max_secret_chars: max_secret_chars,
+                icons: nowo_yopass_icons|default({}),
                 bundle: _b,
             }, with_context: false) }}
         {% endif %}
@@ -49,6 +51,12 @@
          data-nowo-yopass-manage-preview-extend-path-template-value="{{ path(routes.extend.name, {id: '{id}'}) }}"
          data-nowo-yopass-manage-preview-csrf-token-value="{{ csrf_token('yopass_extend') }}"
          data-nowo-yopass-manage-preview-extend-success-message-value="{{ 'yopass.extend.success'|trans }}"
+         data-nowo-yopass-manage-preview-extend-labels-value="{{ {
+             preview: 'yopass.extend.preview'|trans,
+             summary: 'yopass.extend.summary'|trans,
+             reads_one: 'yopass.extend.reads_one'|trans,
+             reads_other: 'yopass.extend.reads_other'|trans,
+         }|json_encode }}"
          {% endif %}
          data-nowo-yopass-manage-preview-errors-value="{{ {
              KEY_REQUIRED: 'yopass.preview.key_required'|trans,
@@ -103,7 +111,7 @@
 
 {% block nowo_ui_styles %}
     {{ parent() }}
-    {# Layout layer of the bundle's nowo-yopass-* hooks (input groups, 2-column extend grid, dialog body scrolling). #}
+    {# Layout layer of the bundle's nowo-yopass-* hooks (input groups, extend row). #}
     <link rel="stylesheet" href="{{ asset('css/yopass.css', 'nowo_yopass') }}">
 {% endblock %}
 

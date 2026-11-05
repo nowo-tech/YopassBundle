@@ -8,6 +8,7 @@ yopass:
     feature:
         denied: Vous n'avez pas la permission pour cette action.
     tab:
+        label: Type de secret
         text: Texte
         file: Fichier
     type:
@@ -89,12 +90,16 @@ yopass:
         action: Prolonger
         title: Prolonger le partage
         intro: Ajoutez du temps ou des lectures sans consommer de vue. Laissez un champ inchangé pour conserver la valeur actuelle.
-        current: Limites actuelles
-        expiration_field: Ajouter du temps d'expiration
-        reads_field: Augmenter les lectures max à
+        current: Maintenant
+        expiration_field: Ajouter du temps
+        reads_field: Porter les lectures à
         keep_expiration: Ne pas modifier l'expiration
         keep_reads: Ne pas modifier les lectures max
-        submit: Appliquer la prolongation
+        submit: Prolonger
+        preview: Résultat
+        summary: 'expire le %expires% · %reads%'
+        reads_one: '%count% lecture'
+        reads_other: '%count% lectures'
         success: Partage mis à jour.
         failed: Impossible de mettre à jour le partage.
         revoked: Les partages révoqués ne peuvent pas être prolongés.
@@ -111,6 +116,7 @@ yopass:
     reads:
         field: Lectures max
     create:
+        cancel: Annuler
         title: Nouveau partage
         submit: Créer le lien
         open: Nouveau partage

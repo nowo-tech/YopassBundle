@@ -24,6 +24,9 @@ final class PageContractTest extends PageContractTestCase
     /** Placeholder CSP nonce set as the request attribute csp_nonce (null = host without a nonce). */
     private ?string $cspNonce = null;
 
+    /** UiKit icon set of the render (null = the base test case's bootstrap-icons). */
+    private ?string $iconSet = null;
+
     /**
      * @return iterable<string, array{PageFixture}>
      */
@@ -76,6 +79,50 @@ final class PageContractTest extends PageContractTestCase
         self::assertStringNotContainsString('data-testid="yopass-create"', $html, 'no create card in dialog mode');
     }
 
+    public function testCreateDialogAnatomy(): void
+    {
+        $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, true, true)))->html;
+
+        // The controller wraps the <dialog>, so the footer buttons are in its scope.
+        self::assertMatchesRegularExpression('#<div class="nowo-yopass-create__root" data-controller="nowo-yopass-create"[^>]*data-nowo-yopass-create-async-value="true"[^>]*>\s*<dialog id="nowo-yopass-create-dialog"#', $html);
+        self::assertSame(1, preg_match('#<dialog id="nowo-yopass-create-dialog".*?</dialog>#s', $html, $match));
+        $dialog = $match[0];
+
+        // Medium (default) size: no size modifier; height from the UiKit tokens.
+        self::assertMatchesRegularExpression('#<dialog id="nowo-yopass-create-dialog" class="nowo-ui-dialog[ "]#', $dialog);
+        self::assertDoesNotMatchRegularExpression('#nowo-ui-dialog--(lg|wide|sm|xl)#', $dialog);
+        // The form in the body is bound to the footer submit with form="…"; no submit inside the form.
+        self::assertMatchesRegularExpression('#<form [^>]*id="nowo-yopass-create-dialog-form"#', $dialog);
+        self::assertSame(1, preg_match('#<form [^>]*id="nowo-yopass-create-dialog-form".*?</form>#s', $dialog, $form));
+        self::assertStringNotContainsString('type="submit"', $form[0]);
+        self::assertSame(1, preg_match('#</div>\s*<footer class="[^"]*nowo-ui-dialog__footer[^"]*"[^>]*>(.*?)</footer>\s*</dialog>#s', $dialog, $footer));
+        // Footer: Cancel (secondary) then one visible primary, last: Create; Done replaces it after the create.
+        self::assertMatchesRegularExpression('#^\s*<button type="button" class="[^"]*nowo-ui-btn--secondary[^"]*" data-nowo-ui-dialog-close data-nowo-yopass-create-target="cancel"[^>]*>\s*Cancel\s*</button>\s*<button type="submit" form="nowo-yopass-create-dialog-form" class="[^"]*nowo-ui-btn--primary[^"]*" data-nowo-yopass-create-target="submit"#', $footer[1]);
+        self::assertMatchesRegularExpression('#<button type="button" class="[^"]*nowo-ui-btn--primary[^"]*" hidden data-nowo-ui-dialog-close data-action="nowo-yopass-create\#done" data-nowo-yopass-create-target="done" data-testid="yopass-create-done">#', $footer[1]);
+        self::assertSame(1, substr_count($dialog, 'data-testid="yopass-create-done"'), 'Done only in the footer');
+        self::assertSame(1, substr_count($dialog, 'data-nowo-yopass-create-target="submit"'), 'one submit, in the footer');
+    }
+
+    public function testCreateTabsUseTheUiKitTabsPartialWithIcons(): void
+    {
+        // Label only with bootstrap-icons (the tabler: defaults need tabler-icons or ux_icon).
+        $plain = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage()))->html;
+        self::assertStringContainsString('data-testid="yopass-create-tabs"', $plain);
+        self::assertStringNotContainsString('nowo-ui-tabs__icon', $plain);
+
+        $this->iconSet = 'tabler-icons';
+        $html          = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage()))->html;
+
+        self::assertMatchesRegularExpression('#<nav class="[^"]*" aria-label="Secret type"[^>]*role="tablist"[^>]*data-testid="yopass-create-tabs"#', $html);
+        self::assertMatchesRegularExpression('#<a\s+class="[^"]*"\s+href="\#"\s+aria-current="page"\s+data-rail-label="Text"\s+role="tab" aria-selected="true" data-action="nowo-yopass-create\#switchTab" data-yopass-tab="text"\s*><span class="nowo-ui-tabs__icon" aria-hidden="true">#', $html);
+        self::assertMatchesRegularExpression('#data-yopass-tab="file"\s*><span class="nowo-ui-tabs__icon" aria-hidden="true">.*?</span><span class="nowo-ui-tabs__label">File</span></a>#s', $html);
+
+        // Dialog mode carries the same tabs.
+        $dialog = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, true, true)))->html;
+        self::assertStringContainsString('data-testid="yopass-create-tabs"', $dialog);
+        self::assertStringContainsString('<span class="nowo-ui-tabs__label">Text</span>', $dialog);
+    }
+
     public function testEmptyDialogModeOffersNewShareInTheEmptyState(): void
     {
         $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(true, false, true)))->html;
@@ -117,8 +164,27 @@ final class PageContractTest extends PageContractTestCase
         // Revealed content block with Copy; public link copy icon button (UiKit `copy` kind).
         self::assertStringContainsString('data-action="nowo-yopass-manage-preview#copyOutput"', $dialog);
         self::assertMatchesRegularExpression('#data-testid="yopass-preview-copy-link"#', $dialog);
-        // Extend: own section, 2-column grid, secondary Apply aligned to the end.
-        self::assertMatchesRegularExpression('#data-testid="yopass-extend".*?class="nowo-yopass-grid-2".*?class="nowo-yopass-actions-end">\s*<button type="button" class="[^"]*nowo-ui-btn--secondary#s', $dialog);
+        // UiKit 2.29 size: wide (tables / guides); footer outside the body with Close only (owner decision: the single
+        // primary "Show content" stays in the body next to the key field, Beacon UI-PATTERNS §16).
+        self::assertMatchesRegularExpression('#<dialog id="nowo-yopass-preview" class="[^"]*nowo-ui-dialog--wide#', $dialog);
+        self::assertMatchesRegularExpression('#</div>\s*<footer class="[^"]*nowo-ui-dialog__footer[^"]*"[^>]*>\s*<button type="button" class="[^"]*nowo-ui-btn--secondary[^"]*" data-nowo-ui-dialog-close[^>]*>\s*Close\s*</button>\s*</footer>\s*</dialog>#', $dialog);
+        self::assertSame(1, preg_match('#<footer.*?</footer>#s', $dialog, $footer));
+        self::assertStringNotContainsString('nowo-ui-btn--primary', $footer[0]);
+        // Extend: "Now: …", one row [time] [reads] [Extend (secondary, disabled until a select changes)], the live
+        // "Will be: …" preview (aria-live polite), the inline error and the inline success (aria-live polite).
+        self::assertSame(1, preg_match('#<section [^>]*data-testid="yopass-extend">.*?</section>#s', $dialog, $extend));
+        $extend = $extend[0];
+        self::assertMatchesRegularExpression('#data-testid="yopass-extend-now">\s*Now: <span data-nowo-yopass-manage-preview-target="extendSummary"></span>#', $extend);
+        self::assertMatchesRegularExpression('#<div class="nowo-yopass-extend__row">\s*<div class="nowo-yopass-extend__field">.*?id="yopass-extend-expires".*?</div>\s*<div class="nowo-yopass-extend__field">.*?data-nowo-yopass-manage-preview-target="extendMaxReads".*?<div class="nowo-yopass-extend__action">\s*<button type="button" class="[^"]*nowo-ui-btn--secondary[^"]*" disabled data-action="nowo-yopass-manage-preview\#submitExtend" data-nowo-yopass-manage-preview-target="extendButton"[^>]*>\s*Extend\s*</button>#s', $extend);
+        self::assertSame(2, substr_count($extend, 'data-action="change-&gt;nowo-yopass-manage-preview#syncExtend"'));
+        self::assertMatchesRegularExpression('#<option value="1h" data-seconds="3600"#', $extend);
+        self::assertMatchesRegularExpression('#hidden aria-live="polite" data-nowo-yopass-manage-preview-target="extendPreview"#', $extend);
+        self::assertMatchesRegularExpression('#role="alert" hidden data-nowo-yopass-manage-preview-target="extendError"#', $extend);
+        self::assertMatchesRegularExpression('#role="status" aria-live="polite" hidden data-nowo-yopass-manage-preview-target="extendSuccess"#', $extend);
+        self::assertStringNotContainsString('nowo-ui-btn--primary', $extend);
+        self::assertStringNotContainsString('nowo-yopass-grid-2', $extend);
+        // The labels of the "Now / Will be" lines reach the controller.
+        self::assertStringContainsString('data-nowo-yopass-manage-preview-extend-labels-value="{&quot;preview&quot;:&quot;Will be&quot;,&quot;summary&quot;:&quot;expires %expires% \u00b7 %reads%&quot;,&quot;reads_one&quot;:&quot;%count% read&quot;,&quot;reads_other&quot;:&quot;%count% reads&quot;}"', $html);
         // Layout hook for the scrolling body; no inline style anywhere.
         self::assertStringContainsString('data-nowo-yopass-dialog="preview"', $dialog);
         self::assertStringNotContainsString('style=', $dialog);
@@ -137,6 +203,10 @@ final class PageContractTest extends PageContractTestCase
 
     protected function configureTwig(Environment $twig): void
     {
+        if ($this->iconSet !== null) {
+            $twig->addGlobal('nowo_ui_kit_icon_set', $this->iconSet);
+        }
+
         if ($this->cspNonce === null) {
             return;
         }

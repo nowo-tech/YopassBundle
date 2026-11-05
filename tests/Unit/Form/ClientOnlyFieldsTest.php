@@ -83,6 +83,27 @@ final class ClientOnlyFieldsTest extends TestCase
         self::assertSame('', $preview['key']->vars['full_name']);
         self::assertSame('yopass-extend-expires', $preview['extendExpiresIn']->vars['id']);
         self::assertCount(2, $preview['extendMaxReads']->vars['choices']);
+        // Each expiration option carries the seconds it adds (live "Will be: …" preview); the selects re-sync on change.
+        self::assertSame(['1h' => ['data-seconds' => '3600'], '1d' => ['data-seconds' => '86400']], array_map(
+            static fn ($choice): array => $choice->attr,
+            array_column($preview['extendExpiresIn']->vars['choices'], null, 'value'),
+        ));
+        self::assertSame('change->nowo-yopass-manage-preview#syncExtend', $preview['extendExpiresIn']->vars['attr']['data-action']);
+        self::assertSame('change->nowo-yopass-manage-preview#syncExtend', $preview['extendMaxReads']->vars['attr']['data-action']);
+
+        // An option without an interval gets no seconds (no preview of the new expiry for it).
+        $noInterval = $factory->create(SharePreviewType::class, null, [
+            'share_options'  => ['max_reads_options' => [1], 'expiration_options' => [['id' => 'x']]],
+            'extend_enabled' => true,
+        ])->createView();
+        self::assertSame([], $noInterval['extendExpiresIn']->vars['choices'][0]->attr);
+
+        // FO-I3: a malformed interval (bypassing the config validation) never fails the form build (no 500).
+        $malformed = $factory->create(SharePreviewType::class, null, [
+            'share_options'  => ['max_reads_options' => [1], 'expiration_options' => [['id' => 'x', 'interval' => 'bogus']]],
+            'extend_enabled' => true,
+        ])->createView();
+        self::assertSame([], $malformed['extendExpiresIn']->vars['choices'][0]->attr);
 
         $noExtend = $factory->create(SharePreviewType::class)->createView();
         self::assertArrayNotHasKey('extendExpiresIn', $noExtend->children);

@@ -1,0 +1,35 @@
+{#
+  Attributes of the nowo-yopass-create controller root (printed inside an opening tag). Page mode: the root <div> of
+  _create_form.html.twig. Dialog mode: a wrapper around the whole <dialog> (_create_dialog.html.twig), so the
+  footer's Cancel / Create / Done buttons (outside the scrolling body) stay in the controller's scope.
+  Variables: can_share_file, max_file_bytes, max_secret_chars, async, sharing_options (async only), bundle.
+#}
+{% trans_default_domain 'NowoYopassBundle' %}
+{% set _b = bundle|default('NowoYopassBundle') %}
+{% set _async = async|default(false) %}
+{% set _sharing = sharing_options|default({}) %}
+{% set _errors = {
+    SECRET_REQUIRED: 'yopass.error.secret'|trans,
+    SECRET_TOO_LARGE: 'yopass.error.secret_too_large'|trans,
+    FILE_REQUIRED: 'yopass.error.file'|trans,
+    FILE_TOO_LARGE: 'yopass.error.file_too_large'|trans,
+    PASSWORD_REQUIRED: 'yopass.error.password'|trans,
+    CREATE_FAILED: 'yopass.error.create'|trans,
+    FILE_NOT_ENABLED: 'yopass.error.file_not_enabled'|trans,
+    CROSS_SITE: 'yopass.error.create'|trans,
+} %}
+data-controller="nowo-yopass-create"
+     data-nowo-yopass-create-file-enabled-value="{{ can_share_file ? 'true' : 'false' }}"
+     data-nowo-yopass-create-max-file-bytes-value="{{ max_file_bytes }}"
+     data-nowo-yopass-create-max-secret-chars-value="{{ max_secret_chars }}"
+     data-nowo-yopass-create-counter-format-value="{{ 'yopass.secret.counter'|trans }}"
+     data-nowo-yopass-create-counter-class-value="{{ nowo_ui_class('muted', _b) }}"
+     data-nowo-yopass-create-counter-limit-class-value="{{ nowo_ui_class('form_error', _b) }}"
+     data-nowo-yopass-create-tab-class-value="{{ nowo_ui_class('tab', _b) }}"
+     data-nowo-yopass-create-tab-active-class-value="{{ nowo_ui_class('tab_active', _b) }}"
+     data-nowo-yopass-create-errors-value="{{ _errors|json_encode }}"
+     data-nowo-yopass-create-async-value="{{ _async ? 'true' : 'false' }}"
+     {%- if _async %}
+     data-nowo-yopass-create-allow-embed-in-url-value="{{ _sharing.allow_embed_in_url|default(false) ? 'true' : 'false' }}"
+     data-nowo-yopass-create-show-remember-notice-value="{{ _sharing.show_remember_notice|default(true) ? 'true' : 'false' }}"
+     {%- endif %}

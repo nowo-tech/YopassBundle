@@ -87,6 +87,32 @@
 
 ## Unreleased
 
+```bash
+composer update nowo-tech/yopass-bundle nowo-tech/ui-kit-bundle   # ui-kit-bundle ^2.29 is required
+php bin/console assets:install
+```
+
+- **Visual change, no configuration needed.** Dialogs use the UiKit 2.29 sizes (create: medium; preview: wide) with
+  a fixed height and a scrolling body. A host that themed `dialog[data-nowo-yopass-dialog]` sizes should set the UiKit
+  tokens instead (`--nowo-dialog-width-md`, `--nowo-dialog-height-md`, `--nowo-dialog-width-wide`,
+  `--nowo-dialog-height-wide`).
+- **Create dialog markup (overrides of `manage/_create_dialog.html.twig` / `_create_form.html.twig`):** the
+  `nowo-yopass-create` controller moved from the form's root `<div>` to a wrapper `<div>` around the `<dialog>`
+  (attributes in the new `manage/_create_controller_attrs.html.twig`); Create and Done moved to the dialog footer
+  (`form="nowo-yopass-create-dialog-form"`), with a new Cancel. Re-copy a full-file override, or pass
+  `controller_root`, `form_id` and `footer_actions` like the bundle template does.
+- **Create tabs** are UiKit `tabs` links (`<a href="#" role="tab">`) instead of `<button>`s; selectors on
+  `[data-yopass-tab]` keep working. Icons come from `web_ui.icons` (set them to `~` for label only).
+- **Extend:** no page reload after a successful extension any more — the dialog updates in place. A host that relied
+  on the reload to refresh its list should listen to `YopassEvents::SHARE_EXTENDED` server-side or reload on close.
+  An override of `_preview_dialog.html.twig` needs the new targets `extendButton`, `extendPreview` and `extendError`
+  (without them Extend works as before, and errors show in the dialog-level error region).
+- **Stricter configuration:** `web_ui.icons.*` must match `[prefix:]name` (lowercase letters, digits, single
+  hyphens) or be null / `''`, and each `shares.expiration_options.*.interval` must be a valid forward PHP relative
+  modifier; an invalid value now fails the container build instead of a page.
+- **Translations:** `yopass.extend.current` / `submit` / `expiration_field` / `reads_field` were reworded (7 locales);
+  new keys listed in the CHANGELOG.
+
 ## To 1.13.0
 
 From **1.12.1** (no breaking change):
@@ -123,8 +149,8 @@ public function __invoke(ShareListRouteEvent $event): void
 ```
 
 The pager, the filter form and the redirects after revoke / delete / delete all then use that route. The action forms
-carry it as a token signed for the viewer (`kernel.secret` must be set; without it the redirects keep going to the
-manage route). Hosts that rewrote the bundle's redirects (a "return" subscriber or session trick) can drop it.
+carry it as a token signed for the viewer (bound to `getUserIdentifier()`; `kernel.secret` must be set; without it the
+redirects keep going to the manage route). Hosts that rewrote the bundle's redirects (a "return" subscriber or session trick) can drop it.
 
 ### Preview dialog layout and stylesheet
 
@@ -181,6 +207,9 @@ public function query(ShareListQueryEvent $event): void
     // … $event->overrideList($shares, $total) for that audience and page
 }
 ```
+
+The filter values are user input: validate them (prefer `ChoiceType`), bind them as query parameters, and return
+from `overrideList()` only shares the viewer may see (`overrideList()` skips `CreatorSubjectGuard`).
 
 ## To 1.12.1
 
