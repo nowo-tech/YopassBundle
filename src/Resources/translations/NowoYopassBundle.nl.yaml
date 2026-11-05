@@ -8,6 +8,7 @@ yopass:
     feature:
         denied: U heeft geen toestemming voor deze actie.
     tab:
+        label: Soort geheim
         text: Tekst
         file: Bestand
     type:
@@ -111,6 +112,7 @@ yopass:
     reads:
         field: Max. lezingen
     create:
+        cancel: Annuleren
         title: Nieuw geheim
         submit: Link aanmaken
         open: Nieuw geheim

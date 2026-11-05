@@ -8,6 +8,7 @@ yopass:
     feature:
         denied: Non hai il permesso per questa azione.
     tab:
+        label: Tipo di segreto
         text: Testo
         file: Archivio
     type:
@@ -111,6 +112,7 @@ yopass:
     reads:
         field: Letture max
     create:
+        cancel: Annulla
         title: Condividi un segreto
         submit: Crea link
         open: Condividi un segreto

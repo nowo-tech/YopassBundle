@@ -142,7 +142,8 @@ export default class extends Controller {
         this.syncSecretCounter();
 
         if (this.asyncValue) {
-            this.dialog = this.element.closest('dialog');
+            // Dialog mode: the controller wraps the <dialog> (footer buttons in scope); older markup sits inside it.
+            this.dialog = this.element.closest('dialog') ?? this.element.querySelector('dialog');
             // Native close (Done, close button, Escape, backdrop) and the UiKit overlay event, when used.
             this.dialog?.addEventListener('close', this.onDialogClose);
             this.dialog?.addEventListener('nowo:overlay-close', this.onDialogClose);
@@ -166,7 +167,9 @@ export default class extends Controller {
     }
 
     switchTab(event: Event): void {
-        const button = event.currentTarget as HTMLButtonElement;
+        // UiKit `tabs` items are links (href="#"): never navigate.
+        event.preventDefault();
+        const button = event.currentTarget as HTMLElement;
         const tab = button.dataset.yopassTab ?? 'text';
 
         if (tab === 'file' && !this.fileEnabledValue) {
@@ -176,6 +179,7 @@ export default class extends Controller {
         this.element.querySelectorAll<HTMLElement>('[data-yopass-tab]').forEach((tabButton) => {
             const active = (tabButton.dataset.yopassTab ?? 'text') === tab;
             tabButton.setAttribute('aria-selected', active ? 'true' : 'false');
+            tabButton.removeAttribute('aria-current');
             const className = active ? this.tabActiveClassValue : this.tabClassValue;
             if (className !== '') {
                 tabButton.className = className;
@@ -398,6 +402,16 @@ export default class extends Controller {
         setHidden(this.passwordNoteTarget, mode !== 'password');
         setHidden(this.formTarget, true);
         setHidden(this.resultTarget, false);
+        this.syncFooter(true);
+    }
+
+    /** Dialog footer (UiKit 2.29 anatomy): Cancel + Create while editing, Done once the links are shown. */
+    private syncFooter(showResult: boolean): void {
+        this.element.querySelectorAll<HTMLElement>('[data-nowo-yopass-create-target="cancel"]').forEach((el) => setHidden(el, showResult));
+        this.element.querySelectorAll<HTMLElement>('[data-nowo-yopass-create-target="done"]').forEach((el) => setHidden(el, !showResult));
+        if (this.hasSubmitTarget && this.submitTarget.closest('footer') !== null) {
+            setHidden(this.submitTarget, showResult);
+        }
     }
 
     /**
@@ -414,6 +428,7 @@ export default class extends Controller {
         setHidden(this.formTarget, false);
         setHidden(this.resultTarget, true);
         this.submitTarget.disabled = false;
+        this.syncFooter(false);
 
         this.syncKeyMode();
         this.syncSecretCounter();

@@ -28,6 +28,7 @@
                 max_file_bytes: max_file_bytes,
                 max_secret_chars: max_secret_chars,
                 sharing_options: sharing_options,
+                icons: nowo_yopass_icons|default({}),
                 bundle: _b,
             }, with_context: false) }}
         {% else %}
@@ -36,6 +37,7 @@
                 can_share_file: can_share_file,
                 max_file_bytes: max_file_bytes,
                 max_secret_chars: max_secret_chars,
+                icons: nowo_yopass_icons|default({}),
                 bundle: _b,
             }, with_context: false) }}
         {% endif %}

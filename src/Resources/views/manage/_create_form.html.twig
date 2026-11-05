@@ -7,55 +7,52 @@
     201 {id, public_path, created_url} or 422 {error}. The key stays in memory; the result region (links_form,
     ShareCreatedLinksType targeting this controller) shows the links. Everything is wiped when the dialog closes.
   Variables: create_form, can_share_file, max_file_bytes, max_secret_chars, async, links_form (async only),
-  sharing_options (async only), bundle.
+  sharing_options (async only), bundle; controller_root (default true: the root <div> carries the controller; false
+  when a wrapper does, see _create_controller_attrs.html.twig), form_id (id of the create <form>, for footer buttons
+  bound with form="…"), footer_actions (default false: true leaves Create / Done to the dialog footer), icons
+  (web_ui.icons: create_tab_text / create_tab_file, null = label only).
 #}
 {% trans_default_domain 'NowoYopassBundle' %}
 {% set _b = bundle|default('NowoYopassBundle') %}
 {% set _async = async|default(false) %}
 {% set _sharing = sharing_options|default({}) %}
-{% set _errors = {
-    SECRET_REQUIRED: 'yopass.error.secret'|trans,
-    SECRET_TOO_LARGE: 'yopass.error.secret_too_large'|trans,
-    FILE_REQUIRED: 'yopass.error.file'|trans,
-    FILE_TOO_LARGE: 'yopass.error.file_too_large'|trans,
-    PASSWORD_REQUIRED: 'yopass.error.password'|trans,
-    CREATE_FAILED: 'yopass.error.create'|trans,
-    FILE_NOT_ENABLED: 'yopass.error.file_not_enabled'|trans,
-    CROSS_SITE: 'yopass.error.create'|trans,
-} %}
-<div class="nowo-yopass-create__root" data-controller="nowo-yopass-create"
-     data-nowo-yopass-create-file-enabled-value="{{ can_share_file ? 'true' : 'false' }}"
-     data-nowo-yopass-create-max-file-bytes-value="{{ max_file_bytes }}"
-     data-nowo-yopass-create-max-secret-chars-value="{{ max_secret_chars }}"
-     data-nowo-yopass-create-counter-format-value="{{ 'yopass.secret.counter'|trans }}"
-     data-nowo-yopass-create-counter-class-value="{{ nowo_ui_class('muted', _b) }}"
-     data-nowo-yopass-create-counter-limit-class-value="{{ nowo_ui_class('form_error', _b) }}"
-     data-nowo-yopass-create-tab-class-value="{{ nowo_ui_class('tab', _b) }}"
-     data-nowo-yopass-create-tab-active-class-value="{{ nowo_ui_class('tab_active', _b) }}"
-     data-nowo-yopass-create-errors-value="{{ _errors|json_encode }}"
-     data-nowo-yopass-create-async-value="{{ _async ? 'true' : 'false' }}"
-     {% if _async %}
-     data-nowo-yopass-create-allow-embed-in-url-value="{{ _sharing.allow_embed_in_url|default(false) ? 'true' : 'false' }}"
-     data-nowo-yopass-create-show-remember-notice-value="{{ _sharing.show_remember_notice|default(true) ? 'true' : 'false' }}"
-     {% endif %}>
+{% set _root = controller_root ?? true %}
+{% set _form_id = form_id|default(null) %}
+{# Dialog mode: the actions (Cancel / Create, then Done) live in the dialog footer (_create_dialog.html.twig). #}
+{% set _footer_actions = footer_actions|default(false) %}
+{% set _icons = icons|default({}) %}
+{% set _icon_text = _icons.create_tab_text is defined ? _icons.create_tab_text : 'tabler:file-text' %}
+{% set _icon_file = _icons.create_tab_file is defined ? _icons.create_tab_file : 'tabler:file-upload' %}
+{% if _root %}
+<div class="nowo-yopass-create__root" {{ include('@NowoYopassBundle/manage/_create_controller_attrs.html.twig', {
+    can_share_file: can_share_file,
+    max_file_bytes: max_file_bytes,
+    max_secret_chars: max_secret_chars,
+    async: _async,
+    sharing_options: _sharing,
+    bundle: _b,
+}, with_context: false) }}>
+{% endif %}
     {{ form_start(create_form, {
         attr: {
             class: nowo_ui_class('form', _b),
             'data-action': 'submit->nowo-yopass-create#submit',
             'data-nowo-yopass-create-target': 'form',
-        },
+        }|merge(_form_id ? {id: _form_id} : {}),
     }) }}
 
-        {# The type switch only exists with more than one type (text + file). #}
+        {# The type switch only exists with more than one type (text + file): UiKit `tabs` items with an icon each
+           (web_ui.icons), so the row follows the host tab style (data-tab-style: text, icon-text, icon). #}
         {% if can_share_file %}
-        <div class="{{ nowo_ui_class('tabs', _b) }}" role="tablist"{{ nowo_ui_attrs('tabs', _b) }}>
-            <button type="button" role="tab" aria-selected="true" class="{{ nowo_ui_class('tab_active', _b) }}" data-action="nowo-yopass-create#switchTab" data-yopass-tab="text">
-                {{ 'yopass.tab.text'|trans }}
-            </button>
-            <button type="button" role="tab" aria-selected="false" class="{{ nowo_ui_class('tab', _b) }}" data-action="nowo-yopass-create#switchTab" data-yopass-tab="file">
-                {{ 'yopass.tab.file'|trans }}
-            </button>
-        </div>
+            {{ include(nowo_ui_partial('tabs', _b), {
+                aria_label: 'yopass.tab.label'|trans,
+                attr: {role: 'tablist', 'data-testid': 'yopass-create-tabs'},
+                items: [
+                    {label: 'yopass.tab.text'|trans, href: '#', current: true, icon: _icon_text, attr: {role: 'tab', 'aria-selected': 'true', 'data-action': 'nowo-yopass-create#switchTab', 'data-yopass-tab': 'text'}},
+                    {label: 'yopass.tab.file'|trans, href: '#', current: false, icon: _icon_file, attr: {role: 'tab', 'aria-selected': 'false', 'data-action': 'nowo-yopass-create#switchTab', 'data-yopass-tab': 'file'}},
+                ],
+                bundle: _b,
+            }, with_context: false) }}
         {% endif %}
 
         {{ form_widget(create_form.ciphertext, {attr: {'data-nowo-yopass-create-target': 'ciphertext'}}) }}
@@ -102,11 +99,13 @@
 
         <div class="{{ nowo_ui_class('flash_error', _b) }}" role="alert" hidden data-nowo-yopass-create-target="error"></div>
 
+        {% if not _footer_actions %}
         <div class="{{ nowo_ui_class('form_actions', _b) }}"{{ nowo_ui_attrs('form_actions', _b) }}>
             <button type="submit" class="{{ nowo_ui_class('btn_primary', _b) }}" data-nowo-yopass-create-target="submit">
                 {{ 'yopass.create.submit'|trans }}
             </button>
         </div>
+        {% endif %}
 
     {{ form_end(create_form) }}
 
@@ -160,11 +159,15 @@
                     {% endif %}
                 {% endfor %}
             {{ form_end(links_form) }}
+            {% if not _footer_actions %}
             <div class="{{ nowo_ui_class('form_actions', _b) }}"{{ nowo_ui_attrs('form_actions', _b) }}>
                 <button type="button" class="{{ nowo_ui_class('btn_primary', _b) }}" data-nowo-ui-dialog-close data-action="nowo-yopass-create#done" data-testid="yopass-create-done">
                     {{ 'yopass.create.done'|trans }}
                 </button>
             </div>
+            {% endif %}
         </section>
     {% endif %}
+{% if _root %}
 </div>
+{% endif %}

@@ -4,20 +4,7 @@
  * loaded as a stylesheet from the nowo_yopass asset package. UiKit has no input-group / 2-column field grid slot yet.
  */
 
-/* Dialogs: header and footer stay, the body scrolls on short screens; never wider than the viewport. */
-dialog[data-nowo-yopass-dialog][open] {
-  display: flex;
-  flex-direction: column;
-  max-width: calc(100vw - 2rem);
-}
-
-dialog[data-nowo-yopass-dialog] > .nowo-ui-dialog__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
+/* Dialog sizes, height and body scrolling come from UiKit 2.29 (nowo-ui-dialog, --nowo-dialog-* tokens). */
 
 /* Title with the status badge inline. */
 .nowo-yopass-dialog-title {

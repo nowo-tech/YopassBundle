@@ -52,6 +52,7 @@ final readonly class YopassPages
      * Creates the page plumbing from the resolved `web_ui` settings.
      *
      * @param array<string, string|null> $templates `web_ui.templates` (page id => template, null = bundle template)
+     * @param array<string, string|null> $icons `web_ui.icons` (create tab icons; null = label only)
      */
     public function __construct(
         #[Autowire('%nowo_yopass.web_ui.layout_template%')]
@@ -61,6 +62,8 @@ final readonly class YopassPages
         #[Autowire('%nowo_yopass.web_ui.templates%')]
         private array $templates = [],
         private ?Environment $twig = null,
+        #[Autowire('%nowo_yopass.web_ui.icons%')]
+        private array $icons = [],
     ) {
     }
 
@@ -120,6 +123,7 @@ final readonly class YopassPages
         return $vars + [
             'nowo_yopass_legacy_layout' => $legacy,
             'nowo_yopass_legacy_blocks' => $this->hostBlocks($legacy),
+            'nowo_yopass_icons'         => $this->icons,
         ];
     }
 

@@ -8,6 +8,7 @@ yopass:
     feature:
         denied: Sie haben keine Berechtigung für diese Aktion.
     tab:
+        label: Art des Geheimnisses
         text: Textinhalt
         file: Datei
     type:
@@ -111,6 +112,7 @@ yopass:
     reads:
         field: Max. Lesungen
     create:
+        cancel: Abbrechen
         title: Neue Freigabe
         submit: Link erstellen
         open: Neue Freigabe
