@@ -52,6 +52,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+UiKit 2.29 dialog sizes and anatomy, icons on the create Text / File tabs, a clearer Extend section in the preview
+dialog. Requires `nowo-tech/ui-kit-bundle` **^2.29**. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Changed
+
+- **Dialogs follow UiKit 2.29 "Dialog sizes and anatomy"** (UiKit `docs/PAGE_CONTRACT.md`, Beacon UI-PATTERNS §16):
+  the create dialog is **medium** and the preview dialog **wide**, with the size's fixed width and height (moving
+  between steps never jumps); only the body scrolls. The create dialog's actions moved to the footer, outside the
+  scrolling form: **Cancel** (secondary) + **Create link** (primary, `type="submit" form="nowo-yopass-create-dialog-form"`),
+  replaced by **Done** once the links are shown. The `nowo-yopass-create` controller now sits on a wrapper `<div>`
+  around the `<dialog>` (new partial `manage/_create_controller_attrs.html.twig`). Revoke / delete / delete-all
+  confirmations are UiKit's and unchanged. The bundle's own dialog flex / scroll / max-width CSS is gone (UiKit owns it).
+- **Preview dialog:** the single primary **Show content** stays in the body, attached to the key / password field
+  (owner decision: Beacon §16 input-group rule); the footer holds only **Close**.
+- **Extend section** (owner review): "Current limits" is now **Now: …**; the two selects and the button sit on **one
+  row** (`[Add time ▾] [Raise reads to ▾] [Extend]`), bottom-aligned, wrapping to a column under ~560 px (container
+  query); the button is renamed **Extend** (es "Ampliar", 7 locales), stays secondary and is **disabled** while both
+  selects keep "No change…"; a live **Will be: …** line previews the result (new expiry from the option's interval,
+  reads left after raising the maximum) with the existing date formatting. After a successful extension the dialog
+  updates **in place** (header badge, "Now" line, both selects reset, inline success with `aria-live="polite"`) — no
+  page reload any more; errors show inline next to the row (`role="alert"`). Shorter field labels in 7 locales.
+- **Create tabs:** the Text / File switch renders through the UiKit `tabs` partial (`role="tablist"`, links
+  `href="#"` with `role="tab"`), with an icon each, so it follows the host tab style.
+
+### Added
+
+- `web_ui.icons.create_tab_text` / `web_ui.icons.create_tab_file` (defaults `tabler:file-text` / `tabler:file-upload`;
+  null or blank = label only); Twig context variable `nowo_yopass_icons`.
+- Expiration `<option>`s of the extend select carry `data-seconds` (the interval in seconds) for the live preview.
+- Translations `yopass.tab.label`, `yopass.create.cancel`, `yopass.extend.preview`, `yopass.extend.summary`,
+  `yopass.extend.reads_one`, `yopass.extend.reads_other` (7 locales).
+
+### Documentation
+
+- `ShareListRouteResolver` docblock: the `_list` HMAC key is the raw `kernel.secret`, with the message label
+  `nowo_yopass.list_route|` (audit EW-I1); docs say the token is bound to the viewer's `getUserIdentifier()` (EW-I2);
+  CONFIGURATION / UPGRADING: host filter values are user input — validate them, bind them as query parameters, and
+  return from `overrideList()` only shares the viewer may see, since it skips `CreatorSubjectGuard` (EW-I4).
+
 ## [1.13.0] - 2026-11-05
 
 One create action per screen, the manage list on a host page (allow-listed route, signed for the viewer), host list filters, hardening headers on every route, no purge on GET (indexed retention). See [UPGRADING](UPGRADING.md#to-1130).
