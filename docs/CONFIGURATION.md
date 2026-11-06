@@ -169,7 +169,7 @@ nowo_yopass:
 | `shares.expiration_options` | see above | Each entry: `id` (API/UI value) and `interval` (PHP relative modifier, e.g. `48 hours`). |
 | `shares.list_page_size` | `20` | Shares per page in manage list (`0` = no pagination). |
 | `shares.retention.enabled` | `true` | Purge shares older than `max_age` (UI + console command). |
-| `shares.retention.max_age` | `1 month` | PHP relative modifier (e.g. `30 days`). |
+| `shares.retention.max_age` | `1 month` | PHP relative modifier (e.g. `30 days`). Every `<N> <unit>` term goes back in time: `1 month 2 days` is one month and two days. |
 
 Add translation keys `yopass.expires.{id}` under `NowoYopassBundle` for custom expiration ids.
 
@@ -177,7 +177,7 @@ Add translation keys `yopass.expires.{id}` under `NowoYopassBundle` for custom e
 `N minutes|hours|days|weeks|months|years` (singular or plural, optional `+`): `14 days` reads `14 días` in Spanish. Any
 other modifier the purge accepts (`1 month 2 days`, `1 fortnight`) prints `yopass.list.retention_notice_unspecified`,
 which names no duration, and so does a PHP without `ext-intl` or `symfony/polyfill-intl-messageformatter`. The notice is
-display only: the purge always applies the modifier as configured. The units are ICU messages
+display only. The units are ICU messages
 (`yopass.list.retention_duration.<unit>`) in `NowoYopassBundle+intl-icu.<locale>.yaml`.
 
 Invalid `expiresIn` / `maxReads` in the create API fall back to the configured defaults.

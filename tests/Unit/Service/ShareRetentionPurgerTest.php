@@ -10,6 +10,7 @@ use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -100,5 +101,35 @@ final class ShareRetentionPurgerTest extends TestCase
         self::assertCount(1, $events);
         self::assertNull($events[0]->getSubject());
         self::assertNull($events[0]->getViewer());
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function cutoffs(): iterable
+    {
+        yield 'two terms' => ['1 month 2 days', '2026-10-04'];
+        yield 'plus on both' => ['+1 month +2 days', '2026-10-04'];
+        yield 'plus on the first' => ['+1 month 2 days', '2026-10-04'];
+        yield 'comma' => ['1 month, 2 days', '2026-10-04'];
+        yield 'no spaces' => ['1month2days', '2026-10-04'];
+        yield 'single term' => ['14 days', '2026-10-23'];
+        yield 'single term, plus' => ['+14 days', '2026-10-23'];
+        yield 'one month' => ['1 month', '2026-10-06'];
+        yield 'one month, plus' => ['+1 month', '2026-10-06'];
+    }
+
+    #[DataProvider('cutoffs')]
+    public function testEveryTermOfMaxAgeMovesTheCutoffBack(string $maxAge, string $expected): void
+    {
+        $user       = new TestUser();
+        $cutoff     = static fn (DateTimeImmutable $cutoff): bool => $cutoff->format('Y-m-d') === $expected;
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::once())->method('removeOlderThan')->with(self::callback($cutoff))->willReturn(0);
+        $repository->expects(self::once())->method('removeByCreatorOlderThan')->with($user, self::callback($cutoff))->willReturn(0);
+
+        $purger = new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => $maxAge]], new MockClock('2026-11-06 12:00:00'));
+        $purger->purgeAll();
+        $purger->purgeForCreator($user);
     }
 }

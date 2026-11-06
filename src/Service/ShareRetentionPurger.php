@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Support\RelativeInterval;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -110,7 +111,7 @@ final readonly class ShareRetentionPurger
             return null;
         }
 
-        $cutoff = $this->now()->modify('-' . $this->maxAge);
+        $cutoff = $this->now()->modify(RelativeInterval::negated($this->maxAge));
 
         return $cutoff === false ? null : $cutoff;
     }

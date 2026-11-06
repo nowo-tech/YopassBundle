@@ -25,7 +25,7 @@ test.describe('Yopass screenshots', () => {
     await createShare(page, 'Demo only: staging database password is not-a-real-secret-1');
     await createShare(page, 'Demo only: Wi-Fi guest code is not-a-real-secret-42');
     await page.goto('/tools/yopass');
-    await page.locator('[data-testid="yopass-manage"] tbody tr').first().locator('.nowo-ui-action--cancel').first().click();
+    await page.locator('[data-testid="yopass-manage"] tbody tr').first().locator('.nowo-ui-action--revoke').first().click();
     await page.locator('dialog[open] button[type="submit"]').click();
     await expect(page.locator('[data-testid="yopass-manage"] tbody tr').first()).toContainText(/Revoked/);
     await waitForToolbar(page);

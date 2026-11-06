@@ -59,16 +59,14 @@ One icon per action on the manage page, and a retention notice in the viewer's l
 ### Changed
 
 - **New share** (header and empty state, `web_ui.create_mode: dialog`) is kind `share` instead of `create`; it stays primary and keeps its label. **New share** and **Delete all** now draw their kind's icon next to the label (`Action::display: icon_text`, no icon name in the bundle). With `icon_set: none` they stay text.
+- **Extend** is kind `extend` (was `restore`) and **Revoke** is kind `revoke` (was `cancel`), so they get their own icons. Requires **UiKit 2.35** (`^2.35`), the first release with these kinds.
 - **View** no longer forces `variant: primary`: a filled primary never goes in a table row. It resolves to UiKit's neutral row variant, and a host paints it through the `action_neutral` slot.
 - Dev image: `intl` and full ICU data in the root `Dockerfile`, needed by the tests of the new catalogues.
 
 ### Fixed
 
-- **Retention notice**: `%max_age%` of `yopass.list.retention_notice` was the raw PHP modifier ("más de 14 days"). `N minutes|hours|days|weeks|months|years` (singular or plural, optional `+`) now print a translated duration in all 7 locales, through ICU plurals in the new `NowoYopassBundle+intl-icu.<locale>.yaml` catalogues. Any other modifier, or a PHP without `MessageFormatter`, prints the new `yopass.list.retention_notice_unspecified` without a duration. How the retention is computed does not change.
-
-### Not in this change
-
-- Extend and Revoke stay on kinds `restore` and `cancel`. Kinds `extend` and `revoke` need the UiKit release that adds them: on UiKit up to 2.33.1 `View\Action` throws on an unknown kind, so the manage page would fail.
+- **Retention purge (it deletes secrets, see [UPGRADING](UPGRADING.md#unreleased)):** `shares.retention.max_age` with several terms had only its first term negated, so `1 month 2 days` meant minus one month plus two days. Every `<N> <unit>` term is now negated, in the purge and in the config validator. Single-term values give the same cutoff as before.
+- **Retention notice**: `%max_age%` of `yopass.list.retention_notice` was the raw PHP modifier ("más de 14 days"). `N minutes|hours|days|weeks|months|years` (singular or plural, optional `+`) now print a translated duration in all 7 locales, through ICU plurals in the new `NowoYopassBundle+intl-icu.<locale>.yaml` catalogues. Any other modifier, or a PHP without `MessageFormatter`, prints the new `yopass.list.retention_notice_unspecified` without a duration. 
 
 ## [1.14.1] - 2026-11-06
 

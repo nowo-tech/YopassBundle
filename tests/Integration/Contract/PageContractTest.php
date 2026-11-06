@@ -212,8 +212,8 @@ final class PageContractTest extends PageContractTestCase
     public static function rowActionKinds(): iterable
     {
         yield 'View' => ['view', 'bi-eye', 'View'];
-        yield 'Extend' => ['restore', 'bi-arrow-counterclockwise', 'Extend'];
-        yield 'Revoke' => ['cancel', 'bi-x-lg', 'Revoke'];
+        yield 'Extend' => ['extend', 'bi-calendar-plus', 'Extend'];
+        yield 'Revoke' => ['revoke', 'bi-person-x', 'Revoke'];
         yield 'Delete' => ['delete', 'bi-trash', 'Delete'];
     }
 
@@ -277,7 +277,7 @@ final class PageContractTest extends PageContractTestCase
         $id   = '00000000-0000-4000-8000-000000000001';
 
         foreach ([
-            ['cancel', '/tools/yopass/' . $id . '/revoke'],
+            ['revoke', '/tools/yopass/' . $id . '/revoke'],
             ['delete', '/tools/yopass/' . $id . '/delete'],
             ['delete', '/tools/yopass/delete-all'],
         ] as [$kind, $target]) {
@@ -313,7 +313,7 @@ final class PageContractTest extends PageContractTestCase
 
         // Row hooks read by open() / openExtend(): the share id and the dialog opener, on the same button.
         $id = '00000000-0000-4000-8000-000000000001';
-        foreach (['view' => '#open', 'restore' => '#openExtend'] as $kind => $method) {
+        foreach (['view' => '#open', 'extend' => '#openExtend'] as $kind => $method) {
             self::assertSame(1, preg_match(sprintf('#<button[^>]*nowo-ui-action--%s[^>]*>#', $kind), $html, $button));
             self::assertStringContainsString(sprintf('data-action="nowo-yopass-manage-preview%s"', $method), $button[0]);
             self::assertStringContainsString(sprintf('data-share-id="%s"', $id), $button[0]);

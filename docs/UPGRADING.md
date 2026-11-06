@@ -89,15 +89,35 @@
 
 ## Unreleased
 
-No configuration change; the constraint stays `nowo-tech/ui-kit-bundle ^2.29`. Only the manage page changes. For a host
-that changes nothing:
+The constraint becomes `nowo-tech/ui-kit-bundle ^2.35`: Extend and Revoke use kinds that UiKit adds in 2.35. No
+configuration change.
+
+### Retention: every term of `max_age` counts (it deletes secrets)
+
+Only hosts with **several terms** in `shares.retention.max_age` are affected. Check yours before you update, because the
+next purge uses the new cutoff. Single-term values (`14 days`, `+14 days`, `1 month`) give the same cutoff as before.
+
+| `max_age` | Cutoff before (on 2026-11-06) | Cutoff now | Effect |
+| --- | --- | --- | --- |
+| `1 month 2 days` | one month back, two days forward: 2026-10-08 | one month and two days back: 2026-10-04 | shares live 4 days longer |
+| `+1 month +2 days` | 2026-10-08 | 2026-10-04 | shares live 4 days longer |
+| `1 month -2 days` | 2026-10-04 | one month back, two days forward: 2026-10-08 | **shares are deleted 4 days sooner** |
+
+A modifier with anything other than `<N> <unit>` terms (`1 month next week`, `14 days 2 pm`) keeps the old reading: a
+single `-` in front.
+
+### Manage page
+
+For a host that changes nothing:
 
 | Where | Before | After |
 | --- | --- | --- |
 | View (row) | `variant: primary`: `nowo-ui-btn--primary`, slot `action_primary` | no variant: `nowo-ui-btn--secondary`, slot `action_neutral`. Same kind, label, hooks |
 | New share (header and empty state, dialog mode) | `nowo-ui-action--create`, label only | `nowo-ui-action--share`, `share` icon + label. Still primary; same `data-testid` and dialog |
 | Delete all (header) | label only | `delete` icon + label. Same confirm dialog, POST and CSRF form |
-| Extend, Revoke, Delete (row) | kinds `restore`, `cancel`, `delete` | unchanged |
+| Extend (row) | kind `restore`, `nowo-ui-action--restore`, restore icon | kind `extend`, `nowo-ui-action--extend`, its own icon. Same label, hooks, preview dialog |
+| Revoke (row) | kind `cancel`, `nowo-ui-action--cancel`, close icon | kind `revoke`, `nowo-ui-action--revoke`, its own icon. Same label, confirm dialog, POST and CSRF form |
+| Delete (row) | kind `delete` | unchanged |
 | Retention notice, `max_age: 14 days` | `14 days` in every locale | translated: `14 días`, `14 jours`, `14 Tage`… |
 | Retention notice, `max_age: +14 days` or `1 days` | printed as written | `14 days`, `1 day` |
 | Retention notice, any other modifier, e.g. `1 month 2 days` | printed as written | `yopass.list.retention_notice_unspecified`, no duration |
@@ -107,11 +127,12 @@ actions stay text.
 
 To check on your side:
 
-- A selector on `.nowo-ui-action--create` for the manage page becomes `.nowo-ui-action--share`. The Share created page
-  keeps kind `create`.
+- Selectors on the manage page: `.nowo-ui-action--create` becomes `.nowo-ui-action--share`, `--restore` becomes
+  `--extend`, `--cancel` becomes `--revoke`. The Share created page keeps kind `create`.
 - A theme that painted View through `action_primary` now reads `action_neutral` for it.
-- With `icon_set: ux_icon`, the header icons need `bi:share` and `bi:trash` available to UX Icons (locally, or through
-  Iconify). A host with `ignore_not_found: false` and neither fails the page.
+- With `icon_set: ux_icon` and no `nowo_ui_kit.action_icons` entry for these kinds, UiKit asks UX Icons for `bi:share`,
+  `bi:trash` (header), and for `bi:calendar-plus`, `bi:person-x` (rows, when the display shows icons). They must be
+  available locally or through Iconify: a host with `ignore_not_found: false` and neither fails the page.
 - An override of `yopass.list.retention_notice` keeps working: `%max_age%` is now the translated duration. Translate
   `yopass.list.retention_notice_unspecified` too if you add a locale, plus the `yopass.list.retention_duration.*`
   ICU messages in `NowoYopassBundle+intl-icu.<locale>.yaml`.

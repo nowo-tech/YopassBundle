@@ -220,7 +220,7 @@ final class Configuration implements ConfigurationInterface
                                 return false;
                             }
 
-                            return (new DateTimeImmutable())->modify('-' . $v['retention']['max_age']) === false;
+                            return (new DateTimeImmutable())->modify(RelativeInterval::negated((string) $v['retention']['max_age'])) === false;
                         })
                         ->thenInvalid('The "shares.retention.max_age" value must be a valid PHP relative datetime modifier.')
                     ->end()

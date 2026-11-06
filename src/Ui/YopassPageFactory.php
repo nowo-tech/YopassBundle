@@ -138,10 +138,9 @@ final readonly class YopassPageFactory
                     dialogId: self::PREVIEW_DIALOG_ID,
                 );
             }
-            // Kinds `restore` / `cancel` until UiKit ships `extend` / `revoke`: View\Action rejects an unknown kind.
             if ($canExtend && $active && $access['extend']) {
                 $actions[] = new Action(
-                    'restore',
+                    'extend',
                     YopassPages::label('yopass.extend.action'),
                     attributes: ['data-action' => 'nowo-yopass-manage-preview#openExtend', 'data-share-id' => $id],
                     dialogId: self::PREVIEW_DIALOG_ID,
@@ -149,7 +148,7 @@ final readonly class YopassPageFactory
             }
             if ($canRevoke && $active && $access['revoke'] && isset($revokeForms[$id])) {
                 $actions[] = new Action(
-                    'cancel',
+                    'revoke',
                     YopassPages::label('yopass.revoke'),
                     href: $this->formAction($revokeForms[$id]),
                     method: 'POST',

@@ -58,7 +58,7 @@ test.describe('Yopass demo', () => {
     await dialog.locator('[data-nowo-ui-dialog-close]').first().click();
     await expect(dialog).toBeHidden();
 
-    await row.locator('.nowo-ui-action--cancel').first().click();
+    await row.locator('.nowo-ui-action--revoke').first().click();
     const confirm = page.locator('dialog[open]');
     await expect(confirm).toBeVisible();
     await confirm.locator('button[type="submit"]').click();
@@ -73,7 +73,7 @@ test.describe('Yopass demo', () => {
     await expect(row.locator('.nowo-ui-action--view')).not.toHaveClass(/primary/);
     await expect(page.locator('[data-testid="yopass-manage"] caption')).toHaveText(/1 month/);
 
-    await row.locator('.nowo-ui-action--restore').first().click();
+    await row.locator('.nowo-ui-action--extend').first().click();
     const dialog = page.locator('dialog#nowo-yopass-preview');
     const extend = dialog.locator('[data-testid="yopass-extend"]');
     await expect(extend).toBeVisible();

@@ -977,7 +977,7 @@ final class ShareManageControllerTest extends TestCase
         $page = $twig->captured['page'];
         self::assertInstanceOf(ListPage::class, $page);
         $kinds = static fn (SecureShare $share): array => array_map(static fn (Action $action): string => $action->kind, $page->rowActions($share));
-        self::assertSame(['view', 'restore', 'cancel', 'delete'], $kinds($own));
+        self::assertSame(['view', 'extend', 'revoke', 'delete'], $kinds($own));
         self::assertSame(['view'], $kinds($foreign));
         self::assertArrayNotHasKey($foreign->getId(), $twig->captured['revoke_forms']);
         self::assertArrayNotHasKey($foreign->getId(), $twig->captured['delete_forms']);
