@@ -92,6 +92,8 @@
 
 ## Unreleased
 
+To keep shares for good, set `shares.retention.enabled: false` rather than a huge `max_age`. A translator that knows the retention keys but does not format ICU prints the raw message: use Symfony's ICU formatter, or define the key as plain text.
+
 The constraint becomes `nowo-tech/ui-kit-bundle ^2.35`: Extend and Revoke use kinds that UiKit adds in 2.35. No
 configuration change.
 
