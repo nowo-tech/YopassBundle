@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.15.0](#to-1150)
   - [Retention: a cutoff not in the past is refused](#retention-a-cutoff-not-in-the-past-is-refused)
   - [Retention: every term of `max_age` counts (it deletes secrets)](#retention-every-term-of-max_age-counts-it-deletes-secrets)
   - [Manage page](#manage-page)
@@ -91,6 +92,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.15.0
+
+From **1.14.1**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 To keep shares for good, set `shares.retention.enabled: false` rather than a huge `max_age`. A translator that knows the retention keys but does not format ICU prints the raw message: use Symfony's ICU formatter, or define the key as plain text.
 
