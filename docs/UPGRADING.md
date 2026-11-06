@@ -103,18 +103,25 @@ included:
 
 | `max_age` | Cutoff on 2026-11-06 | Now |
 | --- | --- | --- |
-| `-14 days` | 2026-11-20 | refused at boot |
-| `1 month ago` | 2026-12-06 | refused at boot |
-| `1 month 2 days ago` | 2026-12-04 | refused at boot |
-| `0 days` | the current moment | refused at boot |
+| `-14 days` | 2026-11-20 | refused when the container is built |
+| `1 month ago` | 2026-12-06 | refused when the container is built |
+| `1 month 2 days ago` | 2026-12-04 | refused when the container is built |
+| `0 days` | the current moment | refused when the container is built |
+| `1.5 days` | 2026-11-11 (PHP reads it as plus 5 days) | refused when the container is built |
+| `100000 years` | a negative year: nothing deleted, the purge throws on MySQL and a create answers 500 with the share saved | refused when the container is built |
 
 The error reads `The "shares.retention.max_age" value must be a valid PHP relative datetime modifier that puts the cutoff
-in the past…`. To fix it, write the age as a positive duration, such as `14 days`. `shares.retention.enabled: false` does
+in the past and after the year 1000…`. To fix it, write the age as a positive duration, such as `14 days`. `shares.retention.enabled: false` does
 not read the value. Ordinary durations such as `14 days` or `1 month` are not affected.
 
-The purge has the same guard, for a value that reaches it another way or that depends on the date (`1 month -30 days`).
-It deletes nothing and logs an error through the bundle's logger. The purge command then reports 0 shares removed, so
-watch the log rather than the count.
+The check runs when the container is built, not on every boot. `cache:clear` in production fails with exit 1 and leaves
+the existing cache serving, but a host that builds its cache on the first request has no application until the value is
+fixed. A value that depends on the date, such as `1 month -30 days`, passes the build on some dates and fails it on
+others (it passes on 2026-11-06 and fails on 2026-12-06).
+
+The purge has the same guard, for a value that reaches it another way or that depends on the date. It deletes nothing and
+logs an error through the bundle's logger. The purge command then prints an error and exits with a failure code; on the
+create path the error is only logged.
 
 ### Retention: every term of `max_age` counts (it deletes secrets)
 
@@ -126,9 +133,17 @@ next purge uses the new cutoff. Single-term values (`14 days`, `+14 days`, `1 mo
 | `1 month 2 days` | one month back, two days forward: 2026-10-08 | one month and two days back: 2026-10-04 | shares live 4 days longer |
 | `+1 month +2 days` | 2026-10-08 | 2026-10-04 | shares live 4 days longer |
 | `1 month -2 days` | 2026-10-04 | one month back, two days forward: 2026-10-08 | **shares are deleted 4 days sooner** |
+| `1 year -1 month` | 2025-10-06 | 2025-12-06 | **shares are deleted 2 months sooner** |
+| `1 month -30 days` | 2026-09-06 | 2026-11-05 | **61 days of retention become 1 day** |
 
-A modifier with anything other than `<N> <unit>` terms (`1 month next week`, `14 days 2 pm`) keeps the old reading: a
-single `-` in front.
+A later term with a minus now shortens the retention, so the cutoff moves forward by twice that term. Check any value
+with a minus before you update: the shares it now reaches are deleted on the next purge and cannot be recovered.
+
+Spaces, tabs, line breaks, no-break spaces and commas all separate terms, so a YAML block scalar reads the same.
+
+A modifier with anything other than `<N> <unit>` terms keeps the old reading: a single `-` in front. Words can delete far
+more than they read: `0 days midnight` deletes everything not created today, and `14 days yesterday` keeps one day. Each
+purge with such a value logs a `warning`; refusing them waits for a major version. Use `<N> <unit>` terms only.
 
 ### Manage page
 
@@ -160,6 +175,10 @@ To check on your side:
 - An override of `yopass.list.retention_notice` keeps working: `%max_age%` is now the translated duration. Translate
   `yopass.list.retention_notice_unspecified` too if you add a locale, plus the `yopass.list.retention_duration.*`
   ICU messages in `NowoYopassBundle+intl-icu.<locale>.yaml`.
+- A translator of your own that does not know `yopass.list.retention_duration.<unit>` gets the notice without a
+  duration.
+- With `ux:icons:lock`, import these by name, because they come from the kit's map:
+  `bin/console ux:icons:import bi:share bi:trash bi:calendar-plus bi:person-x`.
 - ICU messages need `ext-intl` or `symfony/polyfill-intl-messageformatter`. Without either, the notice has no duration.
 
 ## To 1.14.1

@@ -42,8 +42,14 @@ final class RelativeIntervalTest extends TestCase
         yield 'plus on the first' => ['+1 month 2 days', '-1 month -2 days'];
         yield 'plus on the second' => ['1 month +2 days', '-1 month -2 days'];
         yield 'signed second term' => ['1 month -2 days', '-1 month +2 days'];
+        yield 'trailing line break' => ["1 month 2 days\n", '-1 month -2 days'];
+        yield 'line break between terms' => ["1 month\n2 days", '-1 month -2 days'];
+        yield 'windows line break' => ["1 month\r\n2 days", '-1 month -2 days'];
+        yield 'no-break space' => ["1 month\xC2\xA02 days", '-1 month -2 days'];
+        yield 'second line' => ["14 days\n2 days", '-14 days -2 days'];
+        yield 'full unit names' => ['5 seconds 5 minutes', '-5 seconds -5 minutes'];
         yield 'three terms' => ['1 year 2 weeks 3 hours', '-1 year -2 weeks -3 hours'];
-        yield 'no spaces' => ['1month2days', '-1month -2days'];
+        yield 'no spaces' => ['1month2days', '-1 month -2 days'];
         yield 'comma' => ['1 month, 2 days', '-1 month -2 days'];
         yield 'padded' => [' 1 month  2 days ', '-1 month -2 days'];
         yield 'upper case' => ['1 MONTH 2 Days', '-1 MONTH -2 Days'];
@@ -91,7 +97,6 @@ final class RelativeIntervalTest extends TestCase
         yield 'time of day' => ['14 days 2 pm'];
         yield 'text term' => ['1 month next week'];
         yield 'unknown unit' => ['1 month 2 bogus'];
-        yield 'second line' => ["14 days\n2 days"];
         yield 'empty' => [''];
     }
 
@@ -111,5 +116,26 @@ final class RelativeIntervalTest extends TestCase
         self::assertNull(RelativeInterval::retentionCutoff($now, '1 month ago'));
         self::assertNull(RelativeInterval::retentionCutoff($now, '0 days'));
         self::assertNull(RelativeInterval::retentionCutoff($now, 'bogus'));
+    }
+
+    public function testRetentionCutoffInTheDeepPastIsNull(): void
+    {
+        $now = new DateTimeImmutable('2026-11-06 12:00:00');
+
+        self::assertNull(RelativeInterval::retentionCutoff($now, '100000 years'));
+        self::assertNull(RelativeInterval::retentionCutoff($now, '99999999999 days'));
+        self::assertNull(RelativeInterval::retentionCutoff($now, '2030-01-01'));
+        self::assertSame('1026-11-06', RelativeInterval::retentionCutoff($now, '1000 years')?->format('Y-m-d'));
+    }
+
+    public function testIsPlainTerms(): void
+    {
+        foreach (['14 days', '+1 month +2 days', "1 month\n2 days", '1 month, 2 days'] as $plain) {
+            self::assertTrue(RelativeInterval::isPlainTerms($plain), $plain);
+        }
+
+        foreach (['0 days midnight', '14 days yesterday', '1 month next week', '1 month ago', ''] as $other) {
+            self::assertFalse(RelativeInterval::isPlainTerms($other), $other);
+        }
     }
 }

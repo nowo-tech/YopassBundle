@@ -8,6 +8,7 @@ use MessageFormatter;
 use Nowo\UiKitBundle\View\Label;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Symfony\Component\Translation\TranslatableMessage;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 use function class_exists;
 use function preg_match;
@@ -27,19 +28,25 @@ final class RetentionNotice
 
     /**
      * @param bool|null $icu whether ICU messages can be formatted (null = detect `MessageFormatter`)
+     * @param TranslatorInterface|null $translator translates the duration here, so a host translator that does not
+     *                                             resolve nested translatable parameters still prints it; a key it does
+     *                                             not know gives the notice without a duration
      */
-    public static function label(string $maxAge, ?bool $icu = null): Label
+    public static function label(string $maxAge, ?bool $icu = null, ?TranslatorInterface $translator = null): Label
     {
+        $unspecified = YopassPages::label('yopass.list.retention_notice_unspecified');
         if (!($icu ?? class_exists(MessageFormatter::class)) || preg_match(self::MODIFIER, $maxAge, $match) !== 1) {
-            return YopassPages::label('yopass.list.retention_notice_unspecified');
+            return $unspecified;
         }
 
-        return YopassPages::label('yopass.list.retention_notice', [
-            '%max_age%' => new TranslatableMessage(
-                'yopass.list.retention_duration.' . strtolower($match[2]),
-                ['count' => (int) $match[1]],
-                YopassPages::DOMAIN,
-            ),
-        ]);
+        $key    = 'yopass.list.retention_duration.' . strtolower($match[2]);
+        $params = ['count' => (int) $match[1]];
+        if (!$translator instanceof TranslatorInterface) {
+            return YopassPages::label('yopass.list.retention_notice', ['%max_age%' => new TranslatableMessage($key, $params, YopassPages::DOMAIN)]);
+        }
+
+        $duration = $translator->trans($key, $params, YopassPages::DOMAIN);
+
+        return $duration === $key ? $unspecified : YopassPages::label('yopass.list.retention_notice', ['%max_age%' => $duration]);
     }
 }

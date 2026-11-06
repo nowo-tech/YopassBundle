@@ -114,6 +114,9 @@ final class ShareRetentionPurgerTest extends TestCase
         yield 'plus on the first' => ['+1 month 2 days', '2026-10-04'];
         yield 'comma' => ['1 month, 2 days', '2026-10-04'];
         yield 'no spaces' => ['1month2days', '2026-10-04'];
+        yield 'line break' => ["1 month\n2 days", '2026-10-04'];
+        yield 'trailing line break' => ["1 month 2 days\n", '2026-10-04'];
+        yield 'no-break space' => ["1 month\xC2\xA02 days", '2026-10-04'];
         yield 'single term' => ['14 days', '2026-10-23'];
         yield 'single term, plus' => ['+14 days', '2026-10-23'];
         yield 'one month' => ['1 month', '2026-10-06'];
@@ -144,6 +147,7 @@ final class ShareRetentionPurgerTest extends TestCase
         yield 'two terms, ago' => ['1 month 2 days ago'];
         yield 'zero' => ['0 days'];
         yield 'malformed' => ['first day of next month'];
+        yield 'deep past' => ['100000 years'];
     }
 
     #[DataProvider('cutoffsNotInThePast')]
@@ -182,6 +186,41 @@ final class ShareRetentionPurgerTest extends TestCase
 
         (new ShareRetentionPurger($repository, ['retention' => ['enabled' => false, 'max_age' => '-14 days']], null, null, $logger))->purgeAll();
         (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '']], null, null, $logger))->purgeAll();
+
+        self::assertSame([], $logger->records);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function wordForms(): iterable
+    {
+        yield 'midnight' => ['0 days midnight'];
+        yield 'yesterday' => ['14 days yesterday'];
+        yield 'next week' => ['1 month next week'];
+    }
+
+    #[DataProvider('wordForms')]
+    public function testWordFormsLogAWarningAndStillPurge(string $maxAge): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::once())->method('removeOlderThan')->willReturn(0);
+        $logger = new SecretCapturingLogger();
+
+        (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => $maxAge]], new MockClock('2026-11-06 12:00:00'), null, $logger))->purgeAll();
+
+        self::assertCount(1, $logger->records);
+        self::assertSame('warning', $logger->records[0]['level']);
+        self::assertSame($maxAge, $logger->records[0]['context']['max_age']);
+    }
+
+    public function testPlainTermsLogNothing(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->method('removeOlderThan')->willReturn(0);
+        $logger = new SecretCapturingLogger();
+
+        (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '1 month 2 days']], new MockClock('2026-11-06 12:00:00'), null, $logger))->purgeAll();
 
         self::assertSame([], $logger->records);
     }

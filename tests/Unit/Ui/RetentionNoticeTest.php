@@ -6,12 +6,14 @@ namespace Nowo\YopassBundle\Tests\Unit\Ui;
 
 use Nowo\UiKitBundle\View\Label;
 use Nowo\YopassBundle\Ui\RetentionNotice;
+use Nowo\YopassBundle\Ui\YopassPageFactory;
 use Nowo\YopassBundle\Ui\YopassPages;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Translation\Loader\YamlFileLoader;
 use Symfony\Component\Translation\Translator;
 use Symfony\Component\Yaml\Yaml;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 use function glob;
 use function pathinfo;
@@ -89,6 +91,60 @@ final class RetentionNoticeTest extends TestCase
     public function testNoIcuFormatterGetsTheNoticeWithoutADuration(): void
     {
         self::assertSame('yopass.list.retention_notice_unspecified', RetentionNotice::label('14 days', false)->key);
+    }
+
+    public function testATranslatorThatDoesNotResolveNestedParametersStillPrintsTheDuration(): void
+    {
+        $translator = new class implements TranslatorInterface {
+            /**
+             * @param array<array-key, mixed> $parameters
+             */
+            public function trans(string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string
+            {
+                return $id === 'yopass.list.retention_duration.day' ? $parameters['count'] . ' HOST days' : $id;
+            }
+
+            public function getLocale(): string
+            {
+                return 'en';
+            }
+        };
+
+        self::assertSame(['%max_age%' => '14 HOST days'], RetentionNotice::label('14 days', true, $translator)->params);
+
+        $page = (new YopassPageFactory(new YopassPages(), $translator))->managePage([], null, false, false, [], [], null, null, true, '14 days');
+        self::assertInstanceOf(Label::class, $page->caption);
+        self::assertSame(['%max_age%' => '14 HOST days'], $page->caption->params);
+    }
+
+    public function testATranslatorThatDoesNotKnowTheDurationGetsTheNoticeWithoutOne(): void
+    {
+        self::assertSame('yopass.list.retention_notice_unspecified', RetentionNotice::label('14 days', true, new class implements TranslatorInterface {
+            /**
+             * @param array<array-key, mixed> $parameters
+             */
+            public function trans(string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string
+            {
+                return $id;
+            }
+
+            public function getLocale(): string
+            {
+                return 'en';
+            }
+        })->key);
+    }
+
+    public function testTheSymfonyTranslatorGivesTheSameNoticeWhenItTranslatesTheDurationFirst(): void
+    {
+        $translator = new Translator('es');
+        $translator->addLoader('yaml', new YamlFileLoader());
+        $translator->addResource('yaml', self::DIR . '/NowoYopassBundle.es.yaml', 'es', YopassPages::DOMAIN);
+        $translator->addResource('yaml', self::DIR . '/NowoYopassBundle+intl-icu.es.yaml', 'es', YopassPages::DOMAIN . '+intl-icu');
+
+        $label = RetentionNotice::label('14 days', true, $translator);
+
+        self::assertSame('Los secretos de más de 14 días se eliminan automáticamente.', $translator->trans($label->key, $label->params, $label->domain));
     }
 
     public function testEveryLocaleDefinesEveryUnitAndTheNoticeWithoutADuration(): void

@@ -222,7 +222,7 @@ final class Configuration implements ConfigurationInterface
 
                             return !RelativeInterval::retentionCutoff(new DateTimeImmutable(), (string) $v['retention']['max_age']) instanceof DateTimeImmutable;
                         })
-                        ->thenInvalid('The "shares.retention.max_age" value must be a valid PHP relative datetime modifier that puts the cutoff in the past, such as "14 days" or "1 month". A value such as "-14 days" or "1 month ago" would delete every live share.')
+                        ->thenInvalid('The "shares.retention.max_age" value must be a valid PHP relative datetime modifier that puts the cutoff in the past and after the year 1000, such as "14 days" or "1 month". A value such as "-14 days" or "1 month ago" would delete every live share.')
                     ->end()
                     ->validate()
                         ->ifTrue(static fn (array $v): bool => !in_array($v['default_expiration'], array_column($v['expiration_options'], 'id'), true))

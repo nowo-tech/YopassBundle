@@ -237,6 +237,8 @@ final class ConfigurationTest extends TestCase
         yield 'zero' => ['0 days'];
         yield 'second term wins' => ['1 day -1 week'];
         yield 'malformed' => ['first day of next month'];
+        yield 'deep past' => ['100000 years'];
+        yield 'date, a negative year' => ['2030-01-01'];
     }
 
     public function testRetentionDisabledDoesNotReadMaxAge(): void
@@ -266,6 +268,7 @@ final class ConfigurationTest extends TestCase
         yield 'single, plus' => ['+14 days'];
         yield 'two terms' => ['1 month 2 days'];
         yield 'two terms, plus' => ['+1 month +2 days'];
+        yield 'line break' => ["1 month\n2 days"];
     }
 
     /**

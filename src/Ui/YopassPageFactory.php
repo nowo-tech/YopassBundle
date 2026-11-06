@@ -17,6 +17,7 @@ use Nowo\UiKitBundle\View\ShowPage;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Symfony\Component\Form\FormView;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 use function array_map;
 use function count;
@@ -36,10 +37,12 @@ final readonly class YopassPageFactory
     public const CREATE_DIALOG_ID = 'nowo-yopass-create-dialog';
 
     /**
-     * Creates the factory on top of the page plumbing (layouts, per-page templates).
+     * Creates the factory on top of the page plumbing (layouts, per-page templates) and the translator of the
+     * retention notice's duration.
      */
     public function __construct(
         private YopassPages $pages,
+        private ?TranslatorInterface $translator = null,
     ) {
     }
 
@@ -201,7 +204,7 @@ final readonly class YopassPageFactory
             ),
             filtersClearHref: $filtersClearHref,
             caption: $retentionEnabled
-                ? RetentionNotice::label($retentionMaxAge)
+                ? RetentionNotice::label($retentionMaxAge, translator: $this->translator)
                 : YopassPages::label('yopass.list.title'),
             bundle: YopassPages::BUNDLE,
             layout: $this->pages->layout(),
