@@ -96,11 +96,13 @@ final class PageContractTest extends PageContractTestCase
         self::assertSame(1, preg_match('#<form [^>]*id="nowo-yopass-create-dialog-form".*?</form>#s', $dialog, $form));
         self::assertStringNotContainsString('type="submit"', $form[0]);
         self::assertSame(1, preg_match('#</div>\s*<footer class="[^"]*nowo-ui-dialog__footer[^"]*"[^>]*>(.*?)</footer>\s*</dialog>#s', $dialog, $footer));
-        // Footer: Cancel (secondary) then one visible primary, last: Create; Done replaces it after the create.
+        // Footer: Cancel (secondary) then the only primary, last: Create; Close (secondary, spec §16.6) replaces both after the create.
         self::assertMatchesRegularExpression('#^\s*<button type="button" class="[^"]*nowo-ui-btn--secondary[^"]*" data-nowo-ui-dialog-close data-nowo-yopass-create-target="cancel"[^>]*>\s*Cancel\s*</button>\s*<button type="submit" form="nowo-yopass-create-dialog-form" class="[^"]*nowo-ui-btn--primary[^"]*" data-nowo-yopass-create-target="submit"#', $footer[1]);
-        self::assertMatchesRegularExpression('#<button type="button" class="[^"]*nowo-ui-btn--primary[^"]*" hidden data-nowo-ui-dialog-close data-action="nowo-yopass-create\#done" data-nowo-yopass-create-target="done" data-testid="yopass-create-done">#', $footer[1]);
-        self::assertSame(1, substr_count($dialog, 'data-testid="yopass-create-done"'), 'Done only in the footer');
+        self::assertMatchesRegularExpression('#<button type="button" class="[^"]*nowo-ui-btn--secondary[^"]*" hidden data-nowo-ui-dialog-close data-action="nowo-yopass-create\#done" data-nowo-yopass-create-target="done" data-testid="yopass-create-done">\s*Close\s*</button>#', $footer[1]);
+        self::assertSame(1, substr_count($dialog, 'data-testid="yopass-create-done"'), 'Close (result step) only in the footer');
         self::assertSame(1, substr_count($dialog, 'data-nowo-yopass-create-target="submit"'), 'one submit, in the footer');
+        // Dialog rule v2: exactly one primary in the create dialog (markup, not only the visible step).
+        self::assertSame(1, substr_count($dialog, 'nowo-ui-btn--primary'), 'one primary in the create dialog');
     }
 
     public function testCreateTabsUseTheUiKitTabsPartialWithIcons(): void

@@ -4,7 +4,9 @@
  * loaded as a stylesheet from the nowo_yopass asset package. UiKit has no input-group / 2-column field grid slot yet.
  */
 
-/* Dialog sizes, height and body scrolling come from UiKit 2.29 (nowo-ui-dialog, --nowo-dialog-* tokens). */
+/* Dialog sizes, height and body scrolling come from UiKit (nowo-ui-dialog, --nowo-dialog-* tokens): the bundle sets no
+   width or height of its own. Dialog rule v2 (owner decision D-20261105-54): with UiKit >= 2.31 the height follows the
+   content, capped at min(size height token, 100dvh - 2rem); the host's `theme.dialog.height` decides, not the bundle. */
 
 /* Title with the status badge inline. */
 .nowo-yopass-dialog-title {

@@ -1,12 +1,12 @@
 {#
   Create dialog of the manage page (web_ui.create_mode: dialog; REQ-UI-001 modals: native <dialog> through the UiKit
   `dialog` partial, UiKit 2.29 anatomy). Opened by the "New share" header / empty-state actions (Action::dialogId =
-  YopassPageFactory::CREATE_DIALOG_ID). Medium size (the form's own height never changes the dialog's). The body is
+  YopassPageFactory::CREATE_DIALOG_ID). Medium width; the height is UiKit's (content, capped, from UiKit 2.31: dialog rule v2). The body is
   the shared create form (manage/_create_form.html.twig, async) with its result region: the browser encrypts, posts
   the ciphertext with fetch and renders the links here; the key never leaves the browser memory. The footer sits
-  outside the scrolling body: Cancel + Create (submit bound with form="<id>-form") while editing, Done once the links
-  are shown; one primary, on the right. The nowo-yopass-create controller sits on a wrapper around the <dialog> so
-  the footer buttons are in its scope. Every close (Done, Cancel, close button, Escape, backdrop) wipes the form, the
+  outside the scrolling body: Cancel + Create (submit bound with form="<id>-form") while editing, Close (secondary,
+  the step's only action) once the links are shown; never more than one primary. The nowo-yopass-create controller sits on a wrapper around the <dialog> so
+  the footer buttons are in its scope. Every close (Close, Cancel, close button, Escape, backdrop) wipes the form, the
   result and the key.
   Variables: create_form, links_form, can_share_file, max_file_bytes, max_secret_chars, sharing_options, icons, bundle.
 #}
@@ -38,8 +38,8 @@
     <button type="submit" form="{{ _form_id }}" class="{{ nowo_ui_class('btn_primary', _b) }}" data-nowo-yopass-create-target="submit" data-testid="yopass-create-submit">
         {{ 'yopass.create.submit'|trans }}
     </button>
-    <button type="button" class="{{ nowo_ui_class('btn_primary', _b) }}" hidden data-nowo-ui-dialog-close data-action="nowo-yopass-create#done" data-nowo-yopass-create-target="done" data-testid="yopass-create-done">
-        {{ 'yopass.create.done'|trans }}
+    <button type="button" class="{{ nowo_ui_class('btn_secondary', _b) }}" hidden data-nowo-ui-dialog-close data-action="nowo-yopass-create#done" data-nowo-yopass-create-target="done" data-testid="yopass-create-done">
+        {{ 'yopass.preview.close'|trans }}
     </button>
 {% endset %}
 <div class="nowo-yopass-create__root" {{ include('@NowoYopassBundle/manage/_create_controller_attrs.html.twig', {
