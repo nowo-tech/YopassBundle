@@ -10,6 +10,7 @@ use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Support\RelativeInterval;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -27,7 +28,8 @@ final readonly class ShareRetentionPurger
 
     /**
      * Creates the purger with the repository, share options, an optional clock and an optional event dispatcher
-     * ({@see YopassEvents::SHARES_BULK_DELETED} with reason "retention" when shares were removed).
+     * ({@see YopassEvents::SHARES_BULK_DELETED} with reason "retention" when shares were removed) and an optional
+     * logger (a skipped purge).
      *
      * @param array{
      *     retention?: array{enabled?: bool, max_age?: string}
@@ -38,6 +40,7 @@ final readonly class ShareRetentionPurger
         array $shareOptions,
         ?ClockInterface $clock = null,
         private ?EventDispatcherInterface $eventDispatcher = null,
+        private ?LoggerInterface $logger = null,
     ) {
         $retention     = $shareOptions['retention'] ?? [];
         $this->enabled = (bool) ($retention['enabled'] ?? false);
@@ -111,9 +114,15 @@ final readonly class ShareRetentionPurger
             return null;
         }
 
-        $cutoff = $this->now()->modify(RelativeInterval::negated($this->maxAge));
+        $cutoff = RelativeInterval::retentionCutoff($this->now(), $this->maxAge);
 
-        return $cutoff === false ? null : $cutoff;
+        // The config validator refuses these; a value can still get here another way, or depend on the date
+        // (`1 month -30 days`). Deleting with such a cutoff would remove every live share.
+        if (!$cutoff instanceof DateTimeImmutable) {
+            $this->logger?->error('nowo_yopass: retention purge skipped, shares.retention.max_age "{max_age}" is malformed or its cutoff is not in the past.', ['max_age' => $this->maxAge]);
+        }
+
+        return $cutoff;
     }
 
     private function now(): DateTimeImmutable

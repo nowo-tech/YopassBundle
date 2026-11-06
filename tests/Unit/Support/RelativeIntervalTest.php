@@ -100,4 +100,16 @@ final class RelativeIntervalTest extends TestCase
     {
         self::assertSame('-' . $modifier, RelativeInterval::negated($modifier));
     }
+
+    public function testRetentionCutoffIsInThePastOrNull(): void
+    {
+        $now = new DateTimeImmutable('2026-11-06 12:00:00');
+
+        self::assertSame('2026-10-23', RelativeInterval::retentionCutoff($now, '14 days')?->format('Y-m-d'));
+        self::assertSame('2026-10-04', RelativeInterval::retentionCutoff($now, '+1 month +2 days')?->format('Y-m-d'));
+        self::assertNull(RelativeInterval::retentionCutoff($now, '-14 days'));
+        self::assertNull(RelativeInterval::retentionCutoff($now, '1 month ago'));
+        self::assertNull(RelativeInterval::retentionCutoff($now, '0 days'));
+        self::assertNull(RelativeInterval::retentionCutoff($now, 'bogus'));
+    }
 }

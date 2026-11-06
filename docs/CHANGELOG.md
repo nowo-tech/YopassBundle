@@ -66,6 +66,7 @@ One icon per action on the manage page, and a retention notice in the viewer's l
 ### Fixed
 
 - **Retention purge (it deletes secrets, see [UPGRADING](UPGRADING.md#unreleased)):** `shares.retention.max_age` with several terms had only its first term negated, so `1 month 2 days` meant minus one month plus two days. Every `<N> <unit>` term is now negated, in the purge and in the config validator. Single-term values give the same cutoff as before.
+- **Retention purge, data loss:** a `max_age` whose cutoff is not in the past (`-14 days`, `1 month ago`, `0 days`) deleted every live share. The config validator now refuses it at boot, so this is a behaviour change for such a host. The purge also skips such a cutoff, and a malformed one, and logs an error. See [UPGRADING](UPGRADING.md#retention-a-cutoff-not-in-the-past-is-refused).
 - **Retention notice**: `%max_age%` of `yopass.list.retention_notice` was the raw PHP modifier ("más de 14 days"). `N minutes|hours|days|weeks|months|years` (singular or plural, optional `+`) now print a translated duration in all 7 locales, through ICU plurals in the new `NowoYopassBundle+intl-icu.<locale>.yaml` catalogues. Any other modifier, or a PHP without `MessageFormatter`, prints the new `yopass.list.retention_notice_unspecified` without a duration. 
 
 ## [1.14.1] - 2026-11-06

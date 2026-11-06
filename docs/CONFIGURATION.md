@@ -169,7 +169,7 @@ nowo_yopass:
 | `shares.expiration_options` | see above | Each entry: `id` (API/UI value) and `interval` (PHP relative modifier, e.g. `48 hours`). |
 | `shares.list_page_size` | `20` | Shares per page in manage list (`0` = no pagination). |
 | `shares.retention.enabled` | `true` | Purge shares older than `max_age` (UI + console command). |
-| `shares.retention.max_age` | `1 month` | PHP relative modifier (e.g. `30 days`). Every `<N> <unit>` term goes back in time: `1 month 2 days` is one month and two days. |
+| `shares.retention.max_age` | `1 month` | PHP relative modifier (e.g. `30 days`). Every `<N> <unit>` term goes back in time: `1 month 2 days` is one month and two days. The cutoff must be in the past: `-14 days`, `1 month ago` or `0 days` fail the container build. |
 
 Add translation keys `yopass.expires.{id}` under `NowoYopassBundle` for custom expiration ids.
 

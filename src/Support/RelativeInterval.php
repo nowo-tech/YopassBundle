@@ -60,6 +60,29 @@ final class RelativeInterval
             return null;
         }
 
+        $end = self::modify(new DateTimeImmutable('@0'), '+' . $interval);
+
+        return $end instanceof DateTimeImmutable && $end->getTimestamp() > 0 ? $end->getTimestamp() : null;
+    }
+
+    /**
+     * Retention cutoff of `$maxAge` at `$now`, or null when the modifier is malformed or the cutoff is not in the past.
+     * Shares created before the cutoff get deleted, so a cutoff at or after `$now` (`-14 days`, `1 month ago`, `0 days`)
+     * would delete every live share. Never throws.
+     */
+    public static function retentionCutoff(DateTimeImmutable $now, string $maxAge): ?DateTimeImmutable
+    {
+        $cutoff = self::modify($now, self::negated($maxAge));
+
+        return $cutoff instanceof DateTimeImmutable && $cutoff < $now ? $cutoff : null;
+    }
+
+    /**
+     * `modify()` with null for a malformed modifier (a warning + false on PHP 8.2, a DateMalformedStringException on
+     * PHP >= 8.3).
+     */
+    private static function modify(DateTimeImmutable $from, string $modifier): ?DateTimeImmutable
+    {
         // PHP 8.2 reports a malformed modifier as a warning: turn it into the PHP >= 8.3 exception, one path for both.
         // Scoped to the modify() call: the previous handler is restored in `finally` (nothing persists on a worker).
         // @phpstan-ignore frankenphp.worker.noSetErrorExceptionHandler
@@ -68,13 +91,13 @@ final class RelativeInterval
         });
 
         try {
-            $end = (new DateTimeImmutable('@0'))->modify('+' . $interval);
+            $result = $from->modify($modifier);
         } catch (Throwable) {
-            $end = false;
+            $result = false;
         } finally {
             restore_error_handler();
         }
 
-        return $end instanceof DateTimeImmutable && $end->getTimestamp() > 0 ? $end->getTimestamp() : null;
+        return $result instanceof DateTimeImmutable ? $result : null;
     }
 }

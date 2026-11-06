@@ -3,6 +3,9 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Retention: a cutoff not in the past is refused](#retention-a-cutoff-not-in-the-past-is-refused)
+  - [Retention: every term of `max_age` counts (it deletes secrets)](#retention-every-term-of-max_age-counts-it-deletes-secrets)
+  - [Manage page](#manage-page)
 - [To 1.14.1](#to-1141)
 - [To 1.14.0](#to-1140)
 - [To 1.13.0](#to-1130)
@@ -91,6 +94,27 @@
 
 The constraint becomes `nowo-tech/ui-kit-bundle ^2.35`: Extend and Revoke use kinds that UiKit adds in 2.35. No
 configuration change.
+
+### Retention: a cutoff not in the past is refused
+
+**Behaviour change: the container can fail to build.** With retention enabled, `shares.retention.max_age` must now put
+the cutoff in the past. These values used to be accepted, and each purge then deleted every share of its scope, live ones
+included:
+
+| `max_age` | Cutoff on 2026-11-06 | Now |
+| --- | --- | --- |
+| `-14 days` | 2026-11-20 | refused at boot |
+| `1 month ago` | 2026-12-06 | refused at boot |
+| `1 month 2 days ago` | 2026-12-04 | refused at boot |
+| `0 days` | the current moment | refused at boot |
+
+The error reads `The "shares.retention.max_age" value must be a valid PHP relative datetime modifier that puts the cutoff
+in the past…`. To fix it, write the age as a positive duration, such as `14 days`. `shares.retention.enabled: false` does
+not read the value. Ordinary durations such as `14 days` or `1 month` are not affected.
+
+The purge has the same guard, for a value that reaches it another way or that depends on the date (`1 month -30 days`).
+It deletes nothing and logs an error through the bundle's logger. The purge command then reports 0 shares removed, so
+watch the log rather than the count.
 
 ### Retention: every term of `max_age` counts (it deletes secrets)
 

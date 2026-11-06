@@ -217,6 +217,35 @@ final class ConfigurationTest extends TestCase
         ]]);
     }
 
+    #[DataProvider('refusedRetentionModifiers')]
+    public function testRetentionMaxAgeIsRefusedWhenTheCutoffIsNotInThePast(string $maxAge): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('would delete every live share');
+
+        $this->process(['user_class' => 'App\\Entity\\User', 'shares' => ['retention' => ['max_age' => $maxAge]]]);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function refusedRetentionModifiers(): iterable
+    {
+        yield 'negative' => ['-14 days'];
+        yield 'ago' => ['1 month ago'];
+        yield 'two terms, ago' => ['1 month 2 days ago'];
+        yield 'zero' => ['0 days'];
+        yield 'second term wins' => ['1 day -1 week'];
+        yield 'malformed' => ['first day of next month'];
+    }
+
+    public function testRetentionDisabledDoesNotReadMaxAge(): void
+    {
+        $config = $this->process(['user_class' => 'App\\Entity\\User', 'shares' => ['retention' => ['enabled' => false, 'max_age' => '-14 days']]]);
+
+        self::assertSame('-14 days', $config['shares']['retention']['max_age']);
+    }
+
     /**
      * The validator reads `max_age` the way the purge does (every term negated).
      */
