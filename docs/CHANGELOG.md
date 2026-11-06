@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.14.1] - 2026-11-06](#1141---2026-11-06)
 - [[1.14.0] - 2026-11-05](#1140---2026-11-05)
 - [[1.13.0] - 2026-11-05](#1130---2026-11-05)
 - [[1.12.1] - 2026-11-04](#1121---2026-11-04)
@@ -53,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.1] - 2026-11-06
+
+Dialog rule v2: one primary in the create dialog; the result step offers Close.
+
 Dialog rule v2 (owner decision D-20261105-54). No configuration change. See [UPGRADING](UPGRADING.md#unreleased).
 
 ### Changed
@@ -69,6 +74,8 @@ Dialog rule v2 (owner decision D-20261105-54). No configuration change. See [UPG
   (title + ×) and footer always in view. The bundle adds no height rule, so a host's `theme.dialog.height` choice wins.
   The 1.14 CHANGELOG wording "fixed width and height" no longer describes the target: the width is fixed, the height
   is the kit's.
+
+[1.14.1]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.14.1
 
 ## [1.14.0] - 2026-11-05
 
@@ -762,7 +769,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.14.1...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7

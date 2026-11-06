@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.14.1](#to-1141)
 - [To 1.14.0](#to-1140)
 - [To 1.13.0](#to-1130)
   - [One create action per screen](#one-create-action-per-screen)
@@ -87,6 +88,8 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.14.1
 
 From **1.14.0**: `composer update nowo-tech/yopass-bundle`. No configuration change; the constraint stays
 `nowo-tech/ui-kit-bundle ^2.29`.
