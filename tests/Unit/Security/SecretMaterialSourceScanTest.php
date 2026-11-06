@@ -47,6 +47,8 @@ final class SecretMaterialSourceScanTest extends TestCase
         'Security/PublicEndpointRateLimiter.php',
         'Service/ShareDeleter.php',
         'Command/PurgeOldSharesCommand.php',
+        // Logs the configured max_age of a skipped purge: configuration, no share data.
+        'Service/ShareRetentionPurger.php',
         // TreeBuilder ->info() node descriptions, not a logger.
         'DependencyInjection/Configuration.php',
     ];

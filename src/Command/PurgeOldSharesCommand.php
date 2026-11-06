@@ -43,6 +43,12 @@ final class PurgeOldSharesCommand extends Command
 
         $removed = $this->retentionPurger->purgeAll();
 
+        if ($removed === 0 && $this->retentionPurger->isCutoffRefused()) {
+            $io->error('Nothing was purged: nowo_yopass.shares.retention.max_age is malformed or its cutoff is out of range.');
+
+            return Command::FAILURE;
+        }
+
         if ($removed === 0) {
             $io->success('No shares matched the retention policy.');
 

@@ -54,7 +54,9 @@ final class YopassPageFactoryTest extends TestCase
         self::assertSame(['payloadKind', 'createdAt', 'expiresAt', 'readsLeft', 'status'], array_map(static fn (Column $column): string => $column->key, $page->columns));
 
         $activeActions = $page->rowActions($active, 0);
-        self::assertSame(['view', 'restore', 'cancel', 'delete'], array_map(static fn (Action $action): string => $action->kind, $activeActions));
+        self::assertSame(['view', 'extend', 'revoke', 'delete'], array_map(static fn (Action $action): string => $action->kind, $activeActions));
+        self::assertNull($activeActions[0]->variant, 'View does not force a colour: never a filled primary in a row');
+        self::assertSame('neutral', $activeActions[0]->resolvedVariant());
         self::assertSame(YopassPageFactory::PREVIEW_DIALOG_ID, $activeActions[0]->dialogId);
         self::assertSame($active->getId(), $activeActions[0]->attributes['data-share-id']);
         self::assertSame('nowo-yopass-manage-preview#openExtend', $activeActions[1]->attributes['data-action']);
@@ -133,7 +135,7 @@ final class YopassPageFactoryTest extends TestCase
         );
 
         $kinds = static fn (SecureShare $row): array => array_map(static fn (Action $action): string => $action->kind, $page->rowActions($row));
-        self::assertSame(['restore', 'delete'], $kinds($share));
+        self::assertSame(['extend', 'delete'], $kinds($share));
         self::assertSame([], $kinds($missing));
         self::assertSame([], $page->header->actions, 'no Delete all when the viewer owns nothing');
         self::assertNull($page->empty?->action);

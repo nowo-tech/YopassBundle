@@ -107,6 +107,9 @@ Static / AI review posture for this package (catalog: monorepo `BUNDLES_SECURITY
 | No decrypted plaintext left in the hidden manage preview after close | Pass (Unreleased) |
 | No third-party scripts on the reveal page layout | Host responsibility (documented) |
 
+**Unreleased (action kinds, retention notice, retention cutoff):** REQ-SEC-004 **Pass (good) / Low**, independent audit
+2026-11-06 at `8fee146` (catalog Appendix HL). Open Low: word forms pass the guard (HL-L4), with a `warning` logged on each purge.
+
 **Latest audit:** **Pass (good)** / **Low** — AI delta re-audit **2026-10-30** of v1.9.0..1089498 (catalog Appendix BD, "Delta re-audit 1.10.0"). Open Low from 2026-10-29: L3 ciphertext kept after consume, L4 decrypted file blob MIME, L5 per-IP limiter behind proxies. Residual: the host must keep `allow_unauthenticated: false`, `cache.app` and `framework.trusted_proxies` (behind a proxy) for public rate limits, and keep third-party scripts out of the guest / public layout.
 
 ## Reporting

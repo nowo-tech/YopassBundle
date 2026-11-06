@@ -131,6 +131,7 @@ yopass:
         actions: Acties
         empty: U heeft nog geen geheimen aangemaakt.
         retention_notice: Geheimen ouder dan %max_age% worden automatisch verwijderd.
+        retention_notice_unspecified: Oudere geheimen worden automatisch verwijderd.
         summary: '%from%–%to% van %total%'
         page: Pagina %page% / %pages%
         previous: Vorige

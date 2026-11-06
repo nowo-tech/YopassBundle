@@ -8,10 +8,14 @@ use DateTimeImmutable;
 use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Support\RelativeInterval;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+
+use const DATE_ATOM;
 
 /**
  * Deletes shares older than the configured retention age.
@@ -26,7 +30,8 @@ final readonly class ShareRetentionPurger
 
     /**
      * Creates the purger with the repository, share options, an optional clock and an optional event dispatcher
-     * ({@see YopassEvents::SHARES_BULK_DELETED} with reason "retention" when shares were removed).
+     * ({@see YopassEvents::SHARES_BULK_DELETED} with reason "retention" when shares were removed) and an optional
+     * logger (a skipped purge).
      *
      * @param array{
      *     retention?: array{enabled?: bool, max_age?: string}
@@ -37,6 +42,7 @@ final readonly class ShareRetentionPurger
         array $shareOptions,
         ?ClockInterface $clock = null,
         private ?EventDispatcherInterface $eventDispatcher = null,
+        private ?LoggerInterface $logger = null,
     ) {
         $retention     = $shareOptions['retention'] ?? [];
         $this->enabled = (bool) ($retention['enabled'] ?? false);
@@ -50,6 +56,14 @@ final readonly class ShareRetentionPurger
     public function isEnabled(): bool
     {
         return $this->enabled;
+    }
+
+    /**
+     * Whether retention is on but `max_age` gives no usable cutoff, so a purge deletes nothing and checks nothing.
+     */
+    public function isCutoffRefused(): bool
+    {
+        return $this->enabled && !RelativeInterval::retentionCutoff($this->now(), $this->maxAge) instanceof DateTimeImmutable;
     }
 
     /**
@@ -110,9 +124,21 @@ final readonly class ShareRetentionPurger
             return null;
         }
 
-        $cutoff = $this->now()->modify('-' . $this->maxAge);
+        $cutoff = RelativeInterval::retentionCutoff($this->now(), $this->maxAge);
 
-        return $cutoff === false ? null : $cutoff;
+        // The config validator refuses these; a value can still get here another way, or depend on the date
+        // (`1 month -30 days`). Deleting with a cutoff not in the past would remove every live share.
+        if (!$cutoff instanceof DateTimeImmutable) {
+            $this->logger?->error('nowo_yopass: retention purge skipped, shares.retention.max_age "{max_age}" is malformed or its cutoff is out of range.', ['max_age' => $this->maxAge]);
+
+            return null;
+        }
+
+        if (!RelativeInterval::isPlainTerms($this->maxAge)) {
+            $this->logger?->warning('nowo_yopass: shares.retention.max_age "{max_age}" is not plain <N> <unit> terms, so it can delete far more than it reads (cutoff {cutoff}). This will be refused in a future major version.', ['max_age' => $this->maxAge, 'cutoff' => $cutoff->format(DATE_ATOM)]);
+        }
+
+        return $cutoff;
     }
 
     private function now(): DateTimeImmutable

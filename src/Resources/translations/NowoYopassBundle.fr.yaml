@@ -131,6 +131,7 @@ yopass:
         actions: Actions
         empty: Vous n'avez pas encore créé de partage.
         retention_notice: Les partages de plus de %max_age% sont supprimés automatiquement.
+        retention_notice_unspecified: Les anciens partages sont supprimés automatiquement.
         summary: '%from%–%to% sur %total%'
         page: Page %page% sur %pages%
         previous: Précédent

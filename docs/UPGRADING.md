@@ -3,6 +3,9 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Retention: a cutoff not in the past is refused](#retention-a-cutoff-not-in-the-past-is-refused)
+  - [Retention: every term of `max_age` counts (it deletes secrets)](#retention-every-term-of-max_age-counts-it-deletes-secrets)
+  - [Manage page](#manage-page)
 - [To 1.14.1](#to-1141)
 - [To 1.14.0](#to-1140)
 - [To 1.13.0](#to-1130)
@@ -88,6 +91,97 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+To keep shares for good, set `shares.retention.enabled: false` rather than a huge `max_age`. A translator that knows the retention keys but does not format ICU prints the raw message: use Symfony's ICU formatter, or define the key as plain text.
+
+The constraint becomes `nowo-tech/ui-kit-bundle ^2.35`: Extend and Revoke use kinds that UiKit adds in 2.35. No
+configuration change.
+
+### Retention: a cutoff not in the past is refused
+
+**Behaviour change: the container can fail to build.** With retention enabled, `shares.retention.max_age` must now put
+the cutoff in the past. These values used to be accepted, and each purge then deleted every share of its scope, live ones
+included:
+
+| `max_age` | Cutoff on 2026-11-06 | Now |
+| --- | --- | --- |
+| `-14 days` | 2026-11-20 | refused when the container is built |
+| `1 month ago` | 2026-12-06 | refused when the container is built |
+| `1 month 2 days ago` | 2026-12-04 | refused when the container is built |
+| `0 days` | the current moment | refused when the container is built |
+| `1.5 days` | 2026-11-11 (PHP reads it as plus 5 days) | refused when the container is built |
+| `100000 years` | a negative year: nothing deleted, the purge throws on MySQL and a create answers 500 with the share saved | refused when the container is built |
+
+The error reads `The "shares.retention.max_age" value must be a valid PHP relative datetime modifier that puts the cutoff
+in the past and after the year 1000…`. To fix it, write the age as a positive duration, such as `14 days`. `shares.retention.enabled: false` does
+not read the value. Ordinary durations such as `14 days` or `1 month` are not affected.
+
+The check runs when the container is built, not on every boot. `cache:clear` in production fails with exit 1 and leaves
+the existing cache serving, but a host that builds its cache on the first request has no application until the value is
+fixed. A value that depends on the date, such as `1 month -30 days`, passes the build on some dates and fails it on
+others (it passes on 2026-11-06 and fails on 2026-12-06).
+
+The purge has the same guard, for a value that reaches it another way or that depends on the date. It deletes nothing and
+logs an error through the bundle's logger. The purge command then prints an error and exits with a failure code; on the
+create path the error is only logged.
+
+### Retention: every term of `max_age` counts (it deletes secrets)
+
+Only hosts with **several terms** in `shares.retention.max_age` are affected. Check yours before you update, because the
+next purge uses the new cutoff. Single-term values (`14 days`, `+14 days`, `1 month`) give the same cutoff as before.
+
+| `max_age` | Cutoff before (on 2026-11-06) | Cutoff now | Effect |
+| --- | --- | --- | --- |
+| `1 month 2 days` | one month back, two days forward: 2026-10-08 | one month and two days back: 2026-10-04 | shares live 4 days longer |
+| `+1 month +2 days` | 2026-10-08 | 2026-10-04 | shares live 4 days longer |
+| `1 month -2 days` | 2026-10-04 | one month back, two days forward: 2026-10-08 | **shares are deleted 4 days sooner** |
+| `1 year -1 month` | 2025-10-06 | 2025-12-06 | **shares are deleted 2 months sooner** |
+| `1 month -30 days` | 2026-09-06 | 2026-11-05 | **61 days of retention become 1 day** |
+
+A later term with a minus now shortens the retention, so the cutoff moves forward by twice that term. Check any value
+with a minus before you update: the shares it now reaches are deleted on the next purge and cannot be recovered.
+
+Spaces, tabs, line breaks, no-break spaces and commas all separate terms, so a YAML block scalar reads the same.
+
+A modifier with anything other than `<N> <unit>` terms keeps the old reading: a single `-` in front. Words can delete far
+more than they read: `0 days midnight` deletes everything not created today, and `14 days yesterday` keeps one day. Each
+purge with such a value logs a `warning`; refusing them waits for a major version. Use `<N> <unit>` terms only.
+
+### Manage page
+
+For a host that changes nothing:
+
+| Where | Before | After |
+| --- | --- | --- |
+| View (row) | `variant: primary`: `nowo-ui-btn--primary`, slot `action_primary` | no variant: `nowo-ui-btn--secondary`, slot `action_neutral`. Same kind, label, hooks |
+| New share (header and empty state, dialog mode) | `nowo-ui-action--create`, label only | `nowo-ui-action--share`, `share` icon + label. Still primary; same `data-testid` and dialog |
+| Delete all (header) | label only | `delete` icon + label. Same confirm dialog, POST and CSRF form |
+| Extend (row) | kind `restore`, `nowo-ui-action--restore`, restore icon | kind `extend`, `nowo-ui-action--extend`, its own icon. Same label, hooks, preview dialog |
+| Revoke (row) | kind `cancel`, `nowo-ui-action--cancel`, close icon | kind `revoke`, `nowo-ui-action--revoke`, its own icon. Same label, confirm dialog, POST and CSRF form |
+| Delete (row) | kind `delete` | unchanged |
+| Retention notice, `max_age: 14 days` | `14 days` in every locale | translated: `14 días`, `14 jours`, `14 Tage`… |
+| Retention notice, `max_age: +14 days` or `1 days` | printed as written | `14 days`, `1 day` |
+| Retention notice, any other modifier, e.g. `1 month 2 days` | printed as written | `yopass.list.retention_notice_unspecified`, no duration |
+
+Row actions follow `nowo_ui_kit.row_actions_display` as before: `text` shows no icon. With `icon_set: none`, the header
+actions stay text.
+
+To check on your side:
+
+- Selectors on the manage page: `.nowo-ui-action--create` becomes `.nowo-ui-action--share`, `--restore` becomes
+  `--extend`, `--cancel` becomes `--revoke`. The Share created page keeps kind `create`.
+- A theme that painted View through `action_primary` now reads `action_neutral` for it.
+- With `icon_set: ux_icon` and no `nowo_ui_kit.action_icons` entry for these kinds, UiKit asks UX Icons for `bi:share`,
+  `bi:trash` (header), and for `bi:calendar-plus`, `bi:person-x` (rows, when the display shows icons). They must be
+  available locally or through Iconify: a host with `ignore_not_found: false` and neither fails the page.
+- An override of `yopass.list.retention_notice` keeps working: `%max_age%` is now the translated duration. Translate
+  `yopass.list.retention_notice_unspecified` too if you add a locale, plus the `yopass.list.retention_duration.*`
+  ICU messages in `NowoYopassBundle+intl-icu.<locale>.yaml`.
+- A translator of your own that does not know `yopass.list.retention_duration.<unit>` gets the notice without a
+  duration.
+- With `ux:icons:lock`, import these by name, because they come from the kit's map:
+  `bin/console ux:icons:import bi:share bi:trash bi:calendar-plus bi:person-x`.
+- ICU messages need `ext-intl` or `symfony/polyfill-intl-messageformatter`. Without either, the notice has no duration.
 
 ## To 1.14.1
 

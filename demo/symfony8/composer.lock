@@ -1426,16 +1426,16 @@
         },
         {
             "name": "nowo-tech/ui-kit-bundle",
-            "version": "v2.29.0",
+            "version": "v2.35.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/nowo-tech/UiKitBundle.git",
-                "reference": "4130f49ab8eccf51acf76e20550a5a3176d9c11d"
+                "reference": "0a5c3f808b22a179e91c3802ba421dc785611010"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/nowo-tech/UiKitBundle/zipball/4130f49ab8eccf51acf76e20550a5a3176d9c11d",
-                "reference": "4130f49ab8eccf51acf76e20550a5a3176d9c11d",
+                "url": "https://api.github.com/repos/nowo-tech/UiKitBundle/zipball/0a5c3f808b22a179e91c3802ba421dc785611010",
+                "reference": "0a5c3f808b22a179e91c3802ba421dc785611010",
                 "shasum": ""
             },
             "require": {
@@ -1516,8 +1516,8 @@
                 "issues": "https://github.com/nowo-tech/UiKitBundle/issues",
                 "source": "https://github.com/nowo-tech/UiKitBundle"
             },
-            "time": "2026-11-05T13:12:29+00:00",
-            "published-time": "2026-11-05T13:14:49+00:00"
+            "time": "2026-11-06T20:20:24+00:00",
+            "published-time": "2026-11-06T20:22:38+00:00"
         },
         {
             "name": "nowo-tech/yopass-bundle",
@@ -1525,14 +1525,14 @@
             "dist": {
                 "type": "path",
                 "url": "/var/yopass-bundle",
-                "reference": "84fd5ddab6693d528c11761dc4dfab7f7d11bfdc"
+                "reference": "9e47d7fe437a438ebc3128e88ba9050138e58064"
             },
             "require": {
                 "doctrine/doctrine-bundle": "^2.10 || ^3.0",
                 "doctrine/orm": "^2.15 || ^3.0",
                 "ext-sodium": "*",
                 "nowo-tech/form-kit-bundle": "^2.0",
-                "nowo-tech/ui-kit-bundle": "^2.29",
+                "nowo-tech/ui-kit-bundle": "^2.35",
                 "php": ">=8.2 <8.6",
                 "symfony/clock": "^7.4 || ^8.0",
                 "symfony/config": "^7.4 || ^8.0",

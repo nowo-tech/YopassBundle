@@ -58,11 +58,32 @@ test.describe('Yopass demo', () => {
     await dialog.locator('[data-nowo-ui-dialog-close]').first().click();
     await expect(dialog).toBeHidden();
 
-    await row.locator('.nowo-ui-action--cancel').first().click();
+    await row.locator('.nowo-ui-action--revoke').first().click();
     const confirm = page.locator('dialog[open]');
     await expect(confirm).toBeVisible();
     await confirm.locator('button[type="submit"]').click();
     await expect(page.locator('[data-testid="yopass-manage"] tbody tr').first()).toContainText(/Revoked/);
+  });
+
+  test('row actions: View is not a filled primary; Extend goes through the preview dialog; notice has a duration', async ({ page }) => {
+    await createShare(page);
+    await page.goto('/tools/yopass');
+
+    const row = page.locator('[data-testid="yopass-manage"] tbody tr').first();
+    await expect(row.locator('.nowo-ui-action--view')).not.toHaveClass(/primary/);
+    await expect(page.locator('[data-testid="yopass-manage"] caption')).toHaveText(/1 month/);
+
+    await row.locator('.nowo-ui-action--extend').first().click();
+    const dialog = page.locator('dialog#nowo-yopass-preview');
+    const extend = dialog.locator('[data-testid="yopass-extend"]');
+    await expect(extend).toBeVisible();
+    const submit = extend.locator('[data-testid="yopass-extend-submit"]');
+    await expect(submit).toBeDisabled();
+    const expires = extend.locator('select').first();
+    await expires.selectOption({ index: (await expires.locator('option').count()) - 1 });
+    await expect(extend.locator('[data-testid="yopass-extend-preview"]')).toBeVisible();
+    await submit.click();
+    await expect(extend.locator('[data-nowo-yopass-manage-preview-target="extendSuccess"]')).toBeVisible();
   });
 
   test('preview dialog at 390 px: no horizontal scroll, input groups, stacked extend selects, copy toast', async ({ page }) => {

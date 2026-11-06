@@ -131,6 +131,7 @@ yopass:
         actions: Acciones
         empty: Aún no has compartido ningún secreto.
         retention_notice: Los secretos de más de %max_age% se eliminan automáticamente.
+        retention_notice_unspecified: Los secretos antiguos se eliminan automáticamente.
         summary: '%from%–%to% de %total%'
         page: Página %page% / %pages%
         previous: Anterior

@@ -17,6 +17,7 @@ use Nowo\UiKitBundle\View\ShowPage;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Symfony\Component\Form\FormView;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 use function array_map;
 use function count;
@@ -36,10 +37,12 @@ final readonly class YopassPageFactory
     public const CREATE_DIALOG_ID = 'nowo-yopass-create-dialog';
 
     /**
-     * Creates the factory on top of the page plumbing (layouts, per-page templates).
+     * Creates the factory on top of the page plumbing (layouts, per-page templates) and the translator of the
+     * retention notice's duration.
      */
     public function __construct(
         private YopassPages $pages,
+        private ?TranslatorInterface $translator = null,
     ) {
     }
 
@@ -120,6 +123,8 @@ final readonly class YopassPageFactory
                 variant: 'danger',
                 attributes: ['data-testid' => 'yopass-delete-all'],
                 form: $deleteAllForm,
+                // UiKit prints the kind's icon on a toolbar action only with an icon or an explicit display.
+                display: 'icon_text',
             );
         }
 
@@ -132,14 +137,13 @@ final readonly class YopassPageFactory
                 $actions[] = new Action(
                     'view',
                     YopassPages::label('yopass.view'),
-                    variant: 'primary',
                     attributes: ['data-action' => 'nowo-yopass-manage-preview#open', 'data-share-id' => $id],
                     dialogId: self::PREVIEW_DIALOG_ID,
                 );
             }
             if ($canExtend && $active && $access['extend']) {
                 $actions[] = new Action(
-                    'restore',
+                    'extend',
                     YopassPages::label('yopass.extend.action'),
                     attributes: ['data-action' => 'nowo-yopass-manage-preview#openExtend', 'data-share-id' => $id],
                     dialogId: self::PREVIEW_DIALOG_ID,
@@ -147,7 +151,7 @@ final readonly class YopassPageFactory
             }
             if ($canRevoke && $active && $access['revoke'] && isset($revokeForms[$id])) {
                 $actions[] = new Action(
-                    'cancel',
+                    'revoke',
                     YopassPages::label('yopass.revoke'),
                     href: $this->formAction($revokeForms[$id]),
                     method: 'POST',
@@ -200,7 +204,7 @@ final readonly class YopassPageFactory
             ),
             filtersClearHref: $filtersClearHref,
             caption: $retentionEnabled
-                ? YopassPages::label('yopass.list.retention_notice', ['%max_age%' => $retentionMaxAge])
+                ? RetentionNotice::label($retentionMaxAge, translator: $this->translator)
                 : YopassPages::label('yopass.list.title'),
             bundle: YopassPages::BUNDLE,
             layout: $this->pages->layout(),
@@ -256,11 +260,12 @@ final readonly class YopassPageFactory
     private function createDialogAction(string $testId): Action
     {
         return new Action(
-            'create',
+            'share',
             YopassPages::label('yopass.create.open'),
-            // No `icon`: UiKit uses the kind (`create`), a canonical icon kind of every icon set.
+            // No `icon`: UiKit draws the kind (`share`), a canonical icon kind of every icon set.
             variant: 'primary',
             attributes: ['data-testid' => $testId],
+            display: 'icon_text',
             dialogId: self::CREATE_DIALOG_ID,
         );
     }

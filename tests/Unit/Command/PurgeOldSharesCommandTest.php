@@ -47,4 +47,16 @@ final class PurgeOldSharesCommandTest extends TestCase
         self::assertSame(Command::SUCCESS, $tester->execute([]));
         self::assertStringContainsString('No shares matched the retention policy.', $tester->getDisplay());
     }
+
+    public function testExecuteFailsWhenTheCutoffIsRefused(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('removeOlderThan');
+
+        $tester = new CommandTester(new PurgeOldSharesCommand(new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '-14 days']])));
+
+        self::assertSame(Command::FAILURE, $tester->execute([]));
+        self::assertStringContainsString('Nothing was purged', $tester->getDisplay());
+        self::assertStringNotContainsString('No shares matched', $tester->getDisplay());
+    }
 }

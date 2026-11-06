@@ -10,6 +10,8 @@ use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareRetentionPurger;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
+use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -100,5 +102,126 @@ final class ShareRetentionPurgerTest extends TestCase
         self::assertCount(1, $events);
         self::assertNull($events[0]->getSubject());
         self::assertNull($events[0]->getViewer());
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function cutoffs(): iterable
+    {
+        yield 'two terms' => ['1 month 2 days', '2026-10-04'];
+        yield 'plus on both' => ['+1 month +2 days', '2026-10-04'];
+        yield 'plus on the first' => ['+1 month 2 days', '2026-10-04'];
+        yield 'comma' => ['1 month, 2 days', '2026-10-04'];
+        yield 'no spaces' => ['1month2days', '2026-10-04'];
+        yield 'line break' => ["1 month\n2 days", '2026-10-04'];
+        yield 'trailing line break' => ["1 month 2 days\n", '2026-10-04'];
+        yield 'no-break space' => ["1 month\xC2\xA02 days", '2026-10-04'];
+        yield 'single term' => ['14 days', '2026-10-23'];
+        yield 'single term, plus' => ['+14 days', '2026-10-23'];
+        yield 'one month' => ['1 month', '2026-10-06'];
+        yield 'one month, plus' => ['+1 month', '2026-10-06'];
+    }
+
+    #[DataProvider('cutoffs')]
+    public function testEveryTermOfMaxAgeMovesTheCutoffBack(string $maxAge, string $expected): void
+    {
+        $user       = new TestUser();
+        $cutoff     = static fn (DateTimeImmutable $cutoff): bool => $cutoff->format('Y-m-d') === $expected;
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::once())->method('removeOlderThan')->with(self::callback($cutoff))->willReturn(0);
+        $repository->expects(self::once())->method('removeByCreatorOlderThan')->with($user, self::callback($cutoff))->willReturn(0);
+
+        $purger = new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => $maxAge]], new MockClock('2026-11-06 12:00:00'));
+        $purger->purgeAll();
+        $purger->purgeForCreator($user);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function cutoffsNotInThePast(): iterable
+    {
+        yield 'negative' => ['-14 days'];
+        yield 'ago' => ['1 month ago'];
+        yield 'two terms, ago' => ['1 month 2 days ago'];
+        yield 'zero' => ['0 days'];
+        yield 'malformed' => ['first day of next month'];
+        yield 'deep past' => ['100000 years'];
+    }
+
+    #[DataProvider('cutoffsNotInThePast')]
+    public function testACutoffNotInThePastDeletesNothingAndLogsAnError(string $maxAge): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('removeOlderThan');
+        $repository->expects(self::never())->method('removeByCreatorOlderThan');
+        $repository->expects(self::never())->method('flush');
+        $logger = new SecretCapturingLogger();
+
+        $purger = new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => $maxAge]], new MockClock('2026-11-06 12:00:00'), null, $logger);
+
+        self::assertSame(0, $purger->purgeAll());
+        self::assertSame(0, $purger->purgeForCreator(new TestUser()));
+        self::assertCount(2, $logger->records);
+        self::assertSame('error', $logger->records[0]['level']);
+        self::assertSame($maxAge, $logger->records[0]['context']['max_age']);
+    }
+
+    public function testACutoffThatDependsOnTheDateIsSkippedWhenItIsNotInThePast(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::never())->method('removeOlderThan');
+
+        // Minus a month plus 30 days: from 2027-03-01 that is 2027-03-03, in the future (February has 28 days).
+        $purger = new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '1 month -30 days']], new MockClock('2027-03-01 12:00:00'));
+
+        self::assertSame(0, $purger->purgeAll());
+    }
+
+    public function testDisabledOrEmptyRetentionLogsNothing(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $logger     = new SecretCapturingLogger();
+
+        (new ShareRetentionPurger($repository, ['retention' => ['enabled' => false, 'max_age' => '-14 days']], null, null, $logger))->purgeAll();
+        (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '']], null, null, $logger))->purgeAll();
+
+        self::assertSame([], $logger->records);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function wordForms(): iterable
+    {
+        yield 'midnight' => ['0 days midnight'];
+        yield 'yesterday' => ['14 days yesterday'];
+        yield 'next week' => ['1 month next week'];
+    }
+
+    #[DataProvider('wordForms')]
+    public function testWordFormsLogAWarningAndStillPurge(string $maxAge): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->expects(self::once())->method('removeOlderThan')->willReturn(0);
+        $logger = new SecretCapturingLogger();
+
+        (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => $maxAge]], new MockClock('2026-11-06 12:00:00'), null, $logger))->purgeAll();
+
+        self::assertCount(1, $logger->records);
+        self::assertSame('warning', $logger->records[0]['level']);
+        self::assertSame($maxAge, $logger->records[0]['context']['max_age']);
+    }
+
+    public function testPlainTermsLogNothing(): void
+    {
+        $repository = $this->createMock(ShareRepositoryInterface::class);
+        $repository->method('removeOlderThan')->willReturn(0);
+        $logger = new SecretCapturingLogger();
+
+        (new ShareRetentionPurger($repository, ['retention' => ['enabled' => true, 'max_age' => '1 month 2 days']], new MockClock('2026-11-06 12:00:00'), null, $logger))->purgeAll();
+
+        self::assertSame([], $logger->records);
     }
 }
