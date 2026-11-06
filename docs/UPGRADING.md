@@ -94,9 +94,11 @@ From **1.14.0**: `composer update nowo-tech/yopass-bundle`. No configuration cha
 - **Dialog height** comes from UiKit: update to UiKit **2.31** to get the content height (dialog rule v2); on 2.29 /
   2.30 a dialog with fields keeps the size's height. The bundle sets no height, so `nowo_ui_kit.theme.dialog.height`
   (UiKit 2.31) applies to its dialogs as to every other.
-- **Create dialog Done button is secondary** (one primary per dialog). Overrides of `manage/_create_dialog.html.twig`
-  or `_create_form.html.twig` that render Done with `btn_primary` should switch to `btn_secondary`; the
-  `data-testid="yopass-create-done"` / `data-nowo-yopass-create-target="done"` hooks are unchanged.
+- **Create dialog: Done is now a secondary Close** (one primary per dialog, Beacon §16.6). Overrides of
+  `manage/_create_dialog.html.twig` or `_create_form.html.twig` should render it with `btn_secondary` and
+  `'yopass.preview.close'|trans`; the `data-testid="yopass-create-done"` / `data-nowo-yopass-create-target="done"` /
+  `nowo-yopass-create#done` hooks are unchanged. Tests that look the button up by the text "Done" must use "Close"
+  (or the test id).
 
 ## To 1.14.0
 

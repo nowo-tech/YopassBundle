@@ -57,10 +57,12 @@ Dialog rule v2 (owner decision D-20261105-54). No configuration change. See [UPG
 
 ### Changed
 
-- **Create dialog: exactly one primary.** **Done** (shown once the links are created, replacing Cancel and Create) is
-  now a **secondary** button: the dialog's only primary is **Create link**, Cancel first. The same applies to the
-  in-body Done of a non-footer async form. The preview dialog is unchanged (owner decision 1.14: **Show content**
-  stays the single primary in the body, attached to the key / password field; footer Close only).
+- **Create dialog: exactly one primary.** The result-step button (shown once the links are created, replacing
+  Cancel and Create) is now a **secondary Close** (was a second primary **Done**; Beacon UI-PATTERNS §16.6: a result
+  step has Close only). Its label reuses `yopass.preview.close` (7 locales); `yopass.create.done` is no longer
+  rendered but stays in the catalogue. The dialog's only primary is **Create link**, Cancel first. The same applies
+  to the in-body button of a non-footer async form. The preview dialog is unchanged (owner decision 1.14: **Show
+  content** stays the single primary in the body, attached to the key / password field; footer Close only).
 - **Dialog height: none of the bundle's own.** The create and preview dialogs keep UiKit's medium / wide widths and
   take UiKit's height; with UiKit **2.31** (dialog rule v2, its new default `theme.dialog.height: content`) that is the
   content's height capped at `min(--nowo-dialog-height-md|-wide, 100dvh - 2rem)`, only the body scrolling, header

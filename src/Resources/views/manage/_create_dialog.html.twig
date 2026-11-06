@@ -4,9 +4,9 @@
   YopassPageFactory::CREATE_DIALOG_ID). Medium width; the height is UiKit's (content, capped, from UiKit 2.31: dialog rule v2). The body is
   the shared create form (manage/_create_form.html.twig, async) with its result region: the browser encrypts, posts
   the ciphertext with fetch and renders the links here; the key never leaves the browser memory. The footer sits
-  outside the scrolling body: Cancel + Create (submit bound with form="<id>-form") while editing, Done (secondary,
+  outside the scrolling body: Cancel + Create (submit bound with form="<id>-form") while editing, Close (secondary,
   the step's only action) once the links are shown; never more than one primary. The nowo-yopass-create controller sits on a wrapper around the <dialog> so
-  the footer buttons are in its scope. Every close (Done, Cancel, close button, Escape, backdrop) wipes the form, the
+  the footer buttons are in its scope. Every close (Close, Cancel, close button, Escape, backdrop) wipes the form, the
   result and the key.
   Variables: create_form, links_form, can_share_file, max_file_bytes, max_secret_chars, sharing_options, icons, bundle.
 #}
@@ -39,7 +39,7 @@
         {{ 'yopass.create.submit'|trans }}
     </button>
     <button type="button" class="{{ nowo_ui_class('btn_secondary', _b) }}" hidden data-nowo-ui-dialog-close data-action="nowo-yopass-create#done" data-nowo-yopass-create-target="done" data-testid="yopass-create-done">
-        {{ 'yopass.create.done'|trans }}
+        {{ 'yopass.preview.close'|trans }}
     </button>
 {% endset %}
 <div class="nowo-yopass-create__root" {{ include('@NowoYopassBundle/manage/_create_controller_attrs.html.twig', {

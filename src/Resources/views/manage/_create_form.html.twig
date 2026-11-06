@@ -9,7 +9,7 @@
   Variables: create_form, can_share_file, max_file_bytes, max_secret_chars, async, links_form (async only),
   sharing_options (async only), bundle; controller_root (default true: the root <div> carries the controller; false
   when a wrapper does, see _create_controller_attrs.html.twig), form_id (id of the create form, for footer buttons
-  bound with form="…"), footer_actions (default false: true leaves Create / Done to the dialog footer), icons
+  bound with form="…"), footer_actions (default false: true leaves Create / Close to the dialog footer), icons
   (web_ui.icons: create_tab_text / create_tab_file, null = label only).
 #}
 {% trans_default_domain 'NowoYopassBundle' %}
@@ -18,7 +18,7 @@
 {% set _sharing = sharing_options|default({}) %}
 {% set _root = controller_root ?? true %}
 {% set _form_id = form_id|default(null) %}
-{# Dialog mode: the actions (Cancel / Create, then Done) live in the dialog footer (_create_dialog.html.twig). #}
+{# Dialog mode: the actions (Cancel / Create, then Close) live in the dialog footer (_create_dialog.html.twig). #}
 {% set _footer_actions = footer_actions|default(false) %}
 {% set _icons = icons|default({}) %}
 {% set _icon_text = _icons.create_tab_text is defined ? _icons.create_tab_text : 'tabler:file-text' %}
@@ -162,7 +162,7 @@
             {% if not _footer_actions %}
             <div class="{{ nowo_ui_class('form_actions', _b) }}"{{ nowo_ui_attrs('form_actions', _b) }}>
                 <button type="button" class="{{ nowo_ui_class('btn_secondary', _b) }}" data-nowo-ui-dialog-close data-action="nowo-yopass-create#done" data-testid="yopass-create-done">
-                    {{ 'yopass.create.done'|trans }}
+                    {{ 'yopass.preview.close'|trans }}
                 </button>
             </div>
             {% endif %}
