@@ -131,6 +131,7 @@ yopass:
         actions: Aktionen
         empty: Sie haben noch keine Freigaben erstellt.
         retention_notice: Freigaben älter als %max_age% werden automatisch gelöscht.
+        retention_notice_unspecified: Ältere Freigaben werden automatisch gelöscht.
         summary: '%from%–%to% von %total%'
         page: Seite %page% / %pages%
         previous: Zurück

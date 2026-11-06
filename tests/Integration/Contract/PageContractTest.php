@@ -11,7 +11,15 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bridge\Twig\AppVariable;
 use Twig\Environment;
 
+use function array_unique;
+use function count;
 use function dirname;
+use function file_get_contents;
+use function preg_match;
+use function preg_match_all;
+use function preg_quote;
+use function sprintf;
+use function substr_count;
 
 /**
  * REQ-UI-003 page contract: the manage page extends the UiKit list scaffold, the share created page the show scaffold,
@@ -26,6 +34,9 @@ final class PageContractTest extends PageContractTestCase
 
     /** UiKit icon set of the render (null = the base test case's bootstrap-icons). */
     private ?string $iconSet = null;
+
+    /** `nowo_ui_kit_row_actions_display` of the render (null = the base test case's default). */
+    private ?string $rowActionsDisplay = null;
 
     /**
      * @return iterable<string, array{PageFixture}>
@@ -193,6 +204,133 @@ final class PageContractTest extends PageContractTestCase
         self::assertStringContainsString('css/yopass.css', $html);
     }
 
+    /**
+     * One icon per action: row actions follow `row_actions_display`, the labels stay.
+     *
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function rowActionKinds(): iterable
+    {
+        yield 'View' => ['view', 'bi-eye', 'View'];
+        yield 'Extend' => ['restore', 'bi-arrow-counterclockwise', 'Extend'];
+        yield 'Revoke' => ['cancel', 'bi-x-lg', 'Revoke'];
+        yield 'Delete' => ['delete', 'bi-trash', 'Delete'];
+    }
+
+    #[DataProvider('rowActionKinds')]
+    public function testRowActionsDrawTheirKindAndFollowTheDisplay(string $kind, string $icon, string $label): void
+    {
+        $pattern = sprintf('#<button[^>]*nowo-ui-action--%s[^>]*>(.*?)</button>#s', $kind);
+
+        $this->rowActionsDisplay = 'icon_text';
+        self::assertSame(1, preg_match($pattern, $this->manageRows(), $match));
+        self::assertStringContainsString($icon, $match[1]);
+        self::assertStringContainsString($label, $match[1]);
+
+        $this->rowActionsDisplay = 'text';
+        self::assertSame(1, preg_match($pattern, $this->manageRows(), $match));
+        self::assertStringNotContainsString($icon, $match[1]);
+        self::assertStringContainsString($label, $match[1]);
+    }
+
+    public function testViewIsNotAFilledPrimaryInTheRow(): void
+    {
+        $rows = $this->manageRows();
+
+        self::assertSame(4, preg_match_all('#<button[^>]*nowo-ui-action--view[^>]*>#', $rows, $views));
+        foreach ($views[0] as $view) {
+            self::assertStringContainsString('nowo-ui-btn--secondary', $view);
+        }
+        self::assertStringNotContainsString('nowo-ui-btn--primary', $rows);
+    }
+
+    public function testHeaderActionsDrawTheirKindAndKeepTheirLabel(): void
+    {
+        $html = $this->manageHtml();
+
+        self::assertSame(1, preg_match('#<button[^>]*nowo-ui-action--share[^>]*data-testid="yopass-create-open"[^>]*>(.*?)</button>#s', $html, $share));
+        self::assertStringContainsString('bi-share', $share[1]);
+        self::assertStringContainsString('New share', $share[1]);
+        self::assertSame(1, preg_match('#<button[^>]*nowo-ui-btn--primary[^>]*nowo-ui-action--share#', $html));
+
+        self::assertSame(1, preg_match('#<button[^>]*nowo-ui-action--delete[^>]*data-testid="yopass-delete-all"[^>]*>(.*?)</button>#s', $html, $deleteAll));
+        self::assertStringContainsString('bi-trash', $deleteAll[1]);
+        self::assertStringContainsString('Delete all', $deleteAll[1]);
+
+        $empty = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(true, false, true)))->html;
+        self::assertSame(1, preg_match('#<button[^>]*nowo-ui-action--share[^>]*data-testid="yopass-create-open-empty"[^>]*>(.*?)</button>#s', $empty, $emptyShare));
+        self::assertStringContainsString('bi-share', $emptyShare[1]);
+    }
+
+    public function testIconSetNoneKeepsTheHeaderActionsTextOnly(): void
+    {
+        $this->iconSet = 'none';
+
+        self::assertSame(1, preg_match('#<button[^>]*data-testid="yopass-create-open"[^>]*>(.*?)</button>#s', $this->manageHtml(), $share));
+        self::assertSame(1, substr_count($share[1], 'New share'));
+        self::assertStringNotContainsString('bi-share', $share[1]);
+    }
+
+    public function testDestructiveActionsKeepTheConfirmDialogAndCsrfForm(): void
+    {
+        $html = $this->manageHtml();
+        $id   = '00000000-0000-4000-8000-000000000001';
+
+        foreach ([
+            ['cancel', '/tools/yopass/' . $id . '/revoke'],
+            ['delete', '/tools/yopass/' . $id . '/delete'],
+            ['delete', '/tools/yopass/delete-all'],
+        ] as [$kind, $target]) {
+            // Toggle in the row / header: a type="button" that only opens the dialog.
+            self::assertMatchesRegularExpression(sprintf('#<button type="button"[^>]*nowo-ui-action--%s[^>]*data-nowo-confirm-target#', $kind), $html);
+            // The POST lives in the dialog, with the per-action CSRF field.
+            self::assertSame(1, preg_match(sprintf('#<form[^>]*action="%s"[^>]*>.*?</form>#s', preg_quote($target, '#')), $html, $form), $target);
+            self::assertMatchesRegularExpression('#method="post"#i', $form[0]);
+            self::assertMatchesRegularExpression('#name="_token"#', $form[0]);
+            self::assertMatchesRegularExpression('#<dialog[^>]*>(?:(?!</dialog>).)*' . preg_quote($target, '#') . '#s', $html);
+        }
+    }
+
+    public function testEveryStimulusHookOfThePreviewControllerIsOnThePage(): void
+    {
+        $source = (string) file_get_contents(dirname(__DIR__, 3) . '/src/Resources/assets/src/yopass-manage-preview-controller.ts');
+        $html   = $this->manageHtml();
+
+        self::assertSame(1, preg_match('#static targets = \[(.*?)\];#s', $source, $targets));
+        preg_match_all("#'(\w+)'#", $targets[1], $names);
+        self::assertGreaterThan(20, count($names[1]));
+        foreach ($names[1] as $target) {
+            self::assertStringContainsString(sprintf('data-nowo-yopass-manage-preview-target="%s"', $target), $html);
+        }
+
+        // Every action the page wires exists on the controller, including the two row actions.
+        preg_match_all('/nowo-yopass-manage-preview#(\w+)/', $html, $actions);
+        self::assertContains('open', $actions[1]);
+        self::assertContains('openExtend', $actions[1]);
+        foreach (array_unique($actions[1]) as $method) {
+            self::assertMatchesRegularExpression(sprintf('#^\s*(?:async\s+)?%s\(#m', $method), $source, $method);
+        }
+
+        // Row hooks read by open() / openExtend(): the share id and the dialog opener, on the same button.
+        $id = '00000000-0000-4000-8000-000000000001';
+        foreach (['view' => '#open', 'restore' => '#openExtend'] as $kind => $method) {
+            self::assertSame(1, preg_match(sprintf('#<button[^>]*nowo-ui-action--%s[^>]*>#', $kind), $html, $button));
+            self::assertStringContainsString(sprintf('data-action="nowo-yopass-manage-preview%s"', $method), $button[0]);
+            self::assertStringContainsString(sprintf('data-share-id="%s"', $id), $button[0]);
+            self::assertStringContainsString('data-nowo-ui-dialog-open="nowo-yopass-preview"', $button[0]);
+        }
+
+        // Values the controller reads for the extend POST and the status badge.
+        foreach (['preview-path-template', 'extend-path-template', 'csrf-token', 'extend-success-message', 'extend-labels', 'errors', 'availability-labels', 'copied-message', 'allow-embed-in-url'] as $value) {
+            self::assertStringContainsString(sprintf('data-nowo-yopass-manage-preview-%s-value=', $value), $html);
+        }
+    }
+
+    public function testRetentionNoticeShowsATranslatedDurationOnThePage(): void
+    {
+        self::assertMatchesRegularExpression('#<caption[^>]*>\s*Shares older than 1 month are automatically deleted\.\s*</caption>#', $this->manageHtml());
+    }
+
     public function testHostColumnValuesAreEscaped(): void
     {
         $html = $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, true, false, true)))->html;
@@ -203,10 +341,29 @@ final class PageContractTest extends PageContractTestCase
         self::assertStringContainsString('Created by', $html);
     }
 
+    private function manageHtml(): string
+    {
+        return $this->renderPage(new PageFixture('@NowoYopassBundle/manage/index.html.twig', PageFixtures::manage(false, true, true)))->html;
+    }
+
+    /**
+     * The list's rows only: the header and the dialogs have action buttons of the same kinds.
+     */
+    private function manageRows(): string
+    {
+        self::assertSame(1, preg_match('#<tbody.*?</tbody>#s', $this->manageHtml(), $rows));
+
+        return $rows[0];
+    }
+
     protected function configureTwig(Environment $twig): void
     {
         if ($this->iconSet !== null) {
             $twig->addGlobal('nowo_ui_kit_icon_set', $this->iconSet);
+        }
+
+        if ($this->rowActionsDisplay !== null) {
+            $twig->addGlobal('nowo_ui_kit_row_actions_display', $this->rowActionsDisplay);
         }
 
         if ($this->cspNonce === null) {

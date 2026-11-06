@@ -55,6 +55,8 @@ final class YopassPageFactoryTest extends TestCase
 
         $activeActions = $page->rowActions($active, 0);
         self::assertSame(['view', 'restore', 'cancel', 'delete'], array_map(static fn (Action $action): string => $action->kind, $activeActions));
+        self::assertNull($activeActions[0]->variant, 'View does not force a colour: never a filled primary in a row');
+        self::assertSame('neutral', $activeActions[0]->resolvedVariant());
         self::assertSame(YopassPageFactory::PREVIEW_DIALOG_ID, $activeActions[0]->dialogId);
         self::assertSame($active->getId(), $activeActions[0]->attributes['data-share-id']);
         self::assertSame('nowo-yopass-manage-preview#openExtend', $activeActions[1]->attributes['data-action']);

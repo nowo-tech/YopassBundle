@@ -107,6 +107,8 @@ Static / AI review posture for this package (catalog: monorepo `BUNDLES_SECURITY
 | No decrypted plaintext left in the hidden manage preview after close | Pass (Unreleased) |
 | No third-party scripts on the reveal page layout | Host responsibility (documented) |
 
+**Unreleased (action kinds, retention notice): re-verification pending.** Presentation only: the View / New share / Delete all action properties and the retention notice text. The revoke, delete and delete-all forms, their per-action CSRF tokens, the confirm dialogs and the extend POST are unchanged. `shares.retention.max_age` reaches the page only as a validated unit and integer (`Ui\RetentionNotice`), and the caption stays escaped. An independent auditor runs after this change.
+
 **Latest audit:** **Pass (good)** / **Low** — AI delta re-audit **2026-10-30** of v1.9.0..1089498 (catalog Appendix BD, "Delta re-audit 1.10.0"). Open Low from 2026-10-29: L3 ciphertext kept after consume, L4 decrypted file blob MIME, L5 per-IP limiter behind proxies. Residual: the host must keep `allow_unauthenticated: false`, `cache.app` and `framework.trusted_proxies` (behind a proxy) for public rate limits, and keep third-party scripts out of the guest / public layout.
 
 ## Reporting

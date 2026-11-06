@@ -1,0 +1,10 @@
+# ICU messages (+intl-icu): %max_age% of yopass.list.retention_notice, see Ui\RetentionNotice.
+yopass:
+    list:
+        retention_duration:
+            minute: '{count, plural, one {# minuut} other {# minuten}}'
+            hour: '{count, plural, one {# uur} other {# uur}}'
+            day: '{count, plural, one {# dag} other {# dagen}}'
+            week: '{count, plural, one {# week} other {# weken}}'
+            month: '{count, plural, one {# maand} other {# maanden}}'
+            year: '{count, plural, one {# jaar} other {# jaar}}'

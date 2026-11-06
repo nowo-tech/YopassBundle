@@ -1,7 +1,8 @@
 FROM php:8.2-cli-alpine
 
-RUN apk add --no-cache git unzip bash libzip-dev nodejs npm \
-    && docker-php-ext-install -j$(nproc) zip
+# intl + icu-data-full: ICU plurals in every bundle locale (NowoYopassBundle+intl-icu catalogues).
+RUN apk add --no-cache git unzip bash libzip-dev icu-dev icu-data-full nodejs npm \
+    && docker-php-ext-install -j2 zip intl
 
 # pcov: PHPUnit coverage; mongodb: doctrine/mongodb-odm (optional persistence backend, dev/tests)
 RUN apk add --no-cache $PHPIZE_DEPS \

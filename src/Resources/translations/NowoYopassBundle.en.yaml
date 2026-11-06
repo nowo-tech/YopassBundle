@@ -131,6 +131,7 @@ yopass:
         actions: Actions
         empty: You have not created any shares yet.
         retention_notice: Shares older than %max_age% are automatically deleted.
+        retention_notice_unspecified: Older shares are automatically deleted.
         summary: '%from%–%to% of %total%'
         page: Page %page% / %pages%
         previous: Previous

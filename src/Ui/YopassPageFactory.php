@@ -120,6 +120,8 @@ final readonly class YopassPageFactory
                 variant: 'danger',
                 attributes: ['data-testid' => 'yopass-delete-all'],
                 form: $deleteAllForm,
+                // UiKit prints the kind's icon on a toolbar action only with an icon or an explicit display.
+                display: 'icon_text',
             );
         }
 
@@ -132,11 +134,11 @@ final readonly class YopassPageFactory
                 $actions[] = new Action(
                     'view',
                     YopassPages::label('yopass.view'),
-                    variant: 'primary',
                     attributes: ['data-action' => 'nowo-yopass-manage-preview#open', 'data-share-id' => $id],
                     dialogId: self::PREVIEW_DIALOG_ID,
                 );
             }
+            // Kinds `restore` / `cancel` until UiKit ships `extend` / `revoke`: View\Action rejects an unknown kind.
             if ($canExtend && $active && $access['extend']) {
                 $actions[] = new Action(
                     'restore',
@@ -200,7 +202,7 @@ final readonly class YopassPageFactory
             ),
             filtersClearHref: $filtersClearHref,
             caption: $retentionEnabled
-                ? YopassPages::label('yopass.list.retention_notice', ['%max_age%' => $retentionMaxAge])
+                ? RetentionNotice::label($retentionMaxAge)
                 : YopassPages::label('yopass.list.title'),
             bundle: YopassPages::BUNDLE,
             layout: $this->pages->layout(),
@@ -256,11 +258,12 @@ final readonly class YopassPageFactory
     private function createDialogAction(string $testId): Action
     {
         return new Action(
-            'create',
+            'share',
             YopassPages::label('yopass.create.open'),
-            // No `icon`: UiKit uses the kind (`create`), a canonical icon kind of every icon set.
+            // No `icon`: UiKit draws the kind (`share`), a canonical icon kind of every icon set.
             variant: 'primary',
             attributes: ['data-testid' => $testId],
+            display: 'icon_text',
             dialogId: self::CREATE_DIALOG_ID,
         );
     }

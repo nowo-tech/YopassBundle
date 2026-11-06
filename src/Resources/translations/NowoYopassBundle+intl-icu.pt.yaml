@@ -1,0 +1,10 @@
+# ICU messages (+intl-icu): %max_age% of yopass.list.retention_notice, see Ui\RetentionNotice.
+yopass:
+    list:
+        retention_duration:
+            minute: '{count, plural, one {# minuto} other {# minutos}}'
+            hour: '{count, plural, one {# hora} other {# horas}}'
+            day: '{count, plural, one {# dia} other {# dias}}'
+            week: '{count, plural, one {# semana} other {# semanas}}'
+            month: '{count, plural, one {# mês} other {# meses}}'
+            year: '{count, plural, one {# ano} other {# anos}}'

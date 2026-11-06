@@ -89,6 +89,34 @@
 
 ## Unreleased
 
+No configuration change; the constraint stays `nowo-tech/ui-kit-bundle ^2.29`. Only the manage page changes. For a host
+that changes nothing:
+
+| Where | Before | After |
+| --- | --- | --- |
+| View (row) | `variant: primary`: `nowo-ui-btn--primary`, slot `action_primary` | no variant: `nowo-ui-btn--secondary`, slot `action_neutral`. Same kind, label, hooks |
+| New share (header and empty state, dialog mode) | `nowo-ui-action--create`, label only | `nowo-ui-action--share`, `share` icon + label. Still primary; same `data-testid` and dialog |
+| Delete all (header) | label only | `delete` icon + label. Same confirm dialog, POST and CSRF form |
+| Extend, Revoke, Delete (row) | kinds `restore`, `cancel`, `delete` | unchanged |
+| Retention notice, `max_age: 14 days` | `14 days` in every locale | translated: `14 días`, `14 jours`, `14 Tage`… |
+| Retention notice, `max_age: +14 days` or `1 days` | printed as written | `14 days`, `1 day` |
+| Retention notice, any other modifier, e.g. `1 month 2 days` | printed as written | `yopass.list.retention_notice_unspecified`, no duration |
+
+Row actions follow `nowo_ui_kit.row_actions_display` as before: `text` shows no icon. With `icon_set: none`, the header
+actions stay text.
+
+To check on your side:
+
+- A selector on `.nowo-ui-action--create` for the manage page becomes `.nowo-ui-action--share`. The Share created page
+  keeps kind `create`.
+- A theme that painted View through `action_primary` now reads `action_neutral` for it.
+- With `icon_set: ux_icon`, the header icons need `bi:share` and `bi:trash` available to UX Icons (locally, or through
+  Iconify). A host with `ignore_not_found: false` and neither fails the page.
+- An override of `yopass.list.retention_notice` keeps working: `%max_age%` is now the translated duration. Translate
+  `yopass.list.retention_notice_unspecified` too if you add a locale, plus the `yopass.list.retention_duration.*`
+  ICU messages in `NowoYopassBundle+intl-icu.<locale>.yaml`.
+- ICU messages need `ext-intl` or `symfony/polyfill-intl-messageformatter`. Without either, the notice has no duration.
+
 ## To 1.14.1
 
 From **1.14.0**: `composer update nowo-tech/yopass-bundle`. No configuration change; the constraint stays
