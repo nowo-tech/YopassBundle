@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Service;
 
 use LogicException;
+use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
 use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
@@ -35,6 +36,7 @@ final readonly class ShareDeleter
         private ?EventDispatcherInterface $eventDispatcher = null,
         private ?string $creatorClass = null,
         private ?LoggerInterface $logger = null,
+        private ?CreatorReferenceResolverInterface $creators = null,
     ) {
     }
 
@@ -89,7 +91,7 @@ final readonly class ShareDeleter
             );
 
             // @igor-ignore - Service coordinates I/O or request-scoped work; not unsafe worker singleton state.
-            $removed = $this->shareRepository->removeAllByCreator($event->getSubject());
+            $removed = $this->shareRepository->removeAllByCreator($this->creator($event->getSubject()));
 
             if ($removed > 0) {
                 $this->shareRepository->flush();
@@ -104,5 +106,13 @@ final readonly class ShareDeleter
         }
 
         return $removed;
+    }
+
+    /**
+     * The creator to query for a user: refused (AccessDeniedException) unless it is accepted (JX-Y6, every driver).
+     */
+    private function creator(object $user): object
+    {
+        return $this->creators?->reference($user) ?? $user;
     }
 }

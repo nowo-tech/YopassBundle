@@ -4,6 +4,7 @@
 
 - [Unreleased](#unreleased)
 - [To 1.16.0](#to-1160)
+  - [Behaviour change: only accepted user classes own shares](#behaviour-change-only-accepted-user-classes-own-shares)
   - [Access log rows outlive their shares (migration)](#access-log-rows-outlive-their-shares-migration)
   - [Other changes](#other-changes)
 - [To 1.15.1](#to-1151)
@@ -102,6 +103,16 @@
 From **1.15.1**: one schema migration when `access_log.enabled` is true (the default with the Doctrine ORM driver);
 nothing else to change. A security user that is your `user_class` entity is stored exactly as before.
 
+### Behaviour change: only accepted user classes own shares
+
+Only `user_class` instances create, list, bulk-delete, purge and own shares, unless you list other security-user
+classes in `nowo_yopass.accepted_user_classes` (audit JX-Y1). This applies to every driver, the custom one included.
+Up to 1.15 the per-share owner check compared `getId()` values whatever the class, so in a host with two identity
+domains (Admin#5 next to Customer#5) one could manage the other's shares; it now fails closed. A host whose security
+user is not `user_class` (a wrapper or read model, or a custom-driver host's own user class) lists that class;
+otherwise those users get a 403 and are no longer the owner of their shares. Ids of 0, negative ids and empty ids are
+refused. Single-class hosts change nothing. `SHARE_ACCESS_CHECK` listeners can still grant per share.
+
 ### Access log rows outlive their shares (migration)
 
 `share_access_logs.share_id` becomes nullable with `ON DELETE SET NULL` and a new indexed column `share_ref` holds the
@@ -162,11 +173,6 @@ Rows of shares deleted **before** the upgrade are already gone (1.15 cascaded th
 actions only with `PRAGMA foreign_keys = ON` on the connection.
 
 ### Other changes
-
-- **Accepted user classes (fail closed).** Only `user_class` instances create, list, bulk-delete and own shares
-  unless you list other security-user classes in `nowo_yopass.accepted_user_classes`. A host whose security user is
-  not `user_class` (a wrapper, a custom-driver host's user) lists that class; otherwise those users get a 403 and are
-  no longer the owner of their shares. Single-class hosts change nothing.
 
 - **Security user that is no Doctrine entity:** it works now when it exposes the persisted user's id through
   `getId()`; otherwise alias `Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface` to your own resolver

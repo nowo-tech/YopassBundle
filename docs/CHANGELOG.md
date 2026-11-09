@@ -65,7 +65,9 @@ Target: **1.16.0** (DDD / hexagonal adapter fixes, audit 2026-11-09; JS-L1 / JS-
   listed in the new option **`accepted_user_classes`** (default `[]`) becomes `getReference(user_class, id)` when a
   share is created and in the creator queries (list, count, delete all, retention). The security user no longer has
   to be the Doctrine entity, but only listed classes are trusted (audit JX-Y1): any other user is refused
-  (`AccessDeniedException`), and ids ≤ 0 / empty ids are refused. New `Creator\CreatorClassPolicy`.
+  (`AccessDeniedException`) with every driver — the custom one included, where `ShareCreator`, `ShareLister`,
+  `ShareDeleter` and `ShareRetentionPurger` check before calling the host repository (JX-Y6) — and ids ≤ 0 / empty
+  ids are refused. New `Creator\CreatorClassPolicy`.
 - **Scalar ids on the events and the share.** `getCreatorId()` on `ShareCreatedEvent`, `ShareRevokedEvent`,
   `ShareDeletedEvent`, `ShareExtendedEvent` and `SecureShare`; `getRevokedById()`, `getDeletedById()`,
   `getExtendedById()`; `ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()`. Object payloads unchanged.

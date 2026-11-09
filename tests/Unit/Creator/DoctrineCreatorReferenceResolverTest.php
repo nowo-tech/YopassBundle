@@ -29,7 +29,16 @@ final class DoctrineCreatorReferenceResolverTest extends TestCase
         self::assertSame($user, (new DoctrineCreatorReferenceResolver(GuardUser::class, $this->createStub(ManagerRegistry::class)))->reference($user));
 
         $dto = new SecurityUserDto(1);
-        self::assertSame($dto, (new DoctrineCreatorReferenceResolver(GuardUser::class))->reference($dto), 'Custom driver: no manager');
+        self::assertSame($dto, (new DoctrineCreatorReferenceResolver(GuardUser::class, null, null, new CreatorClassPolicy(GuardUser::class, [SecurityUserDto::class])))->reference($dto), 'Custom driver: a listed user passes as given');
+    }
+
+    public function testTheCustomDriverRefusesUnlistedUsersToo(): void
+    {
+        $customDriver = new DoctrineCreatorReferenceResolver(GuardUser::class);
+        self::assertSame($user = new GuardUser(5, 'customer'), $customDriver->reference($user));
+
+        $this->expectException(AccessDeniedException::class);
+        $customDriver->reference(new TestUser('5'));
     }
 
     public function testAnAcceptedWrapperBecomesAReferenceWithItsRawId(): void
