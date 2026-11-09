@@ -4,6 +4,7 @@
 
 - [Unreleased](#unreleased)
 - [To 1.16.0](#to-1160)
+- [To 1.16.0](#to-1160-1)
   - [Behaviour change: only accepted user classes own shares](#behaviour-change-only-accepted-user-classes-own-shares)
   - [Access log rows outlive their shares (migration)](#access-log-rows-outlive-their-shares-migration)
   - [Other changes](#other-changes)
@@ -97,6 +98,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.16.0
+
+From **1.15.1**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ## To 1.16.0
 
