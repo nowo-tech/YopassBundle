@@ -245,7 +245,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mongo:
-        image: mongo:8
+        # mongo 8.x refuses to start on Linux 6.19+ (SERVER-121912), the ubuntu-26.04 runner kernel.
+        image: mongo:9.0.2
         ports:
           - 27017:27017
         options: >-
