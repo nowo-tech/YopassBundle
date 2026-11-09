@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Service;
 
 use DateTimeImmutable;
+use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
@@ -43,6 +44,7 @@ final readonly class ShareRetentionPurger
         ?ClockInterface $clock = null,
         private ?EventDispatcherInterface $eventDispatcher = null,
         private ?LoggerInterface $logger = null,
+        private ?CreatorReferenceResolverInterface $creators = null,
     ) {
         $retention     = $shareOptions['retention'] ?? [];
         $this->enabled = (bool) ($retention['enabled'] ?? false);
@@ -78,7 +80,7 @@ final readonly class ShareRetentionPurger
         }
 
         // @igor-ignore - Service coordinates I/O or request-scoped work; not unsafe worker singleton state.
-        $removed = $this->shareRepository->removeByCreatorOlderThan($creator, $cutoff);
+        $removed = $this->shareRepository->removeByCreatorOlderThan($this->creator($creator), $cutoff);
 
         if ($removed > 0) {
             $this->shareRepository->flush();
@@ -144,5 +146,13 @@ final readonly class ShareRetentionPurger
     private function now(): DateTimeImmutable
     {
         return $this->clock->now();
+    }
+
+    /**
+     * The creator to query for a user: refused (AccessDeniedException) unless it is accepted (JX-Y6, every driver).
+     */
+    private function creator(object $user): object
+    {
+        return $this->creators?->reference($user) ?? $user;
     }
 }

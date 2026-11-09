@@ -9,6 +9,8 @@ use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Symfony\Component\Security\Core\User\UserInterface;
 
+use function max;
+
 /**
  * MongoDB document mapped to the same logical schema as {@see SecureShare}.
  */
@@ -26,7 +28,10 @@ class SecureShareDocument
     #[ODM\Field(type: 'int')]
     private int $maxReads = 1;
 
-    #[ODM\Field(type: 'int')]
+    /**
+     * Written as `$inc (new - loaded)` on update, so a max-reads raise commutes with concurrent consumes (JS-L1).
+     */
+    #[ODM\Field(type: 'int', strategy: 'increment')]
     private int $readsLeft = 1;
 
     #[ODM\Field(type: 'date_immutable')]
@@ -63,8 +68,10 @@ class SecureShareDocument
     /**
      * Copies the mutable state of a share onto this document.
      *
-     * Revocation is one-way: a document that is already revoked keeps its revocation date and zero reads, even when
-     * the share was loaded before another worker revoked it.
+     * Revocation is one-way: the stored revocation date is never cleared or moved. A document loaded already revoked
+     * also keeps zero reads; a stale managed copy (loaded before another worker revoked the share) may store a
+     * non-zero `readsLeft` on the revoked document, which is harmless: consuming requires `revokedAt` to be null, and
+     * {@see toShare()} never returns a negative count.
      */
     public function syncFrom(SecureShare $share): self
     {
@@ -104,7 +111,8 @@ class SecureShareDocument
             $this->createdAt,
             $this->expiresAt,
             $this->maxReads,
-            $this->readsLeft,
+            // `readsLeft` is written as an increment: a revoke from a stale copy may leave it below zero.
+            max(0, $this->readsLeft),
             $this->revokedAt,
             $this->payloadKind,
         );

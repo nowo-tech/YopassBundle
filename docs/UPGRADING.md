@@ -3,6 +3,10 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.16.0](#to-1160)
+  - [Behaviour change: only accepted user classes own shares](#behaviour-change-only-accepted-user-classes-own-shares)
+  - [Access log rows outlive their shares (migration)](#access-log-rows-outlive-their-shares-migration)
+  - [Other changes](#other-changes)
 - [To 1.15.1](#to-1151)
 - [To 1.15.0](#to-1150)
   - [Retention: a cutoff not in the past is refused](#retention-a-cutoff-not-in-the-past-is-refused)
@@ -93,6 +97,91 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.16.0
+
+From **1.15.1**: one schema migration when `access_log.enabled` is true (the default with the Doctrine ORM driver);
+nothing else to change. A security user that is your `user_class` entity is stored exactly as before.
+
+### Behaviour change: only accepted user classes own shares
+
+Only `user_class` instances create, list, bulk-delete, purge and own shares, unless you list other security-user
+classes in `nowo_yopass.accepted_user_classes` (audit JX-Y1). This applies to every driver, the custom one included.
+Up to 1.15 the per-share owner check compared `getId()` values whatever the class, so in a host with two identity
+domains (Admin#5 next to Customer#5) one could manage the other's shares; it now fails closed. A host whose security
+user is not `user_class` (a wrapper or read model, or a custom-driver host's own user class) lists that class;
+otherwise those users get a 403 and are no longer the owner of their shares. Ids of 0, negative ids and empty ids are
+refused. Single-class hosts change nothing. `SHARE_ACCESS_CHECK` listeners can still grant per share.
+
+### Access log rows outlive their shares (migration)
+
+`share_access_logs.share_id` becomes nullable with `ON DELETE SET NULL` and a new indexed column `share_ref` holds the
+SHA-256 (hex) of the share id. Deleting a share — or a user, whose shares are still deleted with them — no longer
+deletes its read history. `ShareAccessLog::getShare()` returns `?SecureShare`: code that reads it must handle null.
+
+Prefer `php bin/console doctrine:migrations:diff` (it uses your table prefix and constraint names). The statements
+below are for the default `table_prefix` (`yopass_`); the foreign key / index names are Doctrine's for that table name
+(`FK_558A5CBE2AE63FDB`, `IDX_558A5CBE2AE63FDB`) — check yours with `SHOW CREATE TABLE` / `\d`. Run the backfill
+**before** any share is deleted on 1.16, so the rows of shares deleted later keep their reference.
+
+MySQL 8 / MariaDB:
+
+```sql
+ALTER TABLE yopass_share_access_logs DROP FOREIGN KEY FK_558A5CBE2AE63FDB;
+ALTER TABLE yopass_share_access_logs ADD share_ref CHAR(64) DEFAULT NULL, CHANGE share_id share_id VARCHAR(36) DEFAULT NULL;
+ALTER TABLE yopass_share_access_logs ADD CONSTRAINT FK_558A5CBE2AE63FDB FOREIGN KEY (share_id) REFERENCES yopass_secure_shares (id) ON DELETE SET NULL;
+CREATE INDEX yopass_share_access_logs_share_ref_idx ON yopass_share_access_logs (share_ref);
+UPDATE yopass_share_access_logs SET share_ref = SHA2(share_id, 256) WHERE share_ref IS NULL AND share_id IS NOT NULL;
+```
+
+PostgreSQL (11+):
+
+```sql
+ALTER TABLE yopass_share_access_logs DROP CONSTRAINT FK_558A5CBE2AE63FDB;
+ALTER TABLE yopass_share_access_logs ADD share_ref CHAR(64) DEFAULT NULL;
+ALTER TABLE yopass_share_access_logs ALTER share_id DROP NOT NULL;
+ALTER TABLE yopass_share_access_logs ADD CONSTRAINT FK_558A5CBE2AE63FDB FOREIGN KEY (share_id) REFERENCES yopass_secure_shares (id) ON DELETE SET NULL NOT DEFERRABLE;
+CREATE INDEX yopass_share_access_logs_share_ref_idx ON yopass_share_access_logs (share_ref);
+UPDATE yopass_share_access_logs SET share_ref = encode(sha256(share_id::bytea), 'hex') WHERE share_ref IS NULL AND share_id IS NOT NULL;
+```
+
+SQLite (a foreign key change rebuilds the table):
+
+```sql
+PRAGMA foreign_keys = OFF;
+BEGIN;
+CREATE TEMPORARY TABLE __temp__yopass_share_access_logs AS SELECT accessed_at, id, read_number, ip_address, user_agent, share_id FROM yopass_share_access_logs;
+DROP TABLE yopass_share_access_logs;
+CREATE TABLE yopass_share_access_logs (accessed_at DATETIME NOT NULL, id VARCHAR(36) NOT NULL, read_number INTEGER NOT NULL, ip_address VARCHAR(45) DEFAULT NULL, user_agent VARCHAR(512) DEFAULT NULL, share_id VARCHAR(36) DEFAULT NULL, share_ref CHAR(64) DEFAULT NULL, PRIMARY KEY (id), CONSTRAINT FK_558A5CBE2AE63FDB FOREIGN KEY (share_id) REFERENCES yopass_secure_shares (id) ON DELETE SET NULL NOT DEFERRABLE INITIALLY IMMEDIATE);
+INSERT INTO yopass_share_access_logs (accessed_at, id, read_number, ip_address, user_agent, share_id) SELECT accessed_at, id, read_number, ip_address, user_agent, share_id FROM __temp__yopass_share_access_logs;
+DROP TABLE __temp__yopass_share_access_logs;
+CREATE INDEX IDX_558A5CBE2AE63FDB ON yopass_share_access_logs (share_id);
+CREATE INDEX yopass_share_access_logs_share_ref_idx ON yopass_share_access_logs (share_ref);
+COMMIT;
+PRAGMA foreign_keys = ON;
+```
+
+SQLite has no SHA-256 function: backfill `share_ref` once from PHP (for example in the migration's `postUp()`):
+
+```php
+foreach ($connection->fetchAllAssociative('SELECT id, share_id FROM yopass_share_access_logs WHERE share_ref IS NULL AND share_id IS NOT NULL') as $row) {
+    $connection->update('yopass_share_access_logs', ['share_ref' => hash('sha256', $row['share_id'])], ['id' => $row['id']]);
+}
+```
+
+Rows of shares deleted **before** the upgrade are already gone (1.15 cascaded them). SQLite applies `ON DELETE`
+actions only with `PRAGMA foreign_keys = ON` on the connection.
+
+### Other changes
+
+- **Security user that is no Doctrine entity:** it works now when it exposes the persisted user's id through
+  `getId()`; otherwise alias `Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface` to your own resolver
+  ([USAGE](USAGE.md#using-it-from-a-ddd--hexagonal-application)).
+- **Event listeners:** prefer the new scalar getters (`getCreatorId()`, `getRevokedById()`…) over casting the user
+  objects.
+- **Custom repositories:** implement `MaxReadsRaisingShareRepositoryInterface` to make the max-reads raise atomic;
+  without it `ShareExtender` saves the share as before.
+- **MongoDB:** `readsLeft` is now written as an increment; no data change is needed.
 
 ## To 1.15.1
 

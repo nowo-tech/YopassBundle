@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Repository;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Psr\Clock\ClockInterface;
@@ -24,13 +25,15 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     private ClockInterface $clock;
 
     /**
-     * Creates the repository on the given Doctrine manager (optional registry/manager name for resets) and clock.
+     * Creates the repository on the given Doctrine manager (optional registry/manager name for resets) and clock; the
+     * creator resolver turns a non-entity user into a reference before the creator queries.
      */
     public function __construct(
         private DocumentManager $documentManager,
         ?ClockInterface $clock = null,
         private ?ManagerRegistry $registry = null,
         private ?string $managerName = null,
+        private ?CreatorReferenceResolverInterface $creators = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -80,7 +83,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     {
         /** @var list<SecureShareDocument> $documents */
         $documents = $this->dm()->getRepository(SecureShareDocument::class)->findBy(
-            ['creator' => $creator],
+            ['creator' => $this->creator($creator)],
             ['createdAt' => 'DESC'],
         );
 
@@ -93,7 +96,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     public function countByCreator(object $creator): int
     {
         $result = $this->dm()->createQueryBuilder(SecureShareDocument::class)
-            ->field('creator')->equals($creator)
+            ->field('creator')->equals($this->creator($creator))
             ->count()
             ->getQuery()
             ->execute();
@@ -110,16 +113,22 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
      */
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array
     {
-        /** @var list<SecureShareDocument> $documents */
+        /** @var iterable<SecureShareDocument> $documents */
         $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
-            ->field('creator')->equals($creator)
+            ->field('creator')->equals($this->creator($creator))
             ->sort('createdAt', 'desc')
             ->limit($limit)
             ->skip($offset)
             ->getQuery()
             ->execute();
 
-        return array_map($this->toEntity(...), $documents);
+        // execute() returns a cursor iterator, not an array (array_map() threw a TypeError before 1.16).
+        $shares = [];
+        foreach ($documents as $document) {
+            $shares[] = $this->toEntity($document);
+        }
+
+        return $shares;
     }
 
     /**
@@ -129,7 +138,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     {
         /** @var iterable<SecureShareDocument> $documents */
         $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
-            ->field('creator')->equals($creator)
+            ->field('creator')->equals($this->creator($creator))
             ->field('createdAt')->lt($before)
             ->getQuery()
             ->execute();
@@ -144,7 +153,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     {
         /** @var iterable<SecureShareDocument> $documents */
         $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
-            ->field('creator')->equals($creator)
+            ->field('creator')->equals($this->creator($creator))
             ->getQuery()
             ->execute();
 
@@ -226,6 +235,11 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         }
 
         return $count;
+    }
+
+    private function creator(object $creator): object
+    {
+        return $this->creators?->reference($creator) ?? $creator;
     }
 
     private function now(): DateTimeImmutable

@@ -9,6 +9,7 @@
 - [Custom access control](#custom-access-control)
   - [Route-level checker](#route-level-checker)
   - [Share events (teams, grants, roles)](#share-events-teams-grants-roles)
+- [Using it from a DDD / hexagonal application](#using-it-from-a-ddd--hexagonal-application)
 - [Twig overrides](#twig-overrides)
   - [Forms in templates (REQ-TWIG-005)](#forms-in-templates-req-twig-005)
 - [Clock (REQ-DI-001)](#clock-req-di-001)
@@ -129,6 +130,95 @@ final class MyShareAccessListener
     }
 }
 ```
+
+## Using it from a DDD / hexagonal application
+
+**Layer.** YopassBundle is a small, self-contained bounded context ("ephemeral secret sharing") with its own
+persistence (`SecureShare`, optional `ShareAccessLog`) and its own UI (manage pages, public reveal page, routes).
+Secrets are encrypted in the browser; the server only stores ciphertext. Keep it outside your domain model and
+integrate through events and ports.
+
+**Keep your domain free of the bundle**
+
+- Do not reference `Nowo\YopassBundle\Entity\SecureShare` from domain code. React to the lifecycle events in an
+  infrastructure listener and translate them into your own commands/events (they carry metadata only, never
+  ciphertext): `YopassEvents::SHARE_CREATED`, `SHARE_REVOKED`, `SHARE_DELETED`, `SHARE_EXTENDED`,
+  `SHARES_BULK_DELETED`. Since 1.16 they also carry scalar ids: `getCreatorId()`, `getRevokedById()`,
+  `getDeletedById()`, `getExtendedById()`, `ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()` (the `getId()`
+  value as a string), so your listener never has to know the user class. `SecureShare::getCreatorId()` does the same
+  on the port.
+- Put authorisation rules behind the bundle's ports: implement `YopassAccessCheckerInterface` and set
+  `security.access_checker`, and listen to `YopassEvents::SHARE_ACCESS_CHECK` (`grant()` / `deny()`) for per-share
+  rules. Use `SHARE_LIST_QUERY` / `SHARE_DELETE_ALL` for team or tenant scoping.
+- To own the storage, set `database.driver: custom` and `database.repository` to a service implementing
+  `ShareRepositoryInterface` (its `consumeReadIfAvailable()` must be atomic; implement
+  `MaxReadsRaisingShareRepositoryInterface` too so raising max reads is atomic, and rebuild loaded shares with
+  `SecureShare::reconstitute()`).
+
+**The creator.** With the `doctrine_orm` / `doctrine_mongodb` drivers, `SecureShare.creator` is a Doctrine relation
+to `nowo_yopass.user_class`, so the host needs a Doctrine user class (an infrastructure persistence model is enough).
+Your **security user does not have to be that entity** (since 1.16), but the bundle only trusts the classes you list.
+The port `CreatorReferenceResolverInterface` turns the token user into the stored creator. The default
+(`DoctrineCreatorReferenceResolver`) keeps `user_class` instances as they are and turns an instance of a class listed
+in `accepted_user_classes` (a DTO, a read model carrying the `user_class` id) into `getReference(user_class, id)` on
+the bundle's entity / document manager, without a query:
+
+```yaml
+nowo_yopass:
+    user_class: App\Entity\User
+    accepted_user_classes: [App\Security\SecurityUser]   # default: [] = user_class only
+```
+
+Any other user is refused (`AccessDeniedException`, 403) on create, list, delete all and the retention purge, and is
+never the owner of a share (`ShareAccessGuard`): in a host with a second identity domain (Admin#5 next to Customer#5)
+the ids never cross. Ids of 0, negative ids and empty ids are refused. Alias the interface to your own service when
+the security user's id is not the persisted user's id:
+
+```yaml
+services:
+    Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface: '@App\Infrastructure\Yopass\CreatorReferences'
+```
+
+A `SHARE_ACCESS_CHECK` listener can still grant other users (team admins) per share.
+
+**Deleting a user deletes their shares, never the read history.** The creator foreign key is `ON DELETE CASCADE`: a
+share is a secret its creator handed out, and the bundle does not keep secrets of an erased account. The access-log
+rows of those shares stay (1.16, `share_id` `ON DELETE SET NULL`), with `share_ref` (SHA-256 of the share id) so the
+trail stays meaningful; see [CONFIGURATION › Access log](CONFIGURATION.md#access-log). With the MongoDB driver there is
+no access log.
+
+**Adapter sketch** — forward share creation to your application layer:
+
+```php
+use Nowo\YopassBundle\Event\ShareCreatedEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+#[AsEventListener(event: YopassEvents::SHARE_CREATED)]
+final readonly class YopassShareCreatedAdapter
+{
+    public function __construct(private AuditTrail $audit) {} // your port
+
+    public function __invoke(ShareCreatedEvent $event): void
+    {
+        $this->audit->secretShared(
+            shareId: $event->getShareId(),
+            userId: $event->getCreatorId(),
+            expiresAt: $event->getExpiresAt(),
+            maxReads: $event->getMaxReads(),
+        );
+    }
+}
+```
+
+**Known limitations**
+
+- With the Doctrine drivers the creator column stays a relation to `user_class` (there is no plain-id mode); the
+  host needs a Doctrine user class in the bundle's manager, even if its security user is not that class.
+- `ShareRepositoryInterface` still takes creator objects and returns the `SecureShare` entity; services are final
+  classes (replace them through the ports above).
+- No event is dispatched when a public link is opened; the access log (`access_log.enabled`) is Doctrine ORM only
+  and cannot be replaced by your own repository.
 
 ## Twig overrides
 

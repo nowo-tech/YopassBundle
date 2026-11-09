@@ -10,12 +10,18 @@ use Doctrine\ODM\MongoDB\Configuration;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ODM\MongoDB\Events;
 use Doctrine\ODM\MongoDB\Mapping\Driver\AttributeDriver;
+use Doctrine\Persistence\ManagerRegistry;
 use MongoDB\Client;
+use Nowo\YopassBundle\Creator\CreatorClassPolicy;
+use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
+use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
+use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareRevoker;
+use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use Nowo\YopassBundle\Tests\Support\Odm\MongoUser;
 use PHPUnit\Framework\TestCase;
@@ -208,6 +214,55 @@ final class DoctrineMongoShareRepositoryIntegrationTest extends TestCase
         $this->dm->clear();
 
         self::assertSame(2, $this->repository->find(self::ID)?->getReadsLeft());
+    }
+
+    public function testRaisingMaxReadsKeepsConcurrentConsumes(): void
+    {
+        $this->save($this->newShare(new DateTimeImmutable('+1 hour'), 3));
+        $loaded = $this->repository->find(self::ID);
+        self::assertInstanceOf(SecureShare::class, $loaded);
+
+        // Another worker consumes two reads after this request loaded the share (JS-L1).
+        $otherRepository = new DoctrineMongoShareRepository($this->createDocumentManager());
+        self::assertNotNull($otherRepository->consumeReadIfAvailable(self::ID));
+        self::assertNotNull($otherRepository->consumeReadIfAvailable(self::ID));
+
+        (new ShareExtender($this->repository, DefaultShareOptions::get()))->extend($loaded, null, 10);
+        $this->dm->clear();
+
+        $stored = $this->repository->find(self::ID);
+        self::assertSame(10, $stored?->getMaxReads());
+        self::assertSame(8, $stored?->getReadsLeft(), '1 left + 7 added: written as $inc, the consumed reads stay consumed');
+    }
+
+    public function testNegativeStoredReadsAreClampedOnLoad(): void
+    {
+        $this->save($this->newShare(new DateTimeImmutable('+1 hour'), 3));
+        $this->client->selectCollection($this->database, 'yopass_secure_shares')->updateOne(['_id' => self::ID], ['$set' => ['readsLeft' => -2]]);
+
+        self::assertSame(0, $this->repository->find(self::ID)?->getReadsLeft());
+    }
+
+    public function testANonEntitySecurityUserCreatesAndListsShares(): void
+    {
+        $registry = $this->createStub(ManagerRegistry::class);
+        $registry->method('getManager')->willReturn($this->dm);
+        $creators         = new DoctrineCreatorReferenceResolver(MongoUser::class, $registry, null, new CreatorClassPolicy(MongoUser::class, [SecurityUserDto::class]));
+        $repository       = new DoctrineMongoShareRepository($this->dm, null, null, null, $creators);
+        $viewer           = new SecurityUserDto('user-mongo-1');
+        $data             = new ShareCreateData();
+        $data->ciphertext = 'cipher';
+
+        $share = (new ShareCreator($repository, DefaultShareOptions::get()['expiration_options'], null, null, $creators))->create($viewer, $data);
+        self::assertSame('user-mongo-1', $share->getCreatorId());
+        $this->dm->clear();
+
+        self::assertSame(1, $repository->countByCreator($viewer));
+        self::assertSame($share->getId(), $repository->findByCreator($viewer)[0]->getId());
+        self::assertCount(1, $repository->findByCreatorPaginated($viewer, 10, 0));
+        self::assertSame(1, $repository->removeAllByCreator($viewer));
+        $repository->flush();
+        self::assertSame(0, $repository->countByCreator($viewer));
     }
 
     private function newShare(DateTimeImmutable $expiresAt, int $maxReads): SecureShare

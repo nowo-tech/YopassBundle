@@ -56,6 +56,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target: **1.16.0** (DDD / hexagonal adapter fixes, audit 2026-11-09; JS-L1 / JS-L2 of the 1.15.1 audit). See [UPGRADING](UPGRADING.md#to-1160).
+
+### Added
+
+- **Creator reference resolver.** New port `Creator\CreatorReferenceResolverInterface` (default
+  `DoctrineCreatorReferenceResolver`, aliased): `user_class` instances are stored as before; an instance of a class
+  listed in the new option **`accepted_user_classes`** (default `[]`) becomes `getReference(user_class, id)` when a
+  share is created and in the creator queries (list, count, delete all, retention). The security user no longer has
+  to be the Doctrine entity, but only listed classes are trusted (audit JX-Y1): any other user is refused
+  (`AccessDeniedException`) with every driver — the custom one included, where `ShareCreator`, `ShareLister`,
+  `ShareDeleter` and `ShareRetentionPurger` check before calling the host repository (JX-Y6) — and ids ≤ 0 / empty
+  ids are refused. New `Creator\CreatorClassPolicy`.
+- **Scalar ids on the events and the share.** `getCreatorId()` on `ShareCreatedEvent`, `ShareRevokedEvent`,
+  `ShareDeletedEvent`, `ShareExtendedEvent` and `SecureShare`; `getRevokedById()`, `getDeletedById()`,
+  `getExtendedById()`; `ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()`. Object payloads unchanged.
+- **`Repository\MaxReadsRaisingShareRepositoryInterface`** (optional capability of a share repository), implemented
+  by the ORM repository.
+- `ShareAccessLog::getShareRef()` / `ShareAccessLog::referenceFor()` and
+  `DoctrineOrmShareAccessLogRepository::findByShareId()` (the trail of a deleted share).
+- USAGE: "Using it from a DDD / hexagonal application".
+
+### Changed
+
+- **Share ownership requires an accepted user class (audit JX-Y1).** `ShareAccessGuard` grants the owner rights only
+  to a `user_class` instance (or a listed `accepted_user_classes` instance) with a usable id equal to the creator's;
+  before, any object with the same `getId()` was the owner (Admin#5 could manage Customer#5's shares in a
+  multi-provider host). `SHARE_ACCESS_CHECK` listeners can still grant.
+- **The read audit trail outlives its share (owner decision).** `share_access_logs.share_id` is now nullable with
+  `ON DELETE SET NULL` (was `NOT NULL … ON DELETE CASCADE`): deleting a share — or its creator, whose shares are still
+  deleted with them — keeps every access-log row. New column `share_ref` (CHAR(64), SHA-256 hex of the share id,
+  indexed) keeps the rows of one share together. `ShareAccessLog::getShare()` now returns `?SecureShare`. **Schema
+  migration required** when the access log is enabled (ORM only; the MongoDB driver has no access log): see UPGRADING.
+
+### Fixed
+
+- **Raising max reads no longer gives back reads consumed meanwhile (JS-L1).** ORM: the raise is one conditional
+  `UPDATE … SET reads_left = reads_left + delta, max_reads = :new WHERE id = :id AND revoked_at IS NULL AND
+  max_reads = :old`; a share revoked (or raised) meanwhile is not extended and the extend fails with `revoked` /
+  `max_reads_not_increased`. MongoDB: `readsLeft` is mapped with `strategy: 'increment'`, so the save writes
+  `$inc (new − loaded)`, which commutes with the consume `$inc -1`; a negative stored count (a revoke saved from a
+  stale copy) loads as 0.
+- **MongoDB: `findByCreatorPaginated()` threw a `TypeError`** (`array_map()` on the cursor iterator).
+- Wording (JS-L2): a save never clears or moves the stored revocation date; a share saved from a copy loaded before
+  another worker revoked it may still store a non-zero remaining-reads count on the revoked document (harmless:
+  consuming requires no revocation).
+
 ## [1.15.1] - 2026-11-09
 
 Target: **1.15.1** (patch). MongoDB driver only; the Doctrine ORM path does not change. See [UPGRADING](UPGRADING.md#to-1151).

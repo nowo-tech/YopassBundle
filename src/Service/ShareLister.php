@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Service;
 
 use LogicException;
+use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareListQueryEvent;
 use Nowo\YopassBundle\Event\ShareListResultEvent;
@@ -29,6 +30,7 @@ final readonly class ShareLister
         private ShareRepositoryInterface $shareRepository,
         private EventDispatcherInterface $eventDispatcher,
         private ?string $creatorClass = null,
+        private ?CreatorReferenceResolverInterface $creators = null,
     ) {
     }
 
@@ -62,11 +64,11 @@ final readonly class ShareLister
             $shares = $queryEvent->getOverrideShares();
             $total  = $queryEvent->getOverrideTotal();
         } elseif ($pageSize > 0) {
-            $subject = $queryEvent->getListSubject();
+            $subject = $this->creator($queryEvent->getListSubject());
             $total   = $this->shareRepository->countByCreator($subject);
             $shares  = $this->shareRepository->findByCreatorPaginated($subject, $pageSize, $queryEvent->getOffset());
         } else {
-            $subject = $queryEvent->getListSubject();
+            $subject = $this->creator($queryEvent->getListSubject());
             $shares  = $this->shareRepository->findByCreator($subject);
             $total   = count($shares);
         }
@@ -75,7 +77,7 @@ final readonly class ShareLister
         $ownTotal = $queryEvent->getOwnTotal()
             ?? (!$queryEvent->hasOverride() && $queryEvent->getListSubject() === $viewer
                 ? $total
-                : $this->shareRepository->countByCreator($viewer));
+                : $this->shareRepository->countByCreator($this->creator($viewer)));
 
         $resultEvent = new ShareListResultEvent($viewer, $shares, $total);
         $this->eventDispatcher->dispatch($resultEvent, YopassEvents::SHARE_LIST_RESULT);
@@ -85,5 +87,13 @@ final readonly class ShareLister
             'total'     => $resultEvent->getTotal(),
             'own_total' => $ownTotal,
         ];
+    }
+
+    /**
+     * The creator to query for a user: refused (AccessDeniedException) unless it is accepted (JX-Y6, every driver).
+     */
+    private function creator(object $user): object
+    {
+        return $this->creators?->reference($user) ?? $user;
     }
 }

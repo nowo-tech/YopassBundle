@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Service;
 
+use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareCreatedEvent;
@@ -28,12 +29,14 @@ final readonly class ShareCreator
      * @param list<array{id: string, interval: string}> $expirationOptions Allowed expiration options
      * @param ClockInterface|null $clock Clock used to compute expiration dates (REQ-DI-001)
      * @param EventDispatcherInterface|null $eventDispatcher Dispatches {@see YopassEvents::SHARE_CREATED} (metadata only)
+     * @param CreatorReferenceResolverInterface|null $creators Turns a non-entity user into the stored creator reference
      */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         private array $expirationOptions,
         ?ClockInterface $clock = null,
         private ?EventDispatcherInterface $eventDispatcher = null,
+        private ?CreatorReferenceResolverInterface $creators = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -48,7 +51,7 @@ final readonly class ShareCreator
      */
     public function create(object $creator, ShareCreateData $data): SecureShare
     {
-        $share = new SecureShare((string) Uuid::generate(), $creator);
+        $share = new SecureShare((string) Uuid::generate(), $this->creators?->reference($creator) ?? $creator);
         $share
             ->setCiphertext($data->ciphertext)
             ->setExpiresAt($data->resolveExpiresAt($this->expirationOptions, $this->clock->now()))

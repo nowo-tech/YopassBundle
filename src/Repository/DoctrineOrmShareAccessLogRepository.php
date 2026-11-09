@@ -42,6 +42,23 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
     }
 
     /**
+     * Returns the most recent access log entries of a share id, also after the share was deleted (1.16).
+     *
+     * @return list<ShareAccessLog>
+     */
+    public function findByShareId(string $shareId, int $limit = 50): array
+    {
+        /** @var list<ShareAccessLog> $logs */
+        $logs = $this->em()->getRepository(ShareAccessLog::class)->findBy(
+            ['shareRef' => ShareAccessLog::referenceFor($shareId)],
+            ['accessedAt' => 'DESC'],
+            $limit,
+        );
+
+        return $logs;
+    }
+
+    /**
      * Schedules an access log entry for persistence.
      */
     public function persist(ShareAccessLog $log): void

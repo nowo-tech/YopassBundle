@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Event;
 
 use DateTimeImmutable;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
 
@@ -123,5 +124,21 @@ final class ShareDeletedEvent extends Event
     public function getRevokedAt(): ?DateTimeImmutable
     {
         return $this->revokedAt;
+    }
+
+    /**
+     * Returns the creator id (`getId()` as a string; null when it exposes none). Since 1.16.
+     */
+    public function getCreatorId(): ?string
+    {
+        return UserIdResolver::getId($this->creator);
+    }
+
+    /**
+     * Returns the id of the user who deleted the share (null when unknown). Since 1.16.
+     */
+    public function getDeletedById(): ?string
+    {
+        return $this->deletedBy instanceof UserInterface ? UserIdResolver::getId($this->deletedBy) : null;
     }
 }

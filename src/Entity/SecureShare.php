@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Entity;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
@@ -261,5 +262,13 @@ class SecureShare
         $this->maxReads = $maxReads;
 
         return $this;
+    }
+
+    /**
+     * Returns the creator id (`getId()` as a string; a Doctrine reference answers without a query). Since 1.16.
+     */
+    public function getCreatorId(): ?string
+    {
+        return UserIdResolver::getId($this->creator);
     }
 }
