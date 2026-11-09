@@ -163,6 +163,11 @@ actions only with `PRAGMA foreign_keys = ON` on the connection.
 
 ### Other changes
 
+- **Accepted user classes (fail closed).** Only `user_class` instances create, list, bulk-delete and own shares
+  unless you list other security-user classes in `nowo_yopass.accepted_user_classes`. A host whose security user is
+  not `user_class` (a wrapper, a custom-driver host's user) lists that class; otherwise those users get a 403 and are
+  no longer the owner of their shares. Single-class hosts change nothing.
+
 - **Security user that is no Doctrine entity:** it works now when it exposes the persisted user's id through
   `getId()`; otherwise alias `Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface` to your own resolver
   ([USAGE](USAGE.md#using-it-from-a-ddd--hexagonal-application)).

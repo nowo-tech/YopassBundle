@@ -12,6 +12,7 @@ use Doctrine\ODM\MongoDB\Events;
 use Doctrine\ODM\MongoDB\Mapping\Driver\AttributeDriver;
 use Doctrine\Persistence\ManagerRegistry;
 use MongoDB\Client;
+use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Dto\ShareCreateData;
@@ -246,7 +247,7 @@ final class DoctrineMongoShareRepositoryIntegrationTest extends TestCase
     {
         $registry = $this->createStub(ManagerRegistry::class);
         $registry->method('getManager')->willReturn($this->dm);
-        $creators         = new DoctrineCreatorReferenceResolver(MongoUser::class, $registry);
+        $creators         = new DoctrineCreatorReferenceResolver(MongoUser::class, $registry, null, new CreatorClassPolicy(MongoUser::class, [SecurityUserDto::class]));
         $repository       = new DoctrineMongoShareRepository($this->dm, null, null, null, $creators);
         $viewer           = new SecurityUserDto('user-mongo-1');
         $data             = new ShareCreateData();

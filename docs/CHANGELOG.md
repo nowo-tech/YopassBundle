@@ -61,9 +61,11 @@ Target: **1.16.0** (DDD / hexagonal adapter fixes, audit 2026-11-09; JS-L1 / JS-
 ### Added
 
 - **Creator reference resolver.** New port `Creator\CreatorReferenceResolverInterface` (default
-  `DoctrineCreatorReferenceResolver`, aliased): `user_class` instances are stored as before; any other security user
-  with a `getId()` becomes `getReference(user_class, id)` when a share is created and in the creator queries (list,
-  count, delete all, retention). The security user no longer has to be the Doctrine entity.
+  `DoctrineCreatorReferenceResolver`, aliased): `user_class` instances are stored as before; an instance of a class
+  listed in the new option **`accepted_user_classes`** (default `[]`) becomes `getReference(user_class, id)` when a
+  share is created and in the creator queries (list, count, delete all, retention). The security user no longer has
+  to be the Doctrine entity, but only listed classes are trusted (audit JX-Y1): any other user is refused
+  (`AccessDeniedException`), and ids ≤ 0 / empty ids are refused. New `Creator\CreatorClassPolicy`.
 - **Scalar ids on the events and the share.** `getCreatorId()` on `ShareCreatedEvent`, `ShareRevokedEvent`,
   `ShareDeletedEvent`, `ShareExtendedEvent` and `SecureShare`; `getRevokedById()`, `getDeletedById()`,
   `getExtendedById()`; `ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()`. Object payloads unchanged.
@@ -75,6 +77,10 @@ Target: **1.16.0** (DDD / hexagonal adapter fixes, audit 2026-11-09; JS-L1 / JS-
 
 ### Changed
 
+- **Share ownership requires an accepted user class (audit JX-Y1).** `ShareAccessGuard` grants the owner rights only
+  to a `user_class` instance (or a listed `accepted_user_classes` instance) with a usable id equal to the creator's;
+  before, any object with the same `getId()` was the owner (Admin#5 could manage Customer#5's shares in a
+  multi-provider host). `SHARE_ACCESS_CHECK` listeners can still grant.
 - **The read audit trail outlives its share (owner decision).** `share_access_logs.share_id` is now nullable with
   `ON DELETE SET NULL` (was `NOT NULL … ON DELETE CASCADE`): deleting a share — or its creator, whose shares are still
   deleted with them — keeps every access-log row. New column `share_ref` (CHAR(64), SHA-256 hex of the share id,

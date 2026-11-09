@@ -157,18 +157,29 @@ integrate through events and ports.
 
 **The creator.** With the `doctrine_orm` / `doctrine_mongodb` drivers, `SecureShare.creator` is a Doctrine relation
 to `nowo_yopass.user_class`, so the host needs a Doctrine user class (an infrastructure persistence model is enough).
-Your **security user does not have to be that entity** (since 1.16): the port `CreatorReferenceResolverInterface`
-turns the token user into the stored creator. The default (`DoctrineCreatorReferenceResolver`) keeps `user_class`
-instances as they are and turns any other user with a `getId()` (a DTO, a read model) into
-`getReference(user_class, id)` on the bundle's entity / document manager, without a query. Alias the interface to
-your own service when the security user's id is not the persisted user's id:
+Your **security user does not have to be that entity** (since 1.16), but the bundle only trusts the classes you list.
+The port `CreatorReferenceResolverInterface` turns the token user into the stored creator. The default
+(`DoctrineCreatorReferenceResolver`) keeps `user_class` instances as they are and turns an instance of a class listed
+in `accepted_user_classes` (a DTO, a read model carrying the `user_class` id) into `getReference(user_class, id)` on
+the bundle's entity / document manager, without a query:
+
+```yaml
+nowo_yopass:
+    user_class: App\Entity\User
+    accepted_user_classes: [App\Security\SecurityUser]   # default: [] = user_class only
+```
+
+Any other user is refused (`AccessDeniedException`, 403) on create, list, delete all and the retention purge, and is
+never the owner of a share (`ShareAccessGuard`): in a host with a second identity domain (Admin#5 next to Customer#5)
+the ids never cross. Ids of 0, negative ids and empty ids are refused. Alias the interface to your own service when
+the security user's id is not the persisted user's id:
 
 ```yaml
 services:
     Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface: '@App\Infrastructure\Yopass\CreatorReferences'
 ```
 
-Ownership checks compare `getId()` values, so the DTO and the entity must expose the same id.
+A `SHARE_ACCESS_CHECK` listener can still grant other users (team admins) per share.
 
 **Deleting a user deletes their shares, never the read history.** The creator foreign key is `ON DELETE CASCADE`: a
 share is a secret its creator handed out, and the bundle does not keep secrets of an erased account. The access-log

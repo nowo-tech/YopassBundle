@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\DependencyInjection;
 
 use Nowo\YopassBundle\Controller\ShareManageController;
+use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Database\DatabaseDriver;
@@ -69,6 +70,10 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             : $storageName;
 
         $container->setParameter('nowo_yopass.user_class', $config['user_class']);
+        $container->setParameter('nowo_yopass.accepted_user_classes', $config['accepted_user_classes']);
+        $container->setDefinition(CreatorClassPolicy::class, (new Definition(CreatorClassPolicy::class))
+            ->setArgument('$userClass', $config['user_class'])
+            ->setArgument('$acceptedUserClasses', $config['accepted_user_classes']));
         $container->setParameter('nowo_yopass.table_name', $storageName);
         $container->setParameter('nowo_yopass.collection_name', $collection);
         $container->setParameter('nowo_yopass.database', $database);
@@ -437,7 +442,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->setDefinition(DoctrineCreatorReferenceResolver::class, (new Definition(DoctrineCreatorReferenceResolver::class))
             ->setArgument('$userClass', $userClass)
             ->setArgument('$registry', $registry !== null ? new Reference($registry) : null)
-            ->setArgument('$managerName', $managerName));
+            ->setArgument('$managerName', $managerName)
+            ->setArgument('$classes', new Reference(CreatorClassPolicy::class)));
         $container->setAlias(CreatorReferenceResolverInterface::class, DoctrineCreatorReferenceResolver::class);
     }
 

@@ -14,20 +14,25 @@ use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\ResolveTargetEntityListener;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareAccessAction;
 use Nowo\YopassBundle\Event\ShareCreatedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
+use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
+use Nowo\YopassBundle\Tests\Support\Orm\GuardAdmin;
 use Nowo\YopassBundle\Tests\Support\Orm\GuardUser;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 use function dirname;
@@ -50,6 +55,8 @@ final class OrmDddPortsIntegrationTest extends TestCase
     private DoctrineOrmShareRepository $repository;
 
     private GuardUser $creator;
+
+    private DoctrineCreatorReferenceResolver $creators;
 
     protected function setUp(): void
     {
@@ -78,15 +85,13 @@ final class OrmDddPortsIntegrationTest extends TestCase
 
         $registry = $this->createStub(ManagerRegistry::class);
         $registry->method('getManager')->willReturn($this->em);
-        $creators         = new DoctrineCreatorReferenceResolver(GuardUser::class, $registry, 'default');
-        $this->repository = new DoctrineOrmShareRepository($this->em, null, null, null, $creators);
+        $this->creators   = new DoctrineCreatorReferenceResolver(GuardUser::class, $registry, 'default', new CreatorClassPolicy(GuardUser::class, [SecurityUserDto::class]));
+        $this->repository = new DoctrineOrmShareRepository($this->em, null, null, null, $this->creators);
     }
 
     public function testANonEntitySecurityUserCreatesListsAndDeletesShares(): void
     {
-        $registry = $this->createStub(ManagerRegistry::class);
-        $registry->method('getManager')->willReturn($this->em);
-        $creators   = new DoctrineCreatorReferenceResolver(GuardUser::class, $registry, 'default');
+        $creators   = $this->creators;
         $dispatcher = new EventDispatcher();
         $ids        = [];
         $dispatcher->addListener(YopassEvents::SHARE_CREATED, static function (ShareCreatedEvent $event) use (&$ids): void {
@@ -108,6 +113,36 @@ final class OrmDddPortsIntegrationTest extends TestCase
         self::assertSame(0, $this->repository->removeByCreatorOlderThan($viewer, new DateTimeImmutable('-1 day')));
         self::assertSame(1, $this->repository->removeAllByCreator($viewer));
         self::assertSame(0, $this->repository->countByCreator($viewer));
+    }
+
+    public function testAnotherIdentityDomainWithTheSameIdFailsClosed(): void
+    {
+        $customer = new SecurityUserDto(7, 'customer');
+        $share    = (new ShareCreator($this->repository, DefaultShareOptions::get()['expiration_options'], null, null, $this->creators))->create($customer, $this->data());
+        $admin    = new GuardAdmin(7);
+        $this->em->persist($admin);
+        $this->em->flush();
+        $this->em->clear();
+
+        // Admin#7 is a Doctrine entity too: passed on, Doctrine would bind it by id and match Customer#7's shares.
+        foreach ([
+            'list'   => fn (): array => $this->repository->findByCreatorPaginated($admin, 10, 0),
+            'count'  => fn (): int => $this->repository->countByCreator($admin),
+            'delete' => fn (): int => $this->repository->removeAllByCreator($admin),
+            'purge'  => fn (): int => $this->repository->removeByCreatorOlderThan($admin, new DateTimeImmutable('+1 day')),
+            'create' => fn (): SecureShare => (new ShareCreator($this->repository, DefaultShareOptions::get()['expiration_options'], null, null, $this->creators))->create($admin, $this->data()),
+        ] as $path => $call) {
+            try {
+                $call();
+                self::fail($path . ' should be refused');
+            } catch (AccessDeniedException) {
+            }
+        }
+        $stored = $this->repository->find($share->getId());
+        self::assertInstanceOf(SecureShare::class, $stored);
+        self::assertFalse((new ShareAccessGuard(new EventDispatcher(), new CreatorClassPolicy(GuardUser::class, [SecurityUserDto::class])))->canManage($admin, $stored, ShareAccessAction::Delete));
+        self::assertTrue((new ShareAccessGuard(new EventDispatcher(), new CreatorClassPolicy(GuardUser::class, [SecurityUserDto::class])))->canManage($customer, $stored, ShareAccessAction::Delete));
+        self::assertSame(1, $this->repository->countByCreator($customer), 'Customer#7 keeps the share');
     }
 
     public function testRaisingMaxReadsKeepsConcurrentConsumes(): void

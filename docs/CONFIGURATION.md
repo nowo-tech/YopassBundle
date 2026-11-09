@@ -35,7 +35,8 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
 
 | Option | Description |
 |--------|-------------|
-| `user_class` | FQCN of your User entity (`UserInterface` + `getId()`). Used for the `creator` relation on shares (`ON DELETE CASCADE`: deleting a user deletes their shares; their access-log rows stay, see [Access log](#access-log)). The security user may be another class exposing the same `getId()` (`CreatorReferenceResolverInterface`, since 1.16). |
+| `user_class` | FQCN of your User entity (`UserInterface` + `getId()`). Used for the `creator` relation on shares (`ON DELETE CASCADE`: deleting a user deletes their shares; their access-log rows stay, see [Access log](#access-log)). The security user may be another class exposing the same `getId()` when listed in `accepted_user_classes` (since 1.16). |
+| `accepted_user_classes` | Since 1.16; default `[]`. Security-user classes other than `user_class` that map to a share creator by `getId()` (wrappers / read models carrying the `user_class` id). With the default only `user_class` instances create, list, bulk-delete and own shares; any other user is refused (403), so a second identity domain with overlapping ids (Admin#5 / Customer#5) fails closed. Ids ≤ 0 and empty ids are refused. |
 
 ## Database
 

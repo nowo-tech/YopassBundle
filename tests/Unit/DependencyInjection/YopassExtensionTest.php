@@ -8,6 +8,7 @@ use Doctrine\Bundle\DoctrineBundle\DependencyInjection\DoctrineExtension;
 use Doctrine\Bundle\MongoDBBundle\DependencyInjection\DoctrineMongoDBExtension;
 use LogicException;
 use Nowo\YopassBundle\Controller\ShareManageController;
+use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
@@ -102,6 +103,9 @@ final class YopassExtensionTest extends TestCase
             (string) $this->container->getAlias(ShareRepositoryInterface::class),
         );
         self::assertSame('doctrine', (string) $this->container->getDefinition(DoctrineCreatorReferenceResolver::class)->getArgument('$registry'));
+        self::assertSame([], $this->container->getParameter('nowo_yopass.accepted_user_classes'), 'Default: user_class only');
+        self::assertSame(CreatorClassPolicy::class, (string) $this->container->getDefinition(DoctrineCreatorReferenceResolver::class)->getArgument('$classes'));
+        self::assertSame([], $this->container->getDefinition(CreatorClassPolicy::class)->getArgument('$acceptedUserClasses'));
         self::assertSame(CreatorReferenceResolverInterface::class, (string) $this->container->getDefinition(DoctrineOrmShareRepository::class)->getArgument('$creators'));
         self::assertTrue($this->container->hasDefinition(ShareManageController::class));
         self::assertTrue($this->container->hasDefinition(PublicEndpointRateLimiter::class));
