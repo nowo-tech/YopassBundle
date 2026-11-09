@@ -35,7 +35,7 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
 
 | Option | Description |
 |--------|-------------|
-| `user_class` | FQCN of your User entity (`UserInterface` + `getId()`). Used for the `creator` relation on shares. |
+| `user_class` | FQCN of your User entity (`UserInterface` + `getId()`). Used for the `creator` relation on shares (`ON DELETE CASCADE`: deleting a user deletes their shares). The security user may be another class exposing the same `getId()` (`CreatorReferenceResolverInterface`, since 1.16). |
 
 ## Database
 

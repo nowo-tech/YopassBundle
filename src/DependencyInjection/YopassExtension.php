@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\DependencyInjection;
 
 use Nowo\YopassBundle\Controller\ShareManageController;
+use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
+use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
@@ -393,6 +395,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             }
 
             $container->setAlias(ShareRepositoryInterface::class, $repositoryId);
+            // The host repository receives the users as given (no Doctrine manager to build references on).
+            $this->registerCreatorReferenceResolver($container, $userClass, null, null);
 
             return;
         }
@@ -405,7 +409,9 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 ->setAutowired(false)
                 ->setArgument('$documentManager', new Reference(sprintf('doctrine_mongodb.odm.%s_document_manager', $documentManagerName)))
                 ->setArgument('$registry', new Reference('doctrine_mongodb'))
-                ->setArgument('$managerName', $documentManagerName));
+                ->setArgument('$managerName', $documentManagerName)
+                ->setArgument('$creators', new Reference(CreatorReferenceResolverInterface::class)));
+            $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine_mongodb', $documentManagerName);
 
             $container->setDefinition(SecureShareDocumentMetadataListener::class, (new Definition(SecureShareDocumentMetadataListener::class))
                 ->setArgument('$collectionName', $collection)
@@ -418,7 +424,21 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         }
 
         $this->registerOrmShareRepository($container, $database, $storageName, $userClass, $config);
+        $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$creators', new Reference(CreatorReferenceResolverInterface::class));
+        $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine', (string) $database['entity_manager']);
         $container->setAlias(ShareRepositoryInterface::class, DoctrineOrmShareRepository::class);
+    }
+
+    /**
+     * Default {@see CreatorReferenceResolverInterface} (aliased: a host alias or service for the interface wins).
+     */
+    private function registerCreatorReferenceResolver(ContainerBuilder $container, string $userClass, ?string $registry, ?string $managerName): void
+    {
+        $container->setDefinition(DoctrineCreatorReferenceResolver::class, (new Definition(DoctrineCreatorReferenceResolver::class))
+            ->setArgument('$userClass', $userClass)
+            ->setArgument('$registry', $registry !== null ? new Reference($registry) : null)
+            ->setArgument('$managerName', $managerName));
+        $container->setAlias(CreatorReferenceResolverInterface::class, DoctrineCreatorReferenceResolver::class);
     }
 
     /**

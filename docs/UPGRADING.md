@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.16.0](#to-1160)
 - [To 1.15.1](#to-1151)
 - [To 1.15.0](#to-1150)
   - [Retention: a cutoff not in the past is refused](#retention-a-cutoff-not-in-the-past-is-refused)
@@ -93,6 +94,20 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.16.0
+
+From **1.15.1**: nothing to change; no schema migration. A security user that is your `user_class` entity is stored
+exactly as before.
+
+- **Security user that is no Doctrine entity:** it works now when it exposes the persisted user's id through
+  `getId()`; otherwise alias `Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface` to your own resolver
+  ([USAGE](USAGE.md#using-it-from-a-ddd--hexagonal-application)).
+- **Event listeners:** prefer the new scalar getters (`getCreatorId()`, `getRevokedById()`…) over casting the user
+  objects.
+- **Custom repositories:** implement `MaxReadsRaisingShareRepositoryInterface` to make the max-reads raise atomic;
+  without it `ShareExtender` saves the share as before.
+- **MongoDB:** `readsLeft` is now written as an increment; no data change is needed.
 
 ## To 1.15.1
 

@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
@@ -15,20 +16,22 @@ use Symfony\Component\Clock\Clock;
 /**
  * Doctrine ORM implementation for PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle, etc.
  */
-final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface
+final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface
 {
     use ResolvesEntityManagerTrait;
 
     private ClockInterface $clock;
 
     /**
-     * Creates the repository on the given Doctrine manager (optional registry/manager name for resets) and clock.
+     * Creates the repository on the given Doctrine manager (optional registry/manager name for resets) and clock; the
+     * creator resolver turns a non-entity user into a reference before the creator queries.
      */
     public function __construct(
         private EntityManagerInterface $entityManager,
         ?ClockInterface $clock = null,
         private ?ManagerRegistry $registry = null,
         private ?string $managerName = null,
+        private ?CreatorReferenceResolverInterface $creators = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -77,13 +80,45 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     }
 
     /**
+     * One conditional UPDATE (`reads_left = reads_left + delta` where not revoked and max reads unchanged); a managed
+     * instance is refreshed afterwards.
+     */
+    public function raiseMaxReads(SecureShare $share, int $maxReads): bool
+    {
+        $oldMaxReads = $share->getMaxReads();
+        if ($maxReads <= $oldMaxReads) {
+            return false;
+        }
+
+        $updated = (int) $this->em()->createQueryBuilder()
+            ->update(SecureShare::class, 's')
+            ->set('s.readsLeft', 's.readsLeft + :delta')
+            ->set('s.maxReads', ':maxReads')
+            ->where('s.id = :id')
+            ->andWhere('s.revokedAt IS NULL')
+            ->andWhere('s.maxReads = :oldMaxReads')
+            ->setParameter('delta', $maxReads - $oldMaxReads)
+            ->setParameter('maxReads', $maxReads)
+            ->setParameter('id', $share->getId())
+            ->setParameter('oldMaxReads', $oldMaxReads)
+            ->getQuery()
+            ->execute();
+
+        if ($this->em()->contains($share)) {
+            $this->em()->refresh($share);
+        }
+
+        return $updated > 0;
+    }
+
+    /**
      * Returns all shares created by the given user.
      */
     public function findByCreator(object $creator): array
     {
         /** @var list<SecureShare> $shares */
         $shares = $this->em()->getRepository(SecureShare::class)->findBy(
-            ['creator' => $creator],
+            ['creator' => $this->creator($creator)],
             ['createdAt' => 'DESC'],
         );
 
@@ -95,7 +130,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
      */
     public function countByCreator(object $creator): int
     {
-        return $this->em()->getRepository(SecureShare::class)->count(['creator' => $creator]);
+        return $this->em()->getRepository(SecureShare::class)->count(['creator' => $this->creator($creator)]);
     }
 
     /**
@@ -105,7 +140,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     {
         /** @var list<SecureShare> $shares */
         $shares = $this->em()->getRepository(SecureShare::class)->findBy(
-            ['creator' => $creator],
+            ['creator' => $this->creator($creator)],
             ['createdAt' => 'DESC'],
             $limit,
             $offset,
@@ -123,7 +158,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->delete(SecureShare::class, 's')
             ->where('s.creator = :creator')
             ->andWhere('s.createdAt < :before')
-            ->setParameter('creator', $creator)
+            ->setParameter('creator', $this->creator($creator))
             ->setParameter('before', $before)
             ->getQuery()
             ->execute();
@@ -137,7 +172,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         return (int) $this->em()->createQueryBuilder()
             ->delete(SecureShare::class, 's')
             ->where('s.creator = :creator')
-            ->setParameter('creator', $creator)
+            ->setParameter('creator', $this->creator($creator))
             ->getQuery()
             ->execute();
     }
@@ -181,6 +216,11 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     public function flush(): void
     {
         $this->em()->flush();
+    }
+
+    private function creator(object $creator): object
+    {
+        return $this->creators?->reference($creator) ?? $creator;
     }
 
     private function now(): DateTimeImmutable

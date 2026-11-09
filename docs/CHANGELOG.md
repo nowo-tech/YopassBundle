@@ -56,6 +56,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target: **1.16.0** (DDD / hexagonal adapter fixes, audit 2026-11-09; JS-L1 / JS-L2 of the 1.15.1 audit). See [UPGRADING](UPGRADING.md#to-1160).
+
+### Added
+
+- **Creator reference resolver.** New port `Creator\CreatorReferenceResolverInterface` (default
+  `DoctrineCreatorReferenceResolver`, aliased): `user_class` instances are stored as before; any other security user
+  with a `getId()` becomes `getReference(user_class, id)` when a share is created and in the creator queries (list,
+  count, delete all, retention). The security user no longer has to be the Doctrine entity.
+- **Scalar ids on the events and the share.** `getCreatorId()` on `ShareCreatedEvent`, `ShareRevokedEvent`,
+  `ShareDeletedEvent`, `ShareExtendedEvent` and `SecureShare`; `getRevokedById()`, `getDeletedById()`,
+  `getExtendedById()`; `ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()`. Object payloads unchanged.
+- **`Repository\MaxReadsRaisingShareRepositoryInterface`** (optional capability of a share repository), implemented
+  by the ORM repository.
+- USAGE: "Using it from a DDD / hexagonal application".
+
+### Fixed
+
+- **Raising max reads no longer gives back reads consumed meanwhile (JS-L1).** ORM: the raise is one conditional
+  `UPDATE … SET reads_left = reads_left + delta, max_reads = :new WHERE id = :id AND revoked_at IS NULL AND
+  max_reads = :old`; a share revoked (or raised) meanwhile is not extended and the extend fails with `revoked` /
+  `max_reads_not_increased`. MongoDB: `readsLeft` is mapped with `strategy: 'increment'`, so the save writes
+  `$inc (new − loaded)`, which commutes with the consume `$inc -1`; a negative stored count (a revoke saved from a
+  stale copy) loads as 0.
+- **MongoDB: `findByCreatorPaginated()` threw a `TypeError`** (`array_map()` on the cursor iterator).
+- Wording (JS-L2): a save never clears or moves the stored revocation date; a share saved from a copy loaded before
+  another worker revoked it may still store a non-zero remaining-reads count on the revoked document (harmless:
+  consuming requires no revocation).
+
 ## [1.15.1] - 2026-11-09
 
 Target: **1.15.1** (patch). MongoDB driver only; the Doctrine ORM path does not change. See [UPGRADING](UPGRADING.md#to-1151).

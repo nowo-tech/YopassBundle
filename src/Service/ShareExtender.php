@@ -9,6 +9,7 @@ use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareExtendedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
+use Nowo\YopassBundle\Repository\MaxReadsRaisingShareRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
@@ -58,18 +59,36 @@ final readonly class ShareExtender
 
         $changed = false;
 
+        $newExpiresAt = null;
         if ($expiresIn !== null && $expiresIn !== '') {
-            $this->extendExpiration($share, $expiresIn);
-            $changed = true;
+            $newExpiresAt = $this->newExpiration($share, $expiresIn);
+            $changed      = true;
         }
 
+        $atomicRaise = null;
+        $raiser      = $this->shareRepository instanceof MaxReadsRaisingShareRepositoryInterface ? $this->shareRepository : null;
         if ($maxReads !== null && $maxReads > 0) {
-            $this->extendMaxReads($share, $maxReads);
+            $this->assertMaxReadsRaise($share, $maxReads);
+            if ($raiser !== null) {
+                $atomicRaise = $maxReads;
+            } else {
+                $share->extendMaxReads($maxReads);
+            }
             $changed = true;
         }
 
         if (!$changed) {
             throw new ShareExtendException('nothing_to_extend');
+        }
+
+        // JS-L1: the raise is one conditional UPDATE (reads_left + delta), so concurrent consumes are never given back;
+        // it runs first, so a share revoked meanwhile is not extended at all.
+        if ($raiser !== null && $atomicRaise !== null && !$raiser->raiseMaxReads($share, $atomicRaise)) {
+            throw new ShareExtendException($share->getRevokedAt() instanceof DateTimeImmutable ? 'revoked' : 'max_reads_not_increased');
+        }
+
+        if ($newExpiresAt instanceof DateTimeImmutable) {
+            $share->extendExpiration($newExpiresAt);
         }
 
         $this->shareRepository->persist($share);
@@ -82,7 +101,7 @@ final readonly class ShareExtender
         );
     }
 
-    private function extendExpiration(SecureShare $share, string $expiresIn): void
+    private function newExpiration(SecureShare $share, string $expiresIn): DateTimeImmutable
     {
         $interval = $this->findExpirationInterval($expiresIn);
 
@@ -98,7 +117,7 @@ final readonly class ShareExtender
             throw new ShareExtendException('expiration_not_extended');
         }
 
-        $share->extendExpiration($new);
+        return $new;
     }
 
     private function findExpirationInterval(string $expiresIn): ?string
@@ -112,7 +131,7 @@ final readonly class ShareExtender
         return null;
     }
 
-    private function extendMaxReads(SecureShare $share, int $maxReads): void
+    private function assertMaxReadsRaise(SecureShare $share, int $maxReads): void
     {
         if (!in_array($maxReads, $this->shareOptions['max_reads_options'], true)) {
             throw new ShareExtendException('invalid_max_reads');
@@ -121,8 +140,6 @@ final readonly class ShareExtender
         if ($maxReads <= $share->getMaxReads()) {
             throw new ShareExtendException('max_reads_not_increased');
         }
-
-        $share->extendMaxReads($maxReads);
     }
 
     private function now(): DateTimeImmutable

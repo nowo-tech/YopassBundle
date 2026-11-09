@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Event;
 
 use DateTimeImmutable;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
 
@@ -81,5 +82,21 @@ final class ShareRevokedEvent extends Event
     public function getPayloadKind(): string
     {
         return $this->payloadKind;
+    }
+
+    /**
+     * Returns the creator id (`getId()` as a string; null when it exposes none). Since 1.16.
+     */
+    public function getCreatorId(): ?string
+    {
+        return UserIdResolver::getId($this->creator);
+    }
+
+    /**
+     * Returns the id of the user who revoked the share (null when unknown). Since 1.16.
+     */
+    public function getRevokedById(): ?string
+    {
+        return $this->revokedBy instanceof UserInterface ? UserIdResolver::getId($this->revokedBy) : null;
     }
 }

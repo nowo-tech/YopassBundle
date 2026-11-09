@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Event;
 
+use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
 
@@ -65,5 +66,21 @@ final class ShareBulkDeletedEvent extends Event
     public function getViewer(): ?UserInterface
     {
         return $this->viewer;
+    }
+
+    /**
+     * Returns the id of the subject whose shares were removed (null for a global purge). Since 1.16.
+     */
+    public function getSubjectId(): ?string
+    {
+        return $this->subject !== null ? UserIdResolver::getId($this->subject) : null;
+    }
+
+    /**
+     * Returns the id of the viewer who triggered the removal (null for the purge command). Since 1.16.
+     */
+    public function getViewerId(): ?string
+    {
+        return $this->viewer instanceof UserInterface ? UserIdResolver::getId($this->viewer) : null;
     }
 }

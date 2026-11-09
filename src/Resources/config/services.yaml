@@ -12,6 +12,7 @@ services:
             - '../../DependencyInjection/'
             - '../../YopassBundle.php'
             - '../../Repository/'   # Registered explicitly by driver (ORM, MongoDB, custom)
+            - '../../Creator/'      # Creator reference resolver wired per driver in YopassExtension
             - '../../Document/'
             - '../../Doctrine/'     # Metadata listeners wired in YopassExtension
             - '../../Security/PublicEndpointRateLimiter.php'
