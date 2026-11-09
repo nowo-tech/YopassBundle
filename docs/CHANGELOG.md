@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.15.1] - 2026-11-09](#1151---2026-11-09)
 - [[1.15.0] - 2026-11-06](#1150---2026-11-06)
 - [[1.14.1] - 2026-11-06](#1141---2026-11-06)
 - [[1.14.0] - 2026-11-05](#1140---2026-11-05)
@@ -55,7 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Target: **1.15.1** (patch). MongoDB driver only; the Doctrine ORM path does not change. See [UPGRADING](UPGRADING.md#unreleased).
+## [1.15.1] - 2026-11-09
+
+Target: **1.15.1** (patch). MongoDB driver only; the Doctrine ORM path does not change. See [UPGRADING](UPGRADING.md#to-1151).
 
 ### Security
 
@@ -83,6 +86,8 @@ Target: **1.15.1** (patch). MongoDB driver only; the Doctrine ORM path does not 
 - MongoDB round trip of every field against a real server (`tests/Integration/Mongo`, runs when
   `YOPASS_TEST_MONGODB_URL` is set; skipped otherwise), plus unit tests of the document mapping and an ORM test that
   extend and revoke keep reads left and the revocation date.
+
+[1.15.1]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.15.1
 
 ## [1.15.0] - 2026-11-06
 
@@ -820,7 +825,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.15.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.15.1...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7

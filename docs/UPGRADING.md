@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.15.1](#to-1151)
 - [To 1.15.0](#to-1150)
   - [Retention: a cutoff not in the past is refused](#retention-a-cutoff-not-in-the-past-is-refused)
   - [Retention: every term of `max_age` counts (it deletes secrets)](#retention-every-term-of-max_age-counts-it-deletes-secrets)
@@ -92,6 +93,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.15.1
+
+From **1.15.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 Target **1.15.1**. Nothing to change in your configuration.
 
