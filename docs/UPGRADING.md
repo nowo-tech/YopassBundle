@@ -4,6 +4,8 @@
 
 - [Unreleased](#unreleased)
 - [To 1.16.0](#to-1160)
+  - [Access log rows outlive their shares (migration)](#access-log-rows-outlive-their-shares-migration)
+  - [Other changes](#other-changes)
 - [To 1.15.1](#to-1151)
 - [To 1.15.0](#to-1150)
   - [Retention: a cutoff not in the past is refused](#retention-a-cutoff-not-in-the-past-is-refused)
@@ -97,8 +99,69 @@
 
 ## To 1.16.0
 
-From **1.15.1**: nothing to change; no schema migration. A security user that is your `user_class` entity is stored
-exactly as before.
+From **1.15.1**: one schema migration when `access_log.enabled` is true (the default with the Doctrine ORM driver);
+nothing else to change. A security user that is your `user_class` entity is stored exactly as before.
+
+### Access log rows outlive their shares (migration)
+
+`share_access_logs.share_id` becomes nullable with `ON DELETE SET NULL` and a new indexed column `share_ref` holds the
+SHA-256 (hex) of the share id. Deleting a share — or a user, whose shares are still deleted with them — no longer
+deletes its read history. `ShareAccessLog::getShare()` returns `?SecureShare`: code that reads it must handle null.
+
+Prefer `php bin/console doctrine:migrations:diff` (it uses your table prefix and constraint names). The statements
+below are for the default `table_prefix` (`yopass_`); the foreign key / index names are Doctrine's for that table name
+(`FK_558A5CBE2AE63FDB`, `IDX_558A5CBE2AE63FDB`) — check yours with `SHOW CREATE TABLE` / `\d`. Run the backfill
+**before** any share is deleted on 1.16, so the rows of shares deleted later keep their reference.
+
+MySQL 8 / MariaDB:
+
+```sql
+ALTER TABLE yopass_share_access_logs DROP FOREIGN KEY FK_558A5CBE2AE63FDB;
+ALTER TABLE yopass_share_access_logs ADD share_ref CHAR(64) DEFAULT NULL, CHANGE share_id share_id VARCHAR(36) DEFAULT NULL;
+ALTER TABLE yopass_share_access_logs ADD CONSTRAINT FK_558A5CBE2AE63FDB FOREIGN KEY (share_id) REFERENCES yopass_secure_shares (id) ON DELETE SET NULL;
+CREATE INDEX yopass_share_access_logs_share_ref_idx ON yopass_share_access_logs (share_ref);
+UPDATE yopass_share_access_logs SET share_ref = SHA2(share_id, 256) WHERE share_ref IS NULL AND share_id IS NOT NULL;
+```
+
+PostgreSQL (11+):
+
+```sql
+ALTER TABLE yopass_share_access_logs DROP CONSTRAINT FK_558A5CBE2AE63FDB;
+ALTER TABLE yopass_share_access_logs ADD share_ref CHAR(64) DEFAULT NULL;
+ALTER TABLE yopass_share_access_logs ALTER share_id DROP NOT NULL;
+ALTER TABLE yopass_share_access_logs ADD CONSTRAINT FK_558A5CBE2AE63FDB FOREIGN KEY (share_id) REFERENCES yopass_secure_shares (id) ON DELETE SET NULL NOT DEFERRABLE;
+CREATE INDEX yopass_share_access_logs_share_ref_idx ON yopass_share_access_logs (share_ref);
+UPDATE yopass_share_access_logs SET share_ref = encode(sha256(share_id::bytea), 'hex') WHERE share_ref IS NULL AND share_id IS NOT NULL;
+```
+
+SQLite (a foreign key change rebuilds the table):
+
+```sql
+PRAGMA foreign_keys = OFF;
+BEGIN;
+CREATE TEMPORARY TABLE __temp__yopass_share_access_logs AS SELECT accessed_at, id, read_number, ip_address, user_agent, share_id FROM yopass_share_access_logs;
+DROP TABLE yopass_share_access_logs;
+CREATE TABLE yopass_share_access_logs (accessed_at DATETIME NOT NULL, id VARCHAR(36) NOT NULL, read_number INTEGER NOT NULL, ip_address VARCHAR(45) DEFAULT NULL, user_agent VARCHAR(512) DEFAULT NULL, share_id VARCHAR(36) DEFAULT NULL, share_ref CHAR(64) DEFAULT NULL, PRIMARY KEY (id), CONSTRAINT FK_558A5CBE2AE63FDB FOREIGN KEY (share_id) REFERENCES yopass_secure_shares (id) ON DELETE SET NULL NOT DEFERRABLE INITIALLY IMMEDIATE);
+INSERT INTO yopass_share_access_logs (accessed_at, id, read_number, ip_address, user_agent, share_id) SELECT accessed_at, id, read_number, ip_address, user_agent, share_id FROM __temp__yopass_share_access_logs;
+DROP TABLE __temp__yopass_share_access_logs;
+CREATE INDEX IDX_558A5CBE2AE63FDB ON yopass_share_access_logs (share_id);
+CREATE INDEX yopass_share_access_logs_share_ref_idx ON yopass_share_access_logs (share_ref);
+COMMIT;
+PRAGMA foreign_keys = ON;
+```
+
+SQLite has no SHA-256 function: backfill `share_ref` once from PHP (for example in the migration's `postUp()`):
+
+```php
+foreach ($connection->fetchAllAssociative('SELECT id, share_id FROM yopass_share_access_logs WHERE share_ref IS NULL AND share_id IS NOT NULL') as $row) {
+    $connection->update('yopass_share_access_logs', ['share_ref' => hash('sha256', $row['share_id'])], ['id' => $row['id']]);
+}
+```
+
+Rows of shares deleted **before** the upgrade are already gone (1.15 cascaded them). SQLite applies `ON DELETE`
+actions only with `PRAGMA foreign_keys = ON` on the connection.
+
+### Other changes
 
 - **Security user that is no Doctrine entity:** it works now when it exposes the persisted user's id through
   `getId()`; otherwise alias `Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface` to your own resolver

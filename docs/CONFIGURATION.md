@@ -35,7 +35,7 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
 
 | Option | Description |
 |--------|-------------|
-| `user_class` | FQCN of your User entity (`UserInterface` + `getId()`). Used for the `creator` relation on shares (`ON DELETE CASCADE`: deleting a user deletes their shares). The security user may be another class exposing the same `getId()` (`CreatorReferenceResolverInterface`, since 1.16). |
+| `user_class` | FQCN of your User entity (`UserInterface` + `getId()`). Used for the `creator` relation on shares (`ON DELETE CASCADE`: deleting a user deletes their shares; their access-log rows stay, see [Access log](#access-log)). The security user may be another class exposing the same `getId()` (`CreatorReferenceResolverInterface`, since 1.16). |
 
 ## Database
 
@@ -218,6 +218,14 @@ nowo_yopass:
 ```
 
 When enabled, successful public consumes are logged for the share creator (preview modal history).
+
+**The read audit trail is never deleted with its share (1.16).** `share_id` is `ON DELETE SET NULL`: deleting a share
+(manage delete, delete all, retention purge, or the deletion of its creator, which deletes the creator's shares) keeps
+every log row with `share_id` NULL. Each row also stores `share_ref`, the SHA-256 (hex) of the share id: it keeps the
+rows of one share together and lets an auditor match a share id they already know
+(`DoctrineOrmShareAccessLogRepository::findByShareId()`), without storing the link path. Rows keep the client IP and
+user agent: include the table in your own retention / personal-data policy. Migration:
+[UPGRADING › To 1.16.0](UPGRADING.md#to-1160).
 
 When disabled (or with the MongoDB / custom non-relational backends, which always disable it) the
 `ShareAccessLog` entity is **not mapped**: it is excluded from the Doctrine ORM attribute drivers, so no

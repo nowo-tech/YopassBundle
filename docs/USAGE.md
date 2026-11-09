@@ -170,10 +170,11 @@ services:
 
 Ownership checks compare `getId()` values, so the DTO and the entity must expose the same id.
 
-**Deleting a user deletes their shares.** The ORM foreign key is `ON DELETE CASCADE` (and the access-log rows of
-those shares cascade with them): a share is a secret its creator handed out, and the bundle does not keep secrets of
-an erased account. Export what you need (for example from `ShareDeletedEvent` / your own access audit) before
-deleting a user if you must keep a trace.
+**Deleting a user deletes their shares, never the read history.** The creator foreign key is `ON DELETE CASCADE`: a
+share is a secret its creator handed out, and the bundle does not keep secrets of an erased account. The access-log
+rows of those shares stay (1.16, `share_id` `ON DELETE SET NULL`), with `share_ref` (SHA-256 of the share id) so the
+trail stays meaningful; see [CONFIGURATION › Access log](CONFIGURATION.md#access-log). With the MongoDB driver there is
+no access log.
 
 **Adapter sketch** — forward share creation to your application layer:
 

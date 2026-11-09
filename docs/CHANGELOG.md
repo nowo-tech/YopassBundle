@@ -69,7 +69,17 @@ Target: **1.16.0** (DDD / hexagonal adapter fixes, audit 2026-11-09; JS-L1 / JS-
   `getExtendedById()`; `ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()`. Object payloads unchanged.
 - **`Repository\MaxReadsRaisingShareRepositoryInterface`** (optional capability of a share repository), implemented
   by the ORM repository.
+- `ShareAccessLog::getShareRef()` / `ShareAccessLog::referenceFor()` and
+  `DoctrineOrmShareAccessLogRepository::findByShareId()` (the trail of a deleted share).
 - USAGE: "Using it from a DDD / hexagonal application".
+
+### Changed
+
+- **The read audit trail outlives its share (owner decision).** `share_access_logs.share_id` is now nullable with
+  `ON DELETE SET NULL` (was `NOT NULL … ON DELETE CASCADE`): deleting a share — or its creator, whose shares are still
+  deleted with them — keeps every access-log row. New column `share_ref` (CHAR(64), SHA-256 hex of the share id,
+  indexed) keeps the rows of one share together. `ShareAccessLog::getShare()` now returns `?SecureShare`. **Schema
+  migration required** when the access log is enabled (ORM only; the MongoDB driver has no access log): see UPGRADING.
 
 ### Fixed
 

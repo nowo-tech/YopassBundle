@@ -37,9 +37,11 @@ final readonly class SecureShareMetadataListener
         $metadata = $args->getClassMetadata();
 
         if ($metadata->getName() === ShareAccessLog::class) {
-            if ($this->accessLogTableName !== null) {
-                $metadata->setPrimaryTable(array_merge($metadata->table, ['name' => $this->accessLogTableName]));
-            }
+            $table = $this->accessLogTableName ?? $metadata->getTableName();
+            // 1.16: lookups of the trail of a deleted share (share_id NULL) go through share_ref.
+            $indexes                            = $metadata->table['indexes'] ?? [];
+            $indexes[$table . '_share_ref_idx'] = ['columns' => ['share_ref']];
+            $metadata->setPrimaryTable(array_merge($metadata->table, ['name' => $table, 'indexes' => $indexes]));
 
             return;
         }
