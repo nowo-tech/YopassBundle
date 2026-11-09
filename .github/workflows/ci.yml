@@ -242,11 +242,11 @@ jobs:
 
   mongodb:
     name: MongoDB round trip
-    # MongoDB 8.x / 9.0 refuse to start on Linux 6.19+ (SERVER-121912), the ubuntu-26.04 (latest) runner kernel.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     services:
       mongo:
-        image: mongo:8
+        # MongoDB 8.x / 9.0 refuse to start on Linux 6.19+ (SERVER-121912), the hosted runner kernel.
+        image: mongo:7.0
         ports:
           - 27017:27017
         options: >-
