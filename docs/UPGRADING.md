@@ -93,6 +93,15 @@
 
 ## Unreleased
 
+Target **1.15.1**. Nothing to change in your configuration.
+
+- **MongoDB driver:** shares now load with their stored `createdAt` / `revokedAt`, and saving a share keeps its
+  remaining reads and its first revocation date. Shares that were extended on an earlier version keep the reads that
+  version gave back: if that matters, revoke them (or check `readsLeft` against your own access log). Hosts that set
+  `resolve_target_documents` for `UserInterface` only to make loading work can keep it or drop it.
+- **Custom repositories:** rebuild loaded shares with `SecureShare::reconstitute()` rather than the constructor and
+  setters, so dates and read counts stay as stored.
+
 ## To 1.15.0
 
 From **1.14.1**:

@@ -50,6 +50,67 @@ class SecureShareDocument
     }
 
     /**
+     * Creates the document for a new share, copying every field (including the creation and revocation dates) as is.
+     */
+    public static function fromShare(SecureShare $share): self
+    {
+        $document            = new self($share->getId(), $share->getCreator());
+        $document->createdAt = $share->getCreatedAt();
+
+        return $document->syncFrom($share);
+    }
+
+    /**
+     * Copies the mutable state of a share onto this document.
+     *
+     * Revocation is one-way: a document that is already revoked keeps its revocation date and zero reads, even when
+     * the share was loaded before another worker revoked it.
+     */
+    public function syncFrom(SecureShare $share): self
+    {
+        // @igor-ignore - Not shared worker service state.
+        $this->ciphertext = $share->getCiphertext();
+        // @igor-ignore - Not shared worker service state.
+        $this->expiresAt = $share->getExpiresAt();
+        // @igor-ignore - Not shared worker service state.
+        $this->maxReads = $share->getMaxReads();
+        // @igor-ignore - Not shared worker service state.
+        $this->payloadKind = $share->getPayloadKind();
+
+        if ($this->revokedAt instanceof DateTimeImmutable) {
+            // @igor-ignore - Not shared worker service state.
+            $this->readsLeft = 0;
+
+            return $this;
+        }
+
+        // @igor-ignore - Not shared worker service state.
+        $this->readsLeft = $share->getReadsLeft();
+        // @igor-ignore - Not shared worker service state.
+        $this->revokedAt = $share->getRevokedAt();
+
+        return $this;
+    }
+
+    /**
+     * Rebuilds the domain share from this document, every stored value unchanged.
+     */
+    public function toShare(): SecureShare
+    {
+        return SecureShare::reconstitute(
+            $this->id,
+            $this->creator,
+            $this->ciphertext,
+            $this->createdAt,
+            $this->expiresAt,
+            $this->maxReads,
+            $this->readsLeft,
+            $this->revokedAt,
+            $this->payloadKind,
+        );
+    }
+
+    /**
      * Returns the identifier.
      */
     public function getId(): string

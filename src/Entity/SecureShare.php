@@ -53,6 +53,34 @@ class SecureShare
     }
 
     /**
+     * Rebuilds a share from stored state, keeping every value exactly as stored (no clock, no replayed reads).
+     *
+     * For persistence adapters (MongoDB, custom repositories); new shares go through the constructor.
+     */
+    public static function reconstitute(
+        string $id,
+        object $creator,
+        string $ciphertext,
+        DateTimeImmutable $createdAt,
+        DateTimeImmutable $expiresAt,
+        int $maxReads,
+        int $readsLeft,
+        ?DateTimeImmutable $revokedAt,
+        string $payloadKind,
+    ): self {
+        $share              = new self($id, $creator);
+        $share->ciphertext  = $ciphertext;
+        $share->createdAt   = $createdAt;
+        $share->expiresAt   = $expiresAt;
+        $share->maxReads    = $maxReads;
+        $share->readsLeft   = $readsLeft;
+        $share->revokedAt   = $revokedAt;
+        $share->payloadKind = $payloadKind;
+
+        return $share;
+    }
+
+    /**
      * Returns the identifier.
      */
     public function getId(): string
