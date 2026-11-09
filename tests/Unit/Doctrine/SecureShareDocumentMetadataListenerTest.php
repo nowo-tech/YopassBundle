@@ -34,6 +34,24 @@ final class SecureShareDocumentMetadataListenerTest extends TestCase
         self::assertSame('App\\Entity\\User', $metadata->associationMappings['creator']['targetDocument']);
     }
 
+    public function testRemapsTheFieldMappingTheHydratorReads(): void
+    {
+        $metadata                           = new ClassMetadata(SecureShareDocument::class);
+        $metadata->fieldMappings['creator'] = [
+            'fieldName'      => 'creator',
+            'targetDocument' => UserInterface::class,
+        ];
+
+        $args = new LoadClassMetadataEventArgs(
+            $metadata,
+            $this->createMock(DocumentManager::class),
+        );
+
+        (new SecureShareDocumentMetadataListener('yopass_secure_shares', 'App\\Entity\\User'))->loadClassMetadata($args);
+
+        self::assertSame('App\\Entity\\User', $metadata->fieldMappings['creator']['targetDocument']);
+    }
+
     public function testIgnoresOtherDocuments(): void
     {
         $metadata = new ClassMetadata(stdClass::class);

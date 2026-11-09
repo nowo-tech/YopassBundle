@@ -94,4 +94,52 @@ final class SecureShareTest extends TestCase
 
         self::assertSame(0, $share->getReadsLeft());
     }
+
+    public function testReconstituteKeepsEveryStoredValue(): void
+    {
+        $creator   = new TestUser();
+        $createdAt = new DateTimeImmutable('2026-01-02 03:04:05.123');
+        $expiresAt = new DateTimeImmutable('2026-01-03 03:04:05.456');
+        $revokedAt = new DateTimeImmutable('2026-01-02 10:00:00.789');
+
+        $share = SecureShare::reconstitute(
+            '00000000-0000-4000-8000-0000000000a1',
+            $creator,
+            'cipher',
+            $createdAt,
+            $expiresAt,
+            5,
+            2,
+            $revokedAt,
+            'file',
+        );
+
+        self::assertSame('00000000-0000-4000-8000-0000000000a1', $share->getId());
+        self::assertSame($creator, $share->getCreator());
+        self::assertSame('cipher', $share->getCiphertext());
+        self::assertSame($createdAt, $share->getCreatedAt());
+        self::assertSame($expiresAt, $share->getExpiresAt());
+        self::assertSame(5, $share->getMaxReads());
+        self::assertSame(2, $share->getReadsLeft());
+        self::assertSame($revokedAt, $share->getRevokedAt());
+        self::assertSame('file', $share->getPayloadKind());
+        self::assertFalse($share->isAvailable());
+    }
+
+    public function testReconstitutedExpiredShareIsNotAvailable(): void
+    {
+        $share = SecureShare::reconstitute(
+            '00000000-0000-4000-8000-0000000000a2',
+            new TestUser(),
+            'cipher',
+            new DateTimeImmutable('-2 days'),
+            new DateTimeImmutable('-1 day'),
+            1,
+            1,
+            null,
+            'text',
+        );
+
+        self::assertFalse($share->isAvailable());
+    }
 }

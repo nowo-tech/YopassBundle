@@ -39,5 +39,13 @@ final readonly class SecureShareDocumentMetadataListener
             $mapping['targetDocument']                = $this->userClass;
             $metadata->associationMappings['creator'] = $mapping; // @phpstan-ignore assign.propertyType
         }
+
+        // The hydrator and the persister read the field mapping, not the association mapping: remap both, or
+        // loading a share fails on the "UserInterface does not exist" metadata lookup.
+        if (isset($metadata->fieldMappings['creator'])) {
+            $field                              = $metadata->fieldMappings['creator'];
+            $field['targetDocument']            = $this->userClass;
+            $metadata->fieldMappings['creator'] = $field; // @phpstan-ignore assign.propertyType
+        }
     }
 }

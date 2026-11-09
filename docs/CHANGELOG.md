@@ -55,6 +55,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target: **1.15.1** (patch). MongoDB driver only; the Doctrine ORM path does not change. See [UPGRADING](UPGRADING.md#unreleased).
+
+### Security
+
+- **MongoDB: extending a share gave its reads back.** Saving an existing share (extend, revoke) copied max reads onto
+  the document through `setMaxReads()`, which also resets the remaining reads. A secret read N times got all its
+  reads again when its creator extended it, so the link could be opened more times than its limit. Saving now
+  copies the remaining reads as they are. Affects every release with the `doctrine_mongodb` driver (1.0.0 to 1.15.0).
+- **MongoDB: a save could not undo or move a revocation.** Every save of a revoked share called `revoke()` again and
+  stamped a new `revokedAt`. Revocation is now one-way on the document: its first date is kept, and a share loaded
+  before another worker revoked it cannot clear the revocation when it is saved.
+
+### Fixed
+
+- **MongoDB: shares load with their stored dates.** Loading rebuilt the share through its constructor and replayed
+  reads and `revoke()`, so `createdAt` and `revokedAt` came back as the load time (manage list, events). New
+  `SecureShare::reconstitute()` rebuilds a share from stored values unchanged; the MongoDB repository uses it through
+  `SecureShareDocument::toShare()`, and `SecureShareDocument::fromShare()` / `syncFrom()` copy every field when saving.
+  Custom repositories can use `reconstitute()` too.
+- **MongoDB: the creator reference resolves on load.** The metadata listener remapped `creator` to
+  `nowo_yopass.user_class` in the association mapping only; the ODM hydrator reads the field mapping, so loading a
+  share failed with "Class UserInterface does not exist" unless the host also set `resolve_target_documents`.
+
+### Tests
+
+- MongoDB round trip of every field against a real server (`tests/Integration/Mongo`, runs when
+  `YOPASS_TEST_MONGODB_URL` is set; skipped otherwise), plus unit tests of the document mapping and an ORM test that
+  extend and revoke keep reads left and the revocation date.
+
 ## [1.15.0] - 2026-11-06
 
 One icon per action on the manage page, and a retention notice in the viewer's language. See [UPGRADING](UPGRADING.md#to-1150).

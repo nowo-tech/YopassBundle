@@ -200,49 +200,17 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
 
     private function fromEntity(SecureShare $share): SecureShareDocument
     {
-        $document = new SecureShareDocument($share->getId(), $share->getCreator());
-        $document
-            ->setCiphertext($share->getCiphertext())
-            ->setExpiresAt($share->getExpiresAt())
-            ->setMaxReads($share->getMaxReads())
-            ->setPayloadKind($share->getPayloadKind());
-
-        return $document;
+        return SecureShareDocument::fromShare($share);
     }
 
     private function syncDocument(SecureShareDocument $document, SecureShare $share): SecureShareDocument
     {
-        $document
-            ->setCiphertext($share->getCiphertext())
-            ->setExpiresAt($share->getExpiresAt())
-            ->setMaxReads($share->getMaxReads())
-            ->setPayloadKind($share->getPayloadKind());
-
-        if ($share->getRevokedAt() instanceof DateTimeImmutable) {
-            $document->revoke();
-        }
-
-        return $document;
+        return $document->syncFrom($share);
     }
 
     private function toEntity(SecureShareDocument $document): SecureShare
     {
-        $share = new SecureShare($document->getId(), $document->getCreator());
-        $share
-            ->setCiphertext($document->getCiphertext())
-            ->setExpiresAt($document->getExpiresAt())
-            ->setMaxReads($document->getMaxReads())
-            ->setPayloadKind($document->getPayloadKind());
-
-        for ($consumed = $document->getMaxReads() - $document->getReadsLeft(); $consumed > 0; --$consumed) {
-            $share->consumeRead();
-        }
-
-        if ($document->getRevokedAt() instanceof DateTimeImmutable) {
-            $share->revoke();
-        }
-
-        return $share;
+        return $document->toShare();
     }
 
     /**

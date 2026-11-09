@@ -11,7 +11,9 @@ use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
+use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
+use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\TestCase;
 
 final class DoctrineMongoShareRepositoryTest extends TestCase
@@ -198,5 +200,90 @@ final class DoctrineMongoShareRepositoryTest extends TestCase
         $documentManager->expects(self::never())->method('remove');
 
         (new DoctrineMongoShareRepository($documentManager))->remove($share);
+    }
+
+    public function testFindKeepsStoredCreationAndRevocationDates(): void
+    {
+        $stored = SecureShare::reconstitute(
+            '00000000-0000-4000-8000-0000000000c1',
+            new TestUser(),
+            'cipher',
+            new DateTimeImmutable('2026-01-02 03:04:05.123'),
+            new DateTimeImmutable('2026-01-03 03:04:05.456'),
+            3,
+            0,
+            new DateTimeImmutable('2026-01-02 09:00:00.789'),
+            'text',
+        );
+        $document = SecureShareDocument::fromShare($stored);
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->method('find')->willReturn($document);
+
+        $share = (new DoctrineMongoShareRepository($documentManager))->find($document->getId());
+
+        self::assertSame($stored->getCreatedAt(), $share?->getCreatedAt());
+        self::assertSame($stored->getRevokedAt(), $share?->getRevokedAt());
+        self::assertSame(0, $share?->getReadsLeft());
+    }
+
+    public function testPersistOfAnExhaustedShareKeepsItExhausted(): void
+    {
+        $document = new SecureShareDocument('00000000-0000-4000-8000-0000000000c2', new TestUser());
+        $document->setCiphertext('cipher')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+        $document->consumeRead();
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->method('find')->willReturn($document);
+
+        $repository = new DoctrineMongoShareRepository($documentManager);
+        $share      = $repository->find($document->getId());
+        self::assertInstanceOf(SecureShare::class, $share);
+        $share->extendExpiration(new DateTimeImmutable('+2 hours'));
+        $repository->persist($share);
+
+        self::assertSame(0, $document->getReadsLeft());
+    }
+
+    public function testPersistOfNewShareStoresItsCreationDate(): void
+    {
+        $share = SecureShare::reconstitute(
+            '00000000-0000-4000-8000-0000000000c3',
+            new TestUser(),
+            'cipher',
+            new DateTimeImmutable('2026-01-02 03:04:05.123'),
+            new DateTimeImmutable('+1 hour'),
+            2,
+            2,
+            null,
+            'text',
+        );
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->method('find')->willReturn(null);
+        $documentManager->expects(self::once())->method('persist')->with(self::callback(
+            static fn (SecureShareDocument $document): bool => $document->getCreatedAt() === $share->getCreatedAt(),
+        ));
+
+        (new DoctrineMongoShareRepository($documentManager))->persist($share);
+    }
+
+    public function testExtendingAPartlyReadShareKeepsItsReadsLeft(): void
+    {
+        $document = new SecureShareDocument('00000000-0000-4000-8000-0000000000c4', new TestUser());
+        $document->setCiphertext('cipher')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(3);
+        $document->consumeRead();
+        $document->consumeRead();
+
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->method('find')->willReturn($document);
+
+        $repository = new DoctrineMongoShareRepository($documentManager);
+        $share      = $repository->find($document->getId());
+        self::assertInstanceOf(SecureShare::class, $share);
+        (new ShareExtender($repository, DefaultShareOptions::get()))->extend($share, '24h', null);
+
+        self::assertSame(1, $document->getReadsLeft());
+        self::assertSame(3, $document->getMaxReads());
     }
 }
