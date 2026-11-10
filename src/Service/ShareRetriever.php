@@ -7,9 +7,14 @@ namespace Nowo\YopassBundle\Service;
 use DateTimeImmutable;
 use JsonException;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\ShareConsumedEvent;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Clock\Clock;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Throwable;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -21,17 +26,24 @@ final readonly class ShareRetriever
     private ClockInterface $clock;
 
     /**
-     * Creates the retriever with the repository and an optional clock.
+     * Creates the retriever with the repository, an optional clock and an optional event dispatcher
+     * ({@see YopassEvents::SHARE_CONSUMED}; no event without one).
+     *
+     * @param LoggerInterface|null $logger Logs a failing SHARE_CONSUMED listener (share id and exception class only)
      */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         ?ClockInterface $clock = null,
+        private ?EventDispatcherInterface $eventDispatcher = null,
+        private ?LoggerInterface $logger = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
 
     /**
      * Consumes one read of a share and returns the ciphertext payload or the reason it is unavailable.
+     * After a stored read, dispatches {@see YopassEvents::SHARE_CONSUMED}. The read is already spent at that point, so a
+     * throwing listener is logged and ignored: the reader still receives the ciphertext.
      *
      * @return array{status: string, ciphertext?: string, mode?: string}
      */
@@ -40,6 +52,8 @@ final readonly class ShareRetriever
         $share = $this->shareRepository->consumeReadIfAvailable($shareId);
 
         if ($share instanceof SecureShare) {
+            $this->dispatchConsumed($share);
+
             $ciphertext = $share->getCiphertext();
 
             return [
@@ -139,6 +153,22 @@ final readonly class ShareRetriever
         }
 
         return 'key';
+    }
+
+    private function dispatchConsumed(SecureShare $share): void
+    {
+        if (!$this->eventDispatcher instanceof EventDispatcherInterface) {
+            return;
+        }
+
+        try {
+            $this->eventDispatcher->dispatch(ShareConsumedEvent::fromShare($share, $this->now()), YopassEvents::SHARE_CONSUMED);
+        } catch (Throwable $e) {
+            $this->logger?->error('Yopass share_consumed listener failed; the read was delivered.', [
+                'share_id'  => $share->getId(),
+                'exception' => $e::class,
+            ]);
+        }
     }
 
     private function now(): DateTimeImmutable

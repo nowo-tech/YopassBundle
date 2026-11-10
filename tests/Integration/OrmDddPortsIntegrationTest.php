@@ -19,6 +19,7 @@ use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareAccessAction;
+use Nowo\YopassBundle\Event\ShareConsumedEvent;
 use Nowo\YopassBundle\Event\ShareCreatedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
@@ -26,6 +27,7 @@ use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
+use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use Nowo\YopassBundle\Tests\Support\Orm\GuardAdmin;
@@ -205,6 +207,31 @@ final class OrmDddPortsIntegrationTest extends TestCase
         self::assertInstanceOf(SecureShare::class, $loaded);
 
         self::assertFalse($this->repository->raiseMaxReads($loaded, 3));
+    }
+
+    public function testConsumedEventCarriesTheStoredCountersAfterTheUpdate(): void
+    {
+        $this->saveShare(2);
+        $events     = [];
+        $inDb       = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_CONSUMED, function (ShareConsumedEvent $event) use (&$events, &$inDb): void {
+            // The read is stored before the event: a listener reading the table sees it.
+            $inDb[]   = (int) $this->em->getConnection()->fetchOne('SELECT reads_left FROM yopass_secure_shares WHERE id = ?', [self::ID]);
+            $events[] = $event;
+        });
+        $retriever = new ShareRetriever($this->repository, null, $dispatcher);
+
+        self::assertSame('ok', $retriever->consume(self::ID)['status']);
+        self::assertSame('ok', $retriever->consume(self::ID)['status']);
+        self::assertSame('consumed', $retriever->consume(self::ID)['status']);
+
+        self::assertCount(2, $events, 'No event for the refused third read');
+        self::assertSame([1, 2], [$events[0]->getReadNumber(), $events[1]->getReadNumber()]);
+        self::assertSame([1, 0], [$events[0]->getReadsLeft(), $events[1]->getReadsLeft()]);
+        self::assertSame([1, 0], $inDb);
+        self::assertSame('7', $events[0]->getCreatorId());
+        self::assertSame(self::ID, $events[0]->getShareId());
     }
 
     private function data(): ShareCreateData
