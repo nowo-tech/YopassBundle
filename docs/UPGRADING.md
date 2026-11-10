@@ -109,8 +109,9 @@ composer update nowo-tech/yopass-bundle
 ```
 
 No breaking change, no schema change. New event `YopassEvents::SHARE_CONSUMED` (`ShareConsumedEvent`) after each
-stored public read; nothing listens to it by default. `ShareRetriever` takes two new optional constructor arguments
-(`$eventDispatcher`, `$logger`, autowired); code that builds it by hand keeps working. The Doctrine ORM access log is
+stored public read; nothing listens to it by default. `ShareRetriever` takes a new optional third constructor argument
+(the internal `ShareConsumedNotifier`, autowired); code that builds it by hand keeps working and dispatches nothing.
+Listeners must be idempotent: with Doctrine ORM two concurrent reads can report the same counters (see USAGE). The Doctrine ORM access log is
 unchanged (still written by the public controller, kept after share deletion as in 1.16). A listener that throws does
 not fail the reader's request; it is logged at `error` level.
 

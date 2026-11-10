@@ -7,14 +7,10 @@ namespace Nowo\YopassBundle\Service;
 use DateTimeImmutable;
 use JsonException;
 use Nowo\YopassBundle\Entity\SecureShare;
-use Nowo\YopassBundle\Event\ShareConsumedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Psr\Clock\ClockInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Clock\Clock;
-use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
-use Throwable;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -26,16 +22,13 @@ final readonly class ShareRetriever
     private ClockInterface $clock;
 
     /**
-     * Creates the retriever with the repository, an optional clock and an optional event dispatcher
-     * ({@see YopassEvents::SHARE_CONSUMED}; no event without one).
-     *
-     * @param LoggerInterface|null $logger Logs a failing SHARE_CONSUMED listener (share id and exception class only)
+     * Creates the retriever with the repository, an optional clock and (1.17) the notifier that dispatches
+     * {@see YopassEvents::SHARE_CONSUMED} (no event without one).
      */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         ?ClockInterface $clock = null,
-        private ?EventDispatcherInterface $eventDispatcher = null,
-        private ?LoggerInterface $logger = null,
+        private ?ShareConsumedNotifier $consumedNotifier = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -52,7 +45,7 @@ final readonly class ShareRetriever
         $share = $this->shareRepository->consumeReadIfAvailable($shareId);
 
         if ($share instanceof SecureShare) {
-            $this->dispatchConsumed($share);
+            $this->consumedNotifier?->notify($share, $this->now());
 
             $ciphertext = $share->getCiphertext();
 
@@ -153,22 +146,6 @@ final readonly class ShareRetriever
         }
 
         return 'key';
-    }
-
-    private function dispatchConsumed(SecureShare $share): void
-    {
-        if (!$this->eventDispatcher instanceof EventDispatcherInterface) {
-            return;
-        }
-
-        try {
-            $this->eventDispatcher->dispatch(ShareConsumedEvent::fromShare($share, $this->now()), YopassEvents::SHARE_CONSUMED);
-        } catch (Throwable $e) {
-            $this->logger?->error('Yopass share_consumed listener failed; the read was delivered.', [
-                'share_id'  => $share->getId(),
-                'exception' => $e::class,
-            ]);
-        }
     }
 
     private function now(): DateTimeImmutable

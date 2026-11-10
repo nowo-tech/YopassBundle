@@ -67,6 +67,10 @@ Target: **1.17.0** (DDD P2, audit 2026-11-09: "link consumed" event). See [UPGRA
   payload kind; no ciphertext, no entity, no reader IP address or user agent. Never fired for a refused read
   (expired, revoked, used up, unknown). The read is already spent when the event fires, so a throwing listener is
   logged (share id and exception class) and ignored: the reader still gets the secret.
+  With Doctrine ORM the counters are re-read right after the conditional `UPDATE`: under concurrent reads two events
+  can report the same numbers, so listeners must be idempotent (audit KN-Y-L2). Dispatch and logging live in the
+  internal `ShareConsumedNotifier`, which never reads the ciphertext; the zero-knowledge source scan now also asserts
+  that no file both reads the ciphertext and logs (KN-Y-L1).
 
 ## [1.16.0] - 2026-11-09
 

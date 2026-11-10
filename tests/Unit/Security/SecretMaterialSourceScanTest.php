@@ -9,6 +9,8 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
 
+use function array_intersect;
+use function array_values;
 use function dirname;
 use function file_get_contents;
 use function implode;
@@ -50,10 +52,16 @@ final class SecretMaterialSourceScanTest extends TestCase
         // Logs the configured max_age of a skipped purge: configuration, no share data.
         'Service/ShareRetentionPurger.php',
         // Logs a failing SHARE_CONSUMED listener: share id and exception class only (no message, no ciphertext).
-        'Service/ShareRetriever.php',
+        'Service/ShareConsumedNotifier.php',
         // TreeBuilder ->info() node descriptions, not a logger.
         'DependencyInjection/Configuration.php',
     ];
+
+    public function testNoFileBothReadsTheCiphertextAndLogs(): void
+    {
+        // Audit KN-Y-L1: the logger check is per file, so a ciphertext reader that also logs would hide a leak.
+        self::assertSame([], array_values(array_intersect(self::CIPHERTEXT_READERS, self::LOGGERS)));
+    }
 
     public function testCiphertextIsOnlyReadByTheAllowedFiles(): void
     {

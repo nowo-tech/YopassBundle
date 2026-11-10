@@ -25,6 +25,7 @@ use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
+use Nowo\YopassBundle\Service\ShareConsumedNotifier;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareRetriever;
@@ -220,7 +221,7 @@ final class OrmDddPortsIntegrationTest extends TestCase
             $inDb[]   = (int) $this->em->getConnection()->fetchOne('SELECT reads_left FROM yopass_secure_shares WHERE id = ?', [self::ID]);
             $events[] = $event;
         });
-        $retriever = new ShareRetriever($this->repository, null, $dispatcher);
+        $retriever = new ShareRetriever($this->repository, null, new ShareConsumedNotifier($dispatcher));
 
         self::assertSame('ok', $retriever->consume(self::ID)['status']);
         self::assertSame('ok', $retriever->consume(self::ID)['status']);

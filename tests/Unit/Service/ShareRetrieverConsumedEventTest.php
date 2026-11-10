@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareConsumedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
+use Nowo\YopassBundle\Service\ShareConsumedNotifier;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\InMemoryShareRepository;
@@ -35,7 +36,7 @@ final class ShareRetrieverConsumedEventTest extends TestCase
         $dispatcher->addListener(YopassEvents::SHARE_CONSUMED, static function (ShareConsumedEvent $event) use (&$events): void {
             $events[] = $event;
         });
-        $retriever = new ShareRetriever($repository, new MockClock('2026-11-10 12:00:00'), $dispatcher);
+        $retriever = new ShareRetriever($repository, new MockClock('2026-11-10 12:00:00'), new ShareConsumedNotifier($dispatcher));
 
         self::assertSame('ok', $retriever->consume(self::ID)['status']);
         self::assertSame('ok', $retriever->consume(self::ID)['status']);
@@ -69,7 +70,7 @@ final class ShareRetrieverConsumedEventTest extends TestCase
             throw new RuntimeException('audit store down');
         });
         $logger    = new SecretCapturingLogger();
-        $retriever = new ShareRetriever($this->repository(maxReads: 1), null, $dispatcher, $logger);
+        $retriever = new ShareRetriever($this->repository(maxReads: 1), null, new ShareConsumedNotifier($dispatcher, $logger));
 
         $result = $retriever->consume(self::ID);
 
@@ -83,6 +84,13 @@ final class ShareRetrieverConsumedEventTest extends TestCase
         self::assertStringNotContainsString('audit store down', $encoded);
     }
 
+    public function testNotifierWithoutDispatcherDoesNothing(): void
+    {
+        $result = (new ShareRetriever($this->repository(maxReads: 1), null, new ShareConsumedNotifier()))->consume(self::ID);
+
+        self::assertSame('ok', $result['status']);
+    }
+
     public function testThrowingListenerWithoutLoggerIsIgnored(): void
     {
         $dispatcher = new EventDispatcher();
@@ -90,7 +98,7 @@ final class ShareRetrieverConsumedEventTest extends TestCase
             throw new RuntimeException('boom');
         });
 
-        self::assertSame('ok', (new ShareRetriever($this->repository(maxReads: 1), null, $dispatcher))->consume(self::ID)['status']);
+        self::assertSame('ok', (new ShareRetriever($this->repository(maxReads: 1), null, new ShareConsumedNotifier($dispatcher)))->consume(self::ID)['status']);
     }
 
     public function testEventCarriesNoSecretMaterialAndNoEntity(): void

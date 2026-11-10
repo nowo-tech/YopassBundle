@@ -211,12 +211,18 @@ final readonly class YopassShareCreatedAdapter
 }
 ```
 
-**Reacting to reads.** `YopassEvents::SHARE_CONSUMED` (`ShareConsumedEvent`, since 1.17) fires after each stored read
+**Reacting to reads.** `YopassEvents::SHARE_CONSUMED` (`ShareConsumedEvent`, since 1.17) fires once per stored read
 of a public link, with every driver: `getShareId()`, `getCreatorId()`, `getReadNumber()`, `getMaxReads()`,
-`getReadsLeft()` (0 = the link is used up), `getConsumedAt()`, `getPayloadKind()`. The reader is anonymous, so there
-is no actor id, and the event carries no IP address or user agent. It never fires for a refused read. The read is
-already spent when it fires: a listener that throws is logged and ignored, so do slow or fallible work asynchronously
-(e.g. dispatch a Messenger message).
+`getReadsLeft()`, `getConsumedAt()`, `getPayloadKind()`. The reader is anonymous, so there is no actor id, and the
+event carries no IP address or user agent. It never fires for a refused read. The read is already spent when it
+fires: a listener that throws is logged and ignored, so do slow or fallible work asynchronously (e.g. dispatch a
+Messenger message).
+
+**Keep listeners idempotent.** The number of events is exact (one per stored read), but with Doctrine ORM the
+counters are a snapshot re-read right after the conditional `UPDATE`, not part of it: under concurrent reads two
+events can report the same `getReadNumber()` / `getReadsLeft()` (both `0`, for example), and a creator raising the
+max reads in between can mean no event ever reports `0`. MongoDB returns the exact post-update counters. Do not key a
+once-only action on `getReadsLeft() === 0` alone; deduplicate by share id:
 
 ```php
 #[AsEventListener(event: YopassEvents::SHARE_CONSUMED)]
@@ -226,9 +232,12 @@ final readonly class YopassShareConsumedAdapter
 
     public function __invoke(ShareConsumedEvent $event): void
     {
-        if ($event->getReadsLeft() === 0 && $event->getCreatorId() !== null) {
-            $this->notify->secretWasRead($event->getCreatorId(), $event->getShareId(), $event->getConsumedAt());
+        if ($event->getCreatorId() === null) {
+            return;
         }
+
+        // Idempotent on the share id: the port records "notified" once and ignores repeats.
+        $this->notify->secretWasReadOnce($event->getCreatorId(), $event->getShareId(), $event->getConsumedAt());
     }
 }
 ```
