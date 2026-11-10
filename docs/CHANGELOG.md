@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.17.0] - 2026-11-10](#1170---2026-11-10)
 - [[1.16.0] - 2026-11-09](#1160---2026-11-09)
 - [[1.15.1] - 2026-11-09](#1151---2026-11-09)
 - [[1.15.0] - 2026-11-06](#1150---2026-11-06)
@@ -57,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-11-10
+
 Target: **1.17.0** (DDD P2, audit 2026-11-09: "link consumed" event). See [UPGRADING](UPGRADING.md#to-1170).
 
 ### Added
@@ -71,6 +74,8 @@ Target: **1.17.0** (DDD P2, audit 2026-11-09: "link consumed" event). See [UPGRA
   can report the same numbers, so listeners must be idempotent (audit KN-Y-L2). Dispatch and logging live in the
   internal `ShareConsumedNotifier`, which never reads the ciphertext; the zero-knowledge source scan now also asserts
   that no file both reads the ciphertext and logs (KN-Y-L1).
+
+[1.17.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.17.0
 
 ## [1.16.0] - 2026-11-09
 
@@ -891,7 +896,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.17.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7

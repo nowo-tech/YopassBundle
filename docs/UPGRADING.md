@@ -4,6 +4,7 @@
 
 - [Unreleased](#unreleased)
 - [To 1.17.0](#to-1170)
+- [To 1.17.0](#to-1170-1)
 - [To 1.16.0](#to-1160)
 - [To 1.16.0](#to-1160-1)
   - [Behaviour change: only accepted user classes own shares](#behaviour-change-only-accepted-user-classes-own-shares)
@@ -99,6 +100,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.17.0
+
+From **1.16.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ## To 1.17.0
 
