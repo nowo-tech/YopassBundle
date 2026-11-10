@@ -446,6 +446,7 @@ Services involved: `ShareLister` (manage list), `ShareAccessGuard` (created/prev
 | Event | Constant | When | Payload |
 |-------|----------|------|---------|
 | `ShareCreatedEvent` | `YopassEvents::SHARE_CREATED` | After `ShareCreator` persisted a share | share id, creator, created / expires at, max reads, payload kind |
+| `ShareConsumedEvent` | `YopassEvents::SHARE_CONSUMED` | After a public link read was stored (atomic consume succeeded; never for a refused read). Since 1.17 | share id, creator id, read number, max reads, reads left, consumed at, payload kind (no IP address, no user agent) |
 | `ShareDeletedEvent` | `YopassEvents::SHARE_DELETED` | After a manage "delete" | share id, creator, deleting user, dates, max reads, reads left, payload kind, revoked at |
 | `ShareRevokedEvent` | `YopassEvents::SHARE_REVOKED` | After a manage "revoke" | share id, creator, revoking user, revoked at, payload kind |
 | `ShareExtendedEvent` | `YopassEvents::SHARE_EXTENDED` | After a manage "extend" | share id, creator, extending user, old / new expiry, old / new max reads, payload kind |

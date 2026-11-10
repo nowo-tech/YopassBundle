@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Service;
 use DateTimeImmutable;
 use JsonException;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
@@ -21,17 +22,21 @@ final readonly class ShareRetriever
     private ClockInterface $clock;
 
     /**
-     * Creates the retriever with the repository and an optional clock.
+     * Creates the retriever with the repository, an optional clock and (1.17) the notifier that dispatches
+     * {@see YopassEvents::SHARE_CONSUMED} (no event without one).
      */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         ?ClockInterface $clock = null,
+        private ?ShareConsumedNotifier $consumedNotifier = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
 
     /**
      * Consumes one read of a share and returns the ciphertext payload or the reason it is unavailable.
+     * After a stored read, dispatches {@see YopassEvents::SHARE_CONSUMED}. The read is already spent at that point, so a
+     * throwing listener is logged and ignored: the reader still receives the ciphertext.
      *
      * @return array{status: string, ciphertext?: string, mode?: string}
      */
@@ -40,6 +45,8 @@ final readonly class ShareRetriever
         $share = $this->shareRepository->consumeReadIfAvailable($shareId);
 
         if ($share instanceof SecureShare) {
+            $this->consumedNotifier?->notify($share, $this->now());
+
             $ciphertext = $share->getCiphertext();
 
             return [

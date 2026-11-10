@@ -142,7 +142,7 @@ integrate through events and ports.
 
 - Do not reference `Nowo\YopassBundle\Entity\SecureShare` from domain code. React to the lifecycle events in an
   infrastructure listener and translate them into your own commands/events (they carry metadata only, never
-  ciphertext): `YopassEvents::SHARE_CREATED`, `SHARE_REVOKED`, `SHARE_DELETED`, `SHARE_EXTENDED`,
+  ciphertext): `YopassEvents::SHARE_CREATED`, `SHARE_CONSUMED`, `SHARE_REVOKED`, `SHARE_DELETED`, `SHARE_EXTENDED`,
   `SHARES_BULK_DELETED`. Since 1.16 they also carry scalar ids: `getCreatorId()`, `getRevokedById()`,
   `getDeletedById()`, `getExtendedById()`, `ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()` (the `getId()`
   value as a string), so your listener never has to know the user class. `SecureShare::getCreatorId()` does the same
@@ -211,14 +211,46 @@ final readonly class YopassShareCreatedAdapter
 }
 ```
 
+**Reacting to reads.** `YopassEvents::SHARE_CONSUMED` (`ShareConsumedEvent`, since 1.17) fires once per stored read
+of a public link, with every driver: `getShareId()`, `getCreatorId()`, `getReadNumber()`, `getMaxReads()`,
+`getReadsLeft()`, `getConsumedAt()`, `getPayloadKind()`. The reader is anonymous, so there is no actor id, and the
+event carries no IP address or user agent. It never fires for a refused read. The read is already spent when it
+fires: a listener that throws is logged and ignored, so do slow or fallible work asynchronously (e.g. dispatch a
+Messenger message).
+
+**Keep listeners idempotent.** The number of events is exact (one per stored read), but with Doctrine ORM the
+counters are a snapshot re-read right after the conditional `UPDATE`, not part of it: under concurrent reads two
+events can report the same `getReadNumber()` / `getReadsLeft()` (both `0`, for example), and a creator raising the
+max reads in between can mean no event ever reports `0`. MongoDB returns the exact post-update counters. Do not key a
+once-only action on `getReadsLeft() === 0` alone; deduplicate by share id:
+
+```php
+#[AsEventListener(event: YopassEvents::SHARE_CONSUMED)]
+final readonly class YopassShareConsumedAdapter
+{
+    public function __construct(private NotifyCreator $notify) {} // your application port
+
+    public function __invoke(ShareConsumedEvent $event): void
+    {
+        if ($event->getCreatorId() === null) {
+            return;
+        }
+
+        // Idempotent on the share id: the port records "notified" once and ignores repeats.
+        $this->notify->secretWasReadOnce($event->getCreatorId(), $event->getShareId(), $event->getConsumedAt());
+    }
+}
+```
+
 **Known limitations**
 
 - With the Doctrine drivers the creator column stays a relation to `user_class` (there is no plain-id mode); the
   host needs a Doctrine user class in the bundle's manager, even if its security user is not that class.
 - `ShareRepositoryInterface` still takes creator objects and returns the `SecureShare` entity; services are final
   classes (replace them through the ports above).
-- No event is dispatched when a public link is opened; the access log (`access_log.enabled`) is Doctrine ORM only
-  and cannot be replaced by your own repository.
+- The access log (`access_log.enabled`, IP address and user agent) is Doctrine ORM only and cannot be replaced by your
+  own repository. To audit reads in your own context with any driver, listen to `YopassEvents::SHARE_CONSUMED`
+  (since 1.17; ids and counters, no IP address or user agent).
 
 ## Twig overrides
 

@@ -9,6 +9,7 @@ use Nowo\YopassBundle\EventListener\ShareKeyQueryRedirectListener;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Service\ShareConsumedNotifier;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\YopassBundle;
 use PHPUnit\Framework\TestCase;
@@ -31,6 +32,7 @@ final class YopassBundleIntegrationTest extends TestCase
         self::assertTrue($container->hasDefinition(YopassRouteLoader::class));
         self::assertTrue($container->hasAlias(ShareRepositoryInterface::class));
         self::assertTrue($container->hasDefinition(ShareRetriever::class));
+        self::assertTrue($container->hasDefinition(ShareConsumedNotifier::class), 'autowired into ShareRetriever (SHARE_CONSUMED)');
         self::assertSame('%nowo_yopass.web_ui.enabled%', $container->getDefinition(YopassRouteLoader::class)->getArgument('$webUiEnabled'));
 
         $listener = $container->getDefinition(ShareKeyQueryRedirectListener::class);

@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.17.0](#to-1170)
 - [To 1.16.0](#to-1160)
 - [To 1.16.0](#to-1160-1)
   - [Behaviour change: only accepted user classes own shares](#behaviour-change-only-accepted-user-classes-own-shares)
@@ -98,6 +99,21 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.17.0
+
+From **1.16.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
+No breaking change, no schema change. New event `YopassEvents::SHARE_CONSUMED` (`ShareConsumedEvent`) after each
+stored public read; nothing listens to it by default. `ShareRetriever` takes a new optional third constructor argument
+(the internal `ShareConsumedNotifier`, autowired); code that builds it by hand keeps working and dispatches nothing.
+Listeners must be idempotent: with Doctrine ORM two concurrent reads can report the same counters (see USAGE). The Doctrine ORM access log is
+unchanged (still written by the public controller, kept after share deletion as in 1.16). A listener that throws does
+not fail the reader's request; it is logged at `error` level.
 
 ## To 1.16.0
 

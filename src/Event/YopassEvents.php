@@ -7,7 +7,7 @@ namespace Nowo\YopassBundle\Event;
 /**
  * Event names dispatched by YopassBundle: share listing, per-share access checks and share lifecycle.
  *
- * Lifecycle payloads (created / deleted / bulk deleted) are metadata only: they never carry ciphertext, keys,
+ * Lifecycle payloads (created / consumed / deleted / bulk deleted) are metadata only: they never carry ciphertext, keys,
  * passwords or decrypted content (zero-knowledge).
  */
 final class YopassEvents
@@ -44,6 +44,12 @@ final class YopassEvents
      * Fired after a share is revoked from the manage UI ({@see ShareRevokedEvent}; metadata only).
      */
     public const SHARE_REVOKED = 'nowo_yopass.share_revoked';
+
+    /**
+     * Fired after one read of a share was consumed through its public link ({@see ShareConsumedEvent}; ids and
+     * counters only, no IP address or user agent). Since 1.17.
+     */
+    public const SHARE_CONSUMED = 'nowo_yopass.share_consumed';
 
     /**
      * Fired after a share's expiration / max reads were extended ({@see ShareExtendedEvent}; old and new limits only).

@@ -57,6 +57,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target: **1.17.0** (DDD P2, audit 2026-11-09: "link consumed" event). See [UPGRADING](UPGRADING.md#to-1170).
+
+### Added
+
+- **`YopassEvents::SHARE_CONSUMED`** (`ShareConsumedEvent`): dispatched by `ShareRetriever::consume()` after a read of
+  a public link was stored (the atomic `consumeReadIfAvailable()` returned the share), with every driver (Doctrine
+  ORM, MongoDB, custom). Ids and counters only: share id, creator id, read number, max reads, reads left, consumed at,
+  payload kind; no ciphertext, no entity, no reader IP address or user agent. Never fired for a refused read
+  (expired, revoked, used up, unknown). The read is already spent when the event fires, so a throwing listener is
+  logged (share id and exception class) and ignored: the reader still gets the secret.
+  With Doctrine ORM the counters are re-read right after the conditional `UPDATE`: under concurrent reads two events
+  can report the same numbers, so listeners must be idempotent (audit KN-Y-L2). Dispatch and logging live in the
+  internal `ShareConsumedNotifier`, which never reads the ciphertext; the zero-knowledge source scan now also asserts
+  that no file both reads the ciphertext and logs (KN-Y-L1).
+
 ## [1.16.0] - 2026-11-09
 
 Target: **1.16.0** (DDD / hexagonal adapter fixes, audit 2026-11-09; JS-L1 / JS-L2 of the 1.15.1 audit). See [UPGRADING](UPGRADING.md#to-1160).
