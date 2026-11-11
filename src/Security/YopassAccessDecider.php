@@ -77,7 +77,8 @@ final readonly class YopassAccessDecider
     }
 
     /**
-     * The {@see UserRef} of a security user: `getId()` as a string (else the identifier), the identifier, the roles.
+     * The {@see UserRef} of a security user: `getId()` as a string (else the identifier, with `idIsIdentifier`), the
+     * identifier, the roles.
      * Null without a user, or when the user has neither a non-empty id nor a non-empty identifier.
      */
     public static function userRef(?UserInterface $user): ?UserRef
@@ -87,8 +88,11 @@ final readonly class YopassAccessDecider
         }
         $identifier = $user->getUserIdentifier();
         $id         = UserIdResolver::getId($user);
-        $id         = $id !== null && trim($id) !== '' ? $id : $identifier;
+        if ($id !== null && trim($id) !== '') {
+            return new UserRef($id, $identifier, $user->getRoles());
+        }
 
-        return trim($id) === '' ? null : new UserRef($id, $identifier, $user->getRoles());
+        // No usable getId(): the identifier stands in for the id, flagged so a policy can tell (audit MO-Y-I4).
+        return trim($identifier) === '' ? null : new UserRef($identifier, $identifier, $user->getRoles(), true);
     }
 }

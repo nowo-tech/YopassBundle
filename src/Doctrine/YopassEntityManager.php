@@ -14,7 +14,11 @@ use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Contracts\Service\ResetInterface;
 
+use function array_keys;
+use function is_array;
+use function is_string;
 use function sprintf;
+use function unserialize;
 
 /**
  * The bundle's own entity manager for shares and the access log (1.19.0, REQ-ARCH-001 rule 6).
@@ -63,15 +67,44 @@ final class YopassEntityManager implements ResetInterface, EventSubscriberInterf
     {
         $source  = $this->source();
         $current = $this->entityManager;
-        if ($current instanceof EntityManagerInterface && $current->isOpen() && $current->getConnection() === $source->getConnection()) {
-            return $current;
+        if (!$current instanceof EntityManagerInterface || !$current->isOpen() || $current->getConnection() !== $source->getConnection()) {
+            // DoctrineBundle's ContainerAwareEventManager extends EventManager; any other implementation gets a fresh one.
+            $eventManager = $source->getEventManager();
+
+            // @igor-ignore - Bundle-owned unit of work: emptied at every boundary, replaced when closed or when the connection changed.
+            $current = $this->entityManager = new EntityManager($source->getConnection(), $source->getConfiguration(), $eventManager instanceof EventManager ? $eventManager : null);
         }
+        $this->syncFilters($source, $current);
 
-        // DoctrineBundle's ContainerAwareEventManager extends EventManager; any other implementation gets a fresh one.
-        $eventManager = $source->getEventManager();
+        return $current;
+    }
 
-        // @igor-ignore - Bundle-owned unit of work: emptied at every boundary, replaced when closed or when the connection changed.
-        return $this->entityManager = new EntityManager($source->getConnection(), $source->getConfiguration(), $eventManager instanceof EventManager ? $eventManager : null);
+    /**
+     * The SQL filters enabled on the source manager, with their parameters, are enabled on the private one (and the
+     * others disabled), on every call: the private manager is not built by DoctrineBundle's configurator, and the
+     * application may enable or change a filter per request (tenant, soft delete; audit MO-Y-L2).
+     */
+    private function syncFilters(EntityManagerInterface $source, EntityManagerInterface $target): void
+    {
+        $wanted  = $source->getFilters()->getEnabledFilters();
+        $filters = $target->getFilters();
+        foreach (array_keys($filters->getEnabledFilters()) as $name) {
+            if (!isset($wanted[$name])) {
+                $filters->disable($name);
+            }
+        }
+        foreach ($wanted as $name => $filter) {
+            $copy = $filters->enable($name);
+            /** @var array<string, array{value: mixed, type: int|string|null, is_list?: bool}> $parameters */
+            $parameters = unserialize((string) $filter);
+            foreach ($parameters as $parameter => $definition) {
+                if (($definition['is_list'] ?? false) === true && is_array($definition['value'])) {
+                    $copy->setParameterList($parameter, $definition['value'], is_string($definition['type']) ? $definition['type'] : 'string');
+                } else {
+                    $copy->setParameter($parameter, $definition['value'], is_string($definition['type']) ? $definition['type'] : null);
+                }
+            }
+        }
     }
 
     /**

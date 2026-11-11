@@ -13,6 +13,7 @@ use Doctrine\Persistence\ObjectManager;
 use LogicException;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
+use Nowo\YopassBundle\Tests\Support\Orm\CreatorNameFilter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
@@ -106,6 +107,30 @@ final class YopassEntityManagerTest extends TestCase
         }
     }
 
+    public function testTheApplicationsEnabledFiltersAndParametersAreApplied(): void
+    {
+        $source = $this->source();
+        $source->getConfiguration()->addFilter('creator_name', CreatorNameFilter::class);
+        $source->getConfiguration()->addFilter('other', CreatorNameFilter::class);
+        $own = new YopassEntityManager($this->registry($source));
+        self::assertSame([], $own->get()->getFilters()->getEnabledFilters());
+
+        $source->getFilters()->enable('creator_name')->setParameter('name', 'alice');
+        $source->getFilters()->enable('other')->setParameterList('names', ['a', 'b']);
+        $filters = $own->get()->getFilters();
+        self::assertTrue($filters->isEnabled('creator_name'));
+        self::assertSame((string) $source->getFilters()->getFilter('creator_name'), (string) $filters->getFilter('creator_name'));
+        self::assertSame((string) $source->getFilters()->getFilter('other'), (string) $filters->getFilter('other'));
+        self::assertSame("'alice'", $filters->getFilter('creator_name')->getParameter('name'));
+
+        // A later request changes the parameter, then switches the filter off: followed on the next call.
+        $source->getFilters()->getFilter('creator_name')->setParameter('name', 'bob');
+        self::assertSame("'bob'", $own->get()->getFilters()->getFilter('creator_name')->getParameter('name'));
+        $source->getFilters()->disable('creator_name');
+        self::assertFalse($own->get()->getFilters()->isEnabled('creator_name'));
+        self::assertTrue($own->get()->getFilters()->isEnabled('other'));
+    }
+
     public function testASourceThatIsNotAnOrmManagerFails(): void
     {
         $registry = $this->createStub(ManagerRegistry::class);
@@ -126,7 +151,7 @@ final class YopassEntityManagerTest extends TestCase
 
     private function source(): EntityManager
     {
-        $paths  = [dirname(__DIR__, 3) . '/src/Entity'];
+        $paths  = [dirname(__DIR__, 3) . '/src/Entity', dirname(__DIR__, 2) . '/Support/Orm'];
         $config = PHP_VERSION_ID >= 80400 && method_exists(ORMSetup::class, 'createAttributeMetadataConfig')
             ? ORMSetup::createAttributeMetadataConfig($paths, true)
             : ORMSetup::createAttributeMetadataConfiguration($paths, true, sys_get_temp_dir() . '/yopass-own-em-proxies');

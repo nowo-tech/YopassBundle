@@ -16,9 +16,11 @@ use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
+use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
@@ -32,6 +34,7 @@ use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use Nowo\YopassBundle\Tests\Support\Orm\GuardUser;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Throwable;
@@ -235,6 +238,44 @@ final class PrivateEntityManagerIntegrationTest extends TestCase
 
         $dto = $this->creators->reference(new SecurityUserDto(7, 'alice'));
         self::assertTrue($this->own->get()->contains($dto), 'accepted_user_classes references are built there too');
+    }
+
+    public function testLifecycleEventsExposeTheCreatorInTheApplicationsManager(): void
+    {
+        $alice = $this->host->find(GuardUser::class, 7);
+        self::assertInstanceOf(GuardUser::class, $alice);
+        $hostCreators = new HostCreatorReference($this->own);
+        $creators     = [];
+        $dispatcher   = new EventDispatcher();
+        foreach ([YopassEvents::SHARE_CREATED, YopassEvents::SHARE_EXTENDED, YopassEvents::SHARE_REVOKED, YopassEvents::SHARE_DELETED] as $name) {
+            $dispatcher->addListener($name, static function (object $event) use (&$creators, $name): void {
+                self::assertTrue(method_exists($event, 'getCreator'));
+                $creators[$name] = $event->getCreator();
+            });
+        }
+
+        $share = (new ShareCreator($this->shares, DefaultShareOptions::get()['expiration_options'], null, $dispatcher, $this->creators, $hostCreators))->create($alice, $this->data(1));
+        self::assertTrue($this->own->get()->contains($share->getCreator()), 'The share keeps its private reference');
+        (new ShareExtender($this->shares, DefaultShareOptions::get(), null, $dispatcher, $hostCreators))->extend($share, null, 3);
+        (new ShareRevoker($this->shares, $dispatcher, $hostCreators))->revoke($share);
+        (new ShareDeleter($this->shares, $dispatcher, null, null, null, $hostCreators))->delete($share);
+
+        self::assertCount(4, $creators);
+        foreach ($creators as $name => $creator) {
+            self::assertSame($alice, $creator, $name . ': the application\'s own managed user');
+        }
+
+        // A listener relating it to its own entities and flushing neither throws nor duplicates the user.
+        $this->host->flush();
+        self::assertSame(1, (int) $this->db('SELECT COUNT(*) FROM guard_users WHERE id = 7'));
+
+        // Not loaded by the application: a lazy reference in its manager, from the creator id.
+        $this->host->clear();
+        $other = $hostCreators->forHost($this->own->get()->getReference(GuardUser::class, 7));
+        self::assertTrue($this->host->contains($other));
+        self::assertSame('7', (string) $other->getId());
+        $plain = new SecurityUserDto(9);
+        self::assertSame($plain, $hostCreators->forHost($plain), 'Not managed by the private manager: unchanged');
     }
 
     private function creator(): ShareCreator

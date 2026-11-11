@@ -12,8 +12,11 @@ use function trim;
 
 /**
  * Framework-free reference to the signed-in user, given to a {@see YopassAccessPolicyInterface} (1.19.0, REQ-ARCH-001
- * rule 3): the user id (`getId()` as a string, else the security identifier), the security identifier and the roles
- * the security user reports (`getRoles()`, without the role hierarchy).
+ * rule 3): the user id, the security identifier and the roles the security user reports (`getRoles()`, without the
+ * role hierarchy).
+ *
+ * `id` is `getId()` as a string. A security user without a usable `getId()` gets its identifier as `id`, and
+ * `idIsIdentifier` is then true: a policy that keys permissions by database id must not take that value for one.
  */
 final readonly class UserRef
 {
@@ -29,6 +32,7 @@ final readonly class UserRef
         public string $id,
         public string $identifier = '',
         array $roles = [],
+        public bool $idIsIdentifier = false,
     ) {
         if (trim($id) === '') {
             throw new InvalidArgumentException('A user reference needs a non-empty id.');

@@ -110,9 +110,14 @@ written through a private entity manager built on `database.entity_manager`, on 
 - nothing to migrate in the data, because the private manager reads and writes the same rows;
 - if your code relied on a share write flushing your own pending changes, flush them yourself. That was the bug this
   release fixes (REQ-ARCH-001 rule 6);
-- with the relation mapping, `SecureShare::getCreator()` (and `ShareCreatedEvent::getCreator()` etc.) returns a
-  reference in the bundle's manager: read it, or use `getCreatorId()`, but do not persist it into your own manager
-  (load the user from your manager instead);
+- **BC, relation mapping:** `SecureShare::getCreator()` on a share the bundle loaded returns a reference in the
+  bundle's manager. Read it, or use `getCreatorId()`, but do not relate it to your own entities (load the user from
+  your manager instead). The lifecycle events' `getCreator()` already returns the user in **your** manager;
+- the SQL filters enabled on `database.entity_manager`, with their parameters, are applied to the bundle's manager on
+  every call. A filter you enable through DoctrineBundle's `filters:` config or in a request listener therefore also
+  applies to share reads, as before;
+- **ORM only:** the MongoDB driver still flushes `database.document_manager`, and the custom driver uses your
+  repository; neither changes in this release;
 - to keep the old behaviour for now: `database.private_entity_manager: false` (deprecated, removed in 2.0).
 
 **Deprecations (removed in 2.0)**
@@ -121,6 +126,9 @@ written through a private entity manager built on `database.entity_manager`, on 
 |---|---|
 | `Security\YopassAccessCheckerInterface` (`canX(?UserInterface)`) | `Security\YopassAccessPolicyInterface` (`canX(?UserRef)`): `$user->getId()` becomes `$user->id`, `getUserIdentifier()` becomes `$user->identifier`, `in_array('ROLE_X', $user->getRoles())` becomes `$user->hasRole('ROLE_X')` |
 | `database.private_entity_manager: false` | the default (`true`) |
+
+`UserRef::$id` is the security user's `getId()`; when it has none, the identifier stands in and `UserRef::$idIsIdentifier`
+is true. Each interface is aliased to your checker only if its class implements that interface.
 
 A checker that implements only `YopassAccessCheckerInterface` keeps working, is called exactly as before, and triggers
 one `E_USER_DEPRECATED` notice when the manage controller is built. Implementing both interfaces is fine: the policy is

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Service;
 
 use DateTimeImmutable;
+use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareExtendedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
@@ -40,6 +41,7 @@ final readonly class ShareExtender
         private array $shareOptions,
         ?ClockInterface $clock = null,
         private ?EventDispatcherInterface $eventDispatcher = null,
+        private ?HostCreatorReference $hostCreators = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -96,7 +98,7 @@ final readonly class ShareExtender
 
         // Zero-knowledge: old / new limits only, never the ciphertext.
         $this->eventDispatcher?->dispatch(
-            ShareExtendedEvent::fromShare($share, $oldExpiresAt, $oldMaxReads, $extendedBy),
+            ShareExtendedEvent::fromShare($share, $oldExpiresAt, $oldMaxReads, $extendedBy, $this->hostCreators?->forHost($share->getCreator())),
             YopassEvents::SHARE_EXTENDED,
         );
     }

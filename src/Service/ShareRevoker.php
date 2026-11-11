@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Service;
 
+use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareRevokedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
@@ -22,6 +23,7 @@ final readonly class ShareRevoker
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         private ?EventDispatcherInterface $eventDispatcher = null,
+        private ?HostCreatorReference $hostCreators = null,
     ) {
     }
 
@@ -35,6 +37,6 @@ final readonly class ShareRevoker
         $this->shareRepository->persist($share);
         $this->shareRepository->flush();
 
-        $this->eventDispatcher?->dispatch(ShareRevokedEvent::fromShare($share, $revokedBy), YopassEvents::SHARE_REVOKED);
+        $this->eventDispatcher?->dispatch(ShareRevokedEvent::fromShare($share, $revokedBy, $this->hostCreators?->forHost($share->getCreator())), YopassEvents::SHARE_REVOKED);
     }
 }

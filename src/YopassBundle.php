@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle;
 
+use Nowo\YopassBundle\DependencyInjection\Compiler\AccessCheckerAliasPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\AccessLogMappingPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\CsrfProtectionPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
@@ -35,6 +36,7 @@ final class YopassBundle extends Bundle
         $container->addCompilerPass(new CsrfProtectionPass());
         $container->addCompilerPass(new PublicRateLimitCachePass());
         $container->addCompilerPass(new AccessLogMappingPass());
+        $container->addCompilerPass(new AccessCheckerAliasPass());
     }
 
     /**

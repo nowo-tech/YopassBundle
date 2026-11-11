@@ -202,7 +202,8 @@ final class AccessPolicyEquivalenceTest extends TestCase
         self::assertCount(5, $seen);
 
         // Without getId(): the identifier is the id. Without either: denied, never anonymous.
-        self::assertEquals(new UserRef('bob', 'bob', ['ROLE_USER']), YopassAccessDecider::userRef(new InMemoryUser('bob', null, ['ROLE_USER'])));
+        self::assertEquals(new UserRef('bob', 'bob', ['ROLE_USER'], true), YopassAccessDecider::userRef(new InMemoryUser('bob', null, ['ROLE_USER'])));
+        self::assertFalse($seen[0][1]?->idIsIdentifier, 'A real getId() is not flagged');
         $nameless = $this->createStub(UserInterface::class);
         $nameless->method('getUserIdentifier')->willReturn('');
         $nameless->method('getRoles')->willReturn([]);
@@ -218,6 +219,7 @@ final class AccessPolicyEquivalenceTest extends TestCase
         self::assertTrue($ref->hasRole('ROLE_B'));
         self::assertFalse($ref->hasRole('ROLE_C'));
         self::assertSame('', (new UserRef('7'))->identifier);
+        self::assertFalse((new UserRef('7'))->idIsIdentifier);
 
         $this->expectException(InvalidArgumentException::class);
         new UserRef(' ');

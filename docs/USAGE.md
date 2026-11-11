@@ -112,7 +112,7 @@ nowo_yopass:
 ```
 
 Since 1.19 implement the framework-free `YopassAccessPolicyInterface`: the signed-in user arrives as a `UserRef`
-(`id`: `getId()` as a string, else the identifier; `identifier`; `roles` as the security user reports them, without
+(`id`: `getId()` as a string, else the identifier with `idIsIdentifier: true`; `identifier`; `roles` as the security user reports them, without
 the role hierarchy), or `null` when nobody is signed in. Deny by default: return `true` only for what you grant.
 
 ```php
@@ -266,9 +266,15 @@ entity manager:
 - the tables do not move, and `doctrine:schema:*` / migrations keep seeing the entities through
   `database.entity_manager`.
 
-With the relation mapping, the share's creator is a reference **in the private manager** (same class and id): use
-`getCreatorId()` in your listeners, and load the user from your own manager if you need the entity. Shares returned by
-the bundle are never in your unit of work.
+With the relation mapping, `SecureShare::getCreator()` is a reference **in the private manager** (same class and id):
+use `getCreatorId()`, and load the user from your own manager if you need the entity. The lifecycle events'
+`getCreator()` already hands you the user in **your** manager (the managed instance, or a lazy reference from the
+id), so an event listener may relate it to its entities and flush. Shares returned by the bundle are never in your unit
+of work. The SQL filters enabled on `database.entity_manager` (with their parameters) are applied to the private
+manager on every call.
+
+This covers the Doctrine ORM driver only: the MongoDB driver still flushes `database.document_manager`, and with the
+custom driver your repository decides.
 
 `database.private_entity_manager: false` restores the pre-1.19 behaviour (the bundle flushes
 `database.entity_manager`); it is deprecated and removed in 2.0. With `database.driver: custom` your repository decides,

@@ -10,6 +10,7 @@ use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\DependencyInjection\Compiler\AccessLogMappingPass;
+use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
@@ -47,6 +48,7 @@ use function is_array;
 use function is_string;
 use function rtrim;
 use function sprintf;
+use function trigger_deprecation;
 use function trim;
 
 /**
@@ -486,6 +488,9 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         // Rule 6 (1.19.0): the bundle's own entity manager, only when the bundle's ORM repository stores the shares
         // (with the custom driver the shares come from the host repository and its manager).
         $ownManager = null;
+        if (($database['private_entity_manager'] ?? true) === false) {
+            trigger_deprecation('nowo-tech/yopass-bundle', '1.19.0', 'Setting "nowo_yopass.database.private_entity_manager" to false is deprecated: the bundle then flushes the application\'s entity manager. Remove the option; it is removed in 2.0.');
+        }
         if ((bool) ($database['private_entity_manager'] ?? true) && DatabaseDriver::resolveDriver((string) $database['driver'], (string) $database['platform']) === DatabaseDriver::DOCTRINE_ORM) {
             $container->setDefinition(YopassEntityManager::class, (new Definition(YopassEntityManager::class))
                 ->setArgument('$registry', new Reference('doctrine'))
@@ -493,6 +498,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 ->addTag('kernel.event_subscriber')
                 ->addTag('kernel.reset', ['method' => 'reset']));
             $ownManager = new Reference(YopassEntityManager::class);
+            $container->setDefinition(HostCreatorReference::class, new Definition(HostCreatorReference::class, [$ownManager]));
             $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$ownManager', $ownManager);
         }
 
