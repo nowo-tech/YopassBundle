@@ -88,7 +88,8 @@ REQ-ARCH-001 for DDD / hexagonal hosts, additive and opt-in on the API side.
   user **in the application's entity manager** (the managed instance, or a lazy reference built from the creator id),
   so a listener can relate it to its own entities and flush (`Doctrine\HostCreatorReference`, audit MO-Y-L1).
 - The SQL filters enabled on `database.entity_manager` (tenant, soft delete…), with their parameters, are applied to
-  the bundle's entity manager on every call (MO-Y-L2).
+  the bundle's entity manager on every call (MO-Y-L2); a filter whose parameters changed is re-created, so a value
+  the application no longer sets (a previous tenant) never survives (MO-Y-D-L1).
 - **Rule 6 covers the Doctrine ORM driver only.** With `database.driver: doctrine_mongodb` the bundle still flushes
   the document manager `database.document_manager`, and with `custom` your repository decides (MO-Y-L3).
 - `UserRef::$idIsIdentifier` (true when the security user has no usable `getId()` and its identifier stands in for

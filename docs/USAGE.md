@@ -112,7 +112,8 @@ nowo_yopass:
 ```
 
 Since 1.19 implement the framework-free `YopassAccessPolicyInterface`: the signed-in user arrives as a `UserRef`
-(`id`: `getId()` as a string, else the identifier with `idIsIdentifier: true`; `identifier`; `roles` as the security user reports them, without
+(`id`: `getId()` as a string, else the identifier with `idIsIdentifier: true`, which an id-keyed policy must
+check and deny; `identifier`; `roles` as the security user reports them, without
 the role hierarchy), or `null` when nobody is signed in. Deny by default: return `true` only for what you grant.
 
 ```php

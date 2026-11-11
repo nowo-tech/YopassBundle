@@ -94,9 +94,20 @@ final class YopassEntityManager implements ResetInterface, EventSubscriberInterf
             }
         }
         foreach ($wanted as $name => $filter) {
+            $state = (string) $filter;
+            if ($filters->isEnabled($name)) {
+                if ((string) $filters->getFilter($name) === $state) {
+                    continue;
+                }
+                // A fresh instance: a parameter the source no longer has (a previous tenant) must not survive (MO-Y-D-L1).
+                $filters->disable($name);
+            }
             $copy = $filters->enable($name);
             /** @var array<string, array{value: mixed, type: int|string|null, is_list?: bool}> $parameters */
-            $parameters = unserialize((string) $filter);
+            $parameters = unserialize($state);
+            // A non-string type (DBAL ParameterType / int) can only come from ParameterTypeInferer, since
+            // SQLFilter::setParameter() accepts a string type or null: passing null infers the same type again.
+
             foreach ($parameters as $parameter => $definition) {
                 if (($definition['is_list'] ?? false) === true && is_array($definition['value'])) {
                     $copy->setParameterList($parameter, $definition['value'], is_string($definition['type']) ? $definition['type'] : 'string');

@@ -10,6 +10,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectManager;
+use InvalidArgumentException;
 use LogicException;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
@@ -126,6 +127,19 @@ final class YopassEntityManagerTest extends TestCase
         // A later request changes the parameter, then switches the filter off: followed on the next call.
         $source->getFilters()->getFilter('creator_name')->setParameter('name', 'bob');
         self::assertSame("'bob'", $own->get()->getFilters()->getFilter('creator_name')->getParameter('name'));
+        // The source is rebuilt and re-enables the filter without the parameter: the old value must not survive.
+        $source->getFilters()->disable('creator_name');
+        $source->getFilters()->enable('creator_name');
+        $private = $own->get()->getFilters()->getFilter('creator_name');
+        self::assertSame((string) $source->getFilters()->getFilter('creator_name'), (string) $private);
+        try {
+            $private->getParameter('name');
+            self::fail('The previous parameter value survived');
+        } catch (InvalidArgumentException) {
+        }
+        $unchanged = $own->get()->getFilters()->getFilter('creator_name');
+        self::assertSame($private, $unchanged, 'An identical filter is kept as it is');
+
         $source->getFilters()->disable('creator_name');
         self::assertFalse($own->get()->getFilters()->isEnabled('creator_name'));
         self::assertTrue($own->get()->getFilters()->isEnabled('other'));
