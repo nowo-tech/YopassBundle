@@ -11,6 +11,7 @@ use function is_numeric;
 use function is_string;
 use function ltrim;
 use function method_exists;
+use function strlen;
 use function trim;
 
 /**
@@ -52,11 +53,12 @@ final readonly class CreatorClassPolicy
     }
 
     /**
-     * Whether the user is a `user_class` instance or an instance of a listed accepted class.
+     * Whether the user is a `user_class` instance, a {@see CreatorId} or an instance of a listed accepted class.
      */
     public function isAccepted(object $user): bool
     {
-        if ($this->isCreatorClass($user)) {
+        // 1.18.0: a CreatorId is what a share returns as its creator with the id mapping.
+        if ($user instanceof CreatorId || $this->isCreatorClass($user)) {
             return true;
         }
 
@@ -85,8 +87,8 @@ final readonly class CreatorClassPolicy
     }
 
     /**
-     * Whether an id value can identify a user: a positive int, or a non-empty string / Stringable that is not a
-     * numeric value ≤ 0.
+     * Whether an id value can identify a user: a positive int, or a non-empty string / Stringable of at most 128 bytes,
+     * without leading or trailing whitespace, that is not a numeric value ≤ 0.
      */
     public static function isUsableId(mixed $id): bool
     {
@@ -96,8 +98,12 @@ final readonly class CreatorClassPolicy
         if (!is_string($id) && !$id instanceof Stringable) {
             return false;
         }
-        $value = trim((string) $id);
+        $value = (string) $id;
 
-        return $value !== '' && (!is_numeric($value) || (float) $value > 0);
+        // 1.18.0 (LQ-Y-I1): ids are stored and compared byte for byte: never trimmed nor truncated.
+        return $value !== ''
+            && trim($value) === $value
+            && strlen($value) <= CreatorMapping::ID_LENGTH
+            && (!is_numeric($value) || (float) $value > 0);
     }
 }

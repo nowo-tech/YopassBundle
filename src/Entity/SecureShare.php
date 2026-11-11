@@ -7,8 +7,10 @@ namespace Nowo\YopassBundle\Entity;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Nowo\YopassBundle\Support\UserIdResolver;
+use Nowo\YopassBundle\Creator\CreatorId;
 use Symfony\Component\Security\Core\User\UserInterface;
+
+use function is_string;
 
 /**
  * Ephemeral encrypted secret (Yopass-style share).
@@ -45,11 +47,13 @@ class SecureShare
      */
     public function __construct(#[ORM\Id]
         #[ORM\Column(type: Types::STRING, length: 36)]
-        private string $id, /** @var object Application user entity (nowo_yopass.user_class) */
+        private string $id, /** Application user entity (nowo_yopass.user_class), or its id with the id mapping (1.18.0) */
         #[ORM\ManyToOne(targetEntity: UserInterface::class)]
         #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-        private object $creator)
+        private object|string $creator)
     {
+        // A CreatorId (id mapping) is stored as its plain id.
+        $this->creator   = is_string($creator) ? $creator : CreatorId::unwrap($creator);
         $this->createdAt = new DateTimeImmutable();
     }
 
@@ -60,7 +64,7 @@ class SecureShare
      */
     public static function reconstitute(
         string $id,
-        object $creator,
+        object|string $creator,
         string $ciphertext,
         DateTimeImmutable $createdAt,
         DateTimeImmutable $expiresAt,
@@ -90,11 +94,12 @@ class SecureShare
     }
 
     /**
-     * Returns the user who created the share.
+     * Returns the user who created the share: the `user_class` object (relation mapping) or a {@see CreatorId} (id
+     * mapping, 1.18.0).
      */
     public function getCreator(): object
     {
-        return $this->creator;
+        return CreatorId::wrap($this->creator);
     }
 
     /**
@@ -265,10 +270,11 @@ class SecureShare
     }
 
     /**
-     * Returns the creator id (`getId()` as a string; a Doctrine reference answers without a query). Since 1.16.
+     * Returns the creator id (`getId()` as a string; a Doctrine reference answers without a query). Since 1.16; the
+     * stored id itself with the id mapping (1.18.0).
      */
     public function getCreatorId(): ?string
     {
-        return UserIdResolver::getId($this->creator);
+        return CreatorId::idOf($this->creator);
     }
 }

@@ -3,8 +3,8 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.18.0](#to-1180)
 - [To 1.17.0](#to-1170)
-- [To 1.17.0](#to-1170-1)
 - [To 1.16.0](#to-1160)
 - [To 1.16.0](#to-1160-1)
   - [Behaviour change: only accepted user classes own shares](#behaviour-change-only-accepted-user-classes-own-shares)
@@ -101,13 +101,57 @@
 
 ## Unreleased
 
-## To 1.17.0
+## To 1.18.0
 
-From **1.16.0**:
+From **1.17.0** (minor):
 
 ```bash
 composer update nowo-tech/yopass-bundle
 ```
+
+**Standard hosts:** nothing to do. `user_mapping` defaults to `relation` (the Doctrine relation to `user_class`, `ON
+DELETE CASCADE`), `access_log.repository` to `null`, and the schema does not change.
+
+**BC notes:** `SecureShare` / `SecureShareDocument` hold the creator internally as `object|string` (the id with the id
+mapping); `getCreator()` keeps its `object` return type. `DoctrineOrmShareRepository` and
+`DoctrineMongoShareRepository` implement the new `CreatorIdShareRepositoryInterface`; `ShareRepositoryInterface` is
+unchanged, so custom repositories keep working.
+
+**Opt-in: id mapping for DDD / hexagonal hosts.** New installs can store creator ids instead of a relation:
+
+```yaml
+nowo_yopass:
+    user_class: App\Infrastructure\Security\SecurityUser   # its getId() is stored; need not be a Doctrine class
+    user_mapping: id
+```
+
+With an existing **relational** database, switching from `relation` to `id` turns `creator_id` from a foreign key into
+`VARCHAR(128)`: generate the migration (`doctrine:migrations:diff`) and check that it drops the foreign key, keeps the
+values, adds the `<table>_creator_idx` index and, on MySQL / MariaDB, sets `CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`
+on the column (SQL Server: `COLLATE Latin1_General_100_BIN2`), then migrate. Creator ids are compared byte for byte;
+ids longer than 128 bytes or with leading / trailing whitespace are refused.
+
+With **MongoDB**, existing shares keep the `creator` value the relation stored (an int or an ObjectId, not a string).
+Convert them once, after the deploy:
+
+```javascript
+// mongosh, in the bundle's database (collection: database.collection, default yopass_secure_shares)
+db.yopass_secure_shares.updateMany(
+    { creator: { $exists: true, $not: { $type: "string" } } },
+    [ { $set: { creator: { $toString: "$creator" } } } ]
+);
+```
+
+Until then, lists and counts do not show those shares, but "delete all", the per-user retention purge,
+`removeAllByCreator()` and the GDPR `removeAllByCreatorId()` also match the int / ObjectId forms, so no secret of an
+erased user is left behind.
+
+Shares are no longer deleted with their user: call `CreatorIdShareRepositoryInterface::removeAllByCreatorId()` when you
+delete one.
+
+**Opt-in: your own access log store** (`access_log.repository: app.yopass_access_log`, a service implementing
+`ShareAccessLogRepositoryInterface`), with any driver. The bundle then stops mapping `ShareAccessLog`; an existing
+`<prefix>_share_access_logs` table is left as is (migrate or drop it yourself).
 
 ## To 1.17.0
 

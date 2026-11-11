@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Doctrine;
 
 use Doctrine\ODM\MongoDB\Event\LoadClassMetadataEventArgs;
+use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 
 /**
@@ -18,6 +19,7 @@ final readonly class SecureShareDocumentMetadataListener
     public function __construct(
         private string $collectionName,
         private string $userClass,
+        private string $userMapping = CreatorMapping::RELATION,
     ) {
     }
 
@@ -33,6 +35,14 @@ final readonly class SecureShareDocumentMetadataListener
         }
 
         $metadata->setCollection($this->collectionName);
+
+        if ($this->userMapping === CreatorMapping::ID) {
+            // 1.18.0 id mapping: the creator is a plain string field holding the id (no reference to a user document).
+            unset($metadata->associationMappings['creator'], $metadata->fieldMappings['creator']);
+            $metadata->mapField(['fieldName' => 'creator', 'name' => 'creator', 'type' => 'string']);
+
+            return;
+        }
 
         if (isset($metadata->associationMappings['creator'])) {
             $mapping                                  = $metadata->associationMappings['creator'];

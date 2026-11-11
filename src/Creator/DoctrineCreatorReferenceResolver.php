@@ -19,6 +19,9 @@ use function sprintf;
  * `nowo_yopass.accepted_user_classes` with a usable `getId()` becomes `getReference(user_class, id)` on the bundle's
  * entity / document manager (no query); any other user is refused (AccessDeniedException), with every driver. With the
  * custom driver (no manager) an accepted user is returned unchanged.
+ *
+ * With `nowo_yopass.user_mapping: id` (1.18.0) every accepted user (and a {@see CreatorId}) becomes a
+ * {@see CreatorId}: the share stores the id, never a relation.
  */
 final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenceResolverInterface
 {
@@ -33,6 +36,7 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         private ?ManagerRegistry $registry = null,
         private ?string $managerName = null,
         private ?CreatorClassPolicy $classes = null,
+        private string $userMapping = CreatorMapping::RELATION,
     ) {
     }
 
@@ -45,6 +49,10 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
     public function reference(object $user): object
     {
         $class = ltrim($this->userClass, '\\');
+        if ($this->userMapping === CreatorMapping::ID) {
+            return $this->creatorId($user, $class);
+        }
+
         if ($user instanceof $class) {
             return $user;
         }
@@ -70,6 +78,25 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         $reference = $manager->getReference($class, $id);
 
         return is_object($reference) ? $reference : $user;
+    }
+
+    /**
+     * Id mapping (1.18.0): the {@see CreatorId} of a `user_class` instance, a CreatorId or an accepted user.
+     *
+     * @throws AccessDeniedException for any other user, or one without a usable id
+     */
+    private function creatorId(object $user, string $class): CreatorId
+    {
+        if ($user instanceof CreatorId) {
+            return $user;
+        }
+
+        $id = ($this->classes ?? new CreatorClassPolicy($class))->idOf($user);
+        if ($id === null) {
+            throw new AccessDeniedException(sprintf('nowo_yopass: a %s is not a share creator (not nowo_yopass.user_class nor listed in nowo_yopass.accepted_user_classes with a usable getId()).', get_debug_type($user)));
+        }
+
+        return new CreatorId((string) $id);
     }
 
     /**
