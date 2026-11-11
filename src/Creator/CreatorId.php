@@ -9,6 +9,7 @@ use Nowo\YopassBundle\Support\UserIdResolver;
 use Stringable;
 
 use function is_string;
+use function strlen;
 use function trim;
 
 /**
@@ -28,6 +29,9 @@ final readonly class CreatorId implements Stringable
     ) {
         if (trim($id) === '') {
             throw new InvalidArgumentException('A creator id cannot be empty.');
+        }
+        if (strlen($id) > CreatorMapping::ID_LENGTH) {
+            throw new InvalidArgumentException('A creator id is at most 128 bytes long.');
         }
     }
 

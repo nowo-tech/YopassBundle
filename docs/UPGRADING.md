@@ -125,10 +125,29 @@ nowo_yopass:
     user_mapping: id
 ```
 
-With an existing database, switching from `relation` to `id` turns `creator_id` from a foreign key into
-`VARCHAR(128)` (MongoDB: the `creator` field keeps the stored id): generate the migration
-(`doctrine:migrations:diff`), check that it drops the foreign key and keeps the values, then migrate. Shares are no
-longer deleted with their user: call `CreatorIdShareRepositoryInterface::removeAllByCreatorId()` when you delete one.
+With an existing **relational** database, switching from `relation` to `id` turns `creator_id` from a foreign key into
+`VARCHAR(128)`: generate the migration (`doctrine:migrations:diff`) and check that it drops the foreign key, keeps the
+values, adds the `<table>_creator_idx` index and, on MySQL / MariaDB, sets `CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`
+on the column (SQL Server: `COLLATE Latin1_General_100_BIN2`), then migrate. Creator ids are compared byte for byte;
+ids longer than 128 bytes or with leading / trailing whitespace are refused.
+
+With **MongoDB**, existing shares keep the `creator` value the relation stored (an int or an ObjectId, not a string).
+Convert them once, after the deploy:
+
+```javascript
+// mongosh, in the bundle's database (collection: database.collection, default yopass_secure_shares)
+db.yopass_secure_shares.updateMany(
+    { creator: { $exists: true, $not: { $type: "string" } } },
+    [ { $set: { creator: { $toString: "$creator" } } } ]
+);
+```
+
+Until then, lists and counts do not show those shares, but "delete all", the per-user retention purge,
+`removeAllByCreator()` and the GDPR `removeAllByCreatorId()` also match the int / ObjectId forms, so no secret of an
+erased user is left behind.
+
+Shares are no longer deleted with their user: call `CreatorIdShareRepositoryInterface::removeAllByCreatorId()` when you
+delete one.
 
 **Opt-in: your own access log store** (`access_log.repository: app.yopass_access_log`, a service implementing
 `ShareAccessLogRepositoryInterface`), with any driver. The bundle then stops mapping `ShareAccessLog`; an existing

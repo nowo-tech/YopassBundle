@@ -18,6 +18,8 @@ use Nowo\YopassBundle\Tests\Support\Orm\GuardAdmin;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
+use function str_repeat;
+
 /**
  * 1.18.0 id mapping: the CreatorId value object, the resolver in id mode and shares holding a plain creator id.
  */
@@ -42,6 +44,20 @@ final class CreatorIdTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         new CreatorId('');
+    }
+
+    public function testRefusesAnOverlongId(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new CreatorId(str_repeat('a', 129));
+    }
+
+    public function testPolicyRefusesPaddedAndOverlongIds(): void
+    {
+        self::assertFalse(CreatorClassPolicy::isUsableId(' abc'));
+        self::assertFalse(CreatorClassPolicy::isUsableId('abc '));
+        self::assertFalse(CreatorClassPolicy::isUsableId(str_repeat('a', 129)));
+        self::assertTrue(CreatorClassPolicy::isUsableId(str_repeat('a', 128)));
     }
 
     public function testPolicyAcceptsCreatorIds(): void

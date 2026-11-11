@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Tests\Integration\Mongo;
 
+use DateTimeImmutable;
 use Doctrine\Common\EventManager;
 use Doctrine\ODM\MongoDB\Configuration;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ODM\MongoDB\Events;
 use Doctrine\ODM\MongoDB\Mapping\Driver\AttributeDriver;
 use Doctrine\Persistence\ManagerRegistry;
+use MongoDB\BSON\ObjectId;
+use MongoDB\BSON\UTCDateTime;
 use MongoDB\Client;
 use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\CreatorId;
@@ -23,6 +26,7 @@ use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\TestCase;
 
+use function array_map;
 use function bin2hex;
 use function dirname;
 use function extension_loaded;
@@ -100,6 +104,23 @@ final class MongoIdMappingIntegrationTest extends TestCase
         self::assertSame(1, $this->repository->removeAllByCreatorId(self::ALICE));
         self::assertSame(0, $this->repository->countByCreatorId(self::ALICE));
         self::assertSame(1, $this->repository->countByCreatorId('someone-else'));
+    }
+
+    public function testDeletionsByCreatorIncludeSharesStoredBeforeTheSwitch(): void
+    {
+        $collection = $this->client->selectCollection($this->database, 'yopass_secure_shares');
+        $objectId   = new ObjectId();
+        $old        = new UTCDateTime(new DateTimeImmutable('-10 days'));
+        foreach ([['legacy-int', 5], ['legacy-oid', $objectId], ['current', '5'], ['other', '6']] as [$id, $creator]) {
+            $collection->insertOne(['_id' => $id, 'creator' => $creator, 'ciphertext' => 'c', 'expiresAt' => $old, 'createdAt' => $old, 'maxReads' => 1, 'readsLeft' => 1, 'revokedAt' => null, 'payloadKind' => 'text']);
+        }
+
+        self::assertSame(2, $this->repository->removeAllByCreatorId('5'), 'The int-stored creator 5 and the string "5".');
+        self::assertSame(1, $this->repository->removeByCreatorOlderThan(new SecurityUserDto((string) $objectId), new DateTimeImmutable('-1 day')));
+        self::assertSame(['other'], array_map(static fn (array|object $doc): mixed => ((array) $doc)['_id'], $collection->find([], ['typeMap' => ['root' => 'array']])->toArray()));
+        self::assertSame(1, $this->repository->removeAllByCreator(new SecurityUserDto('6')));
+        self::assertSame(['abc'], DoctrineMongoShareRepository::storedCreatorValues('abc'));
+        self::assertSame(['7', 7], DoctrineMongoShareRepository::storedCreatorValues('7'));
     }
 
     private function data(): ShareCreateData

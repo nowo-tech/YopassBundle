@@ -7,6 +7,8 @@ namespace Nowo\YopassBundle\Repository;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\Persistence\ManagerRegistry;
+use MongoDB\BSON\ObjectId;
+use MongoDB\BSON\UTCDateTime;
 use MongoDB\DeleteResult;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
@@ -16,6 +18,8 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
 
 use function is_int;
+use function is_string;
+use function preg_match;
 
 /**
  * Doctrine MongoDB ODM implementation for MongoDB deployments.
@@ -138,9 +142,14 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
      */
     public function removeByCreatorOlderThan(object $creator, DateTimeImmutable $before): int
     {
+        $value = $this->creator($creator);
+        if (is_string($value)) {
+            return $this->deleteByCreatorId($value, $before);
+        }
+
         /** @var iterable<SecureShareDocument> $documents */
         $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
-            ->field('creator')->equals($this->creator($creator))
+            ->field('creator')->equals($value)
             ->field('createdAt')->lt($before)
             ->getQuery()
             ->execute();
@@ -153,9 +162,14 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
      */
     public function removeAllByCreator(object $creator): int
     {
+        $value = $this->creator($creator);
+        if (is_string($value)) {
+            return $this->deleteByCreatorId($value);
+        }
+
         /** @var iterable<SecureShareDocument> $documents */
         $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
-            ->field('creator')->equals($this->creator($creator))
+            ->field('creator')->equals($value)
             ->getQuery()
             ->execute();
 
@@ -260,14 +274,53 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
      */
     public function removeAllByCreatorId(string $creatorId): int
     {
-        // One delete query, applied at once: the caller's document manager is not flushed (rule 6).
+        $value = $this->creator(new CreatorId($creatorId));
+        if (is_string($value)) {
+            return $this->deleteByCreatorId($value);
+        }
+
+        // Relation mapping: one delete query, applied at once (the caller's document manager is not flushed, rule 6).
         $result = $this->dm()->createQueryBuilder(SecureShareDocument::class)
             ->remove()
-            ->field('creator')->equals($this->creator(new CreatorId($creatorId)))
+            ->field('creator')->equals($value)
             ->getQuery()
             ->execute();
 
         return $result instanceof DeleteResult ? $result->getDeletedCount() : 0;
+    }
+
+    /**
+     * Id mapping: deletes the user's shares with one raw `deleteMany` (no flush, rule 6), also matching the creator
+     * values a relation-mapped install stored before the switch (an int id or an ObjectId instead of the string id,
+     * LQ-Y-L2), so "delete all", the retention purge and GDPR erasure never leave secrets behind.
+     */
+    private function deleteByCreatorId(string $creatorId, ?DateTimeImmutable $before = null): int
+    {
+        $filter = ['creator' => ['$in' => self::storedCreatorValues($creatorId)]];
+        if ($before instanceof DateTimeImmutable) {
+            $filter['createdAt'] = ['$lt' => new UTCDateTime($before)];
+        }
+
+        return $this->dm()->getDocumentCollection(SecureShareDocument::class)->deleteMany($filter)->getDeletedCount();
+    }
+
+    /**
+     * Every BSON value a creator id may be stored as: the string, plus its int or ObjectId form from before an
+     * id-mapping switch.
+     *
+     * @return list<int|ObjectId|string>
+     */
+    public static function storedCreatorValues(string $creatorId): array
+    {
+        $values = [$creatorId];
+        if (preg_match('/^[1-9][0-9]{0,17}$/', $creatorId) === 1) {
+            $values[] = (int) $creatorId;
+        }
+        if (preg_match('/^[0-9a-f]{24}$/i', $creatorId) === 1) {
+            $values[] = new ObjectId($creatorId);
+        }
+
+        return $values;
     }
 
     /**

@@ -65,8 +65,8 @@ change for it.
 ### Added
 
 - **`user_mapping: relation|id`** (default `relation`). With `id`, a share stores its creator id in a string column
-  (`creator_id`, length 128, ORM) or a string field (`creator`, MongoDB): no relation, no foreign key, no metadata
-  remap, and `user_class` need not be mapped in the bundle's entity / document manager (plain PHP security users,
+  (`creator_id`, length 128, ORM) or a string field (`creator`, MongoDB): no relation and no foreign key (the metadata
+  listener replaces the relation with a plain column), and `user_class` need not be mapped in the bundle's entity / document manager (plain PHP security users,
   UUID ids). Shares then return a `CreatorId` value object (`getId()`) from `getCreator()`; owner checks, events
   (`getCreatorId()`), listings and the custom driver work the same. `CreatorReferenceResolverInterface` returns a
   `CreatorId` in that mode; any user that is neither `user_class`, a `CreatorId` nor listed in
@@ -78,6 +78,11 @@ change for it.
   database driver (MongoDB and custom included). The access history is then available whatever the backend, and the
   bundle no longer maps its `ShareAccessLog` entity.
 - `SecureShare` / `SecureShareDocument` constructors accept the creator id as a string (or a `CreatorId`).
+- Id mapping compares creator ids byte for byte (audit LQ-Y-L1): binary collation on MySQL / MariaDB (`utf8mb4_bin`)
+  and SQL Server, an index on `creator_id`, and exact post-filters in the ORM lists, counts and deletions. Ids longer
+  than 128 bytes or with leading / trailing whitespace are refused. On MongoDB the per-user deletions also match the
+  int / ObjectId creator values stored before a relation → id switch (LQ-Y-L2; see UPGRADING for the one-off
+  conversion). CI job on MySQL 8.0, MariaDB 11.4 and PostgreSQL 17.
 - Tests on both host kinds: the standard ORM host (relation), and a strict DDD host with only the bundle entities
   mapped, plain-PHP users with UUID ids (ORM and MongoDB).
 
