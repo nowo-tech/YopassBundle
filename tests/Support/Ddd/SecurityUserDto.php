@@ -14,6 +14,8 @@ final readonly class SecurityUserDto implements UserInterface
     public function __construct(
         private int|string $id,
         private string $identifier = 'dto',
+        /** @var list<string> */
+        private array $roles = ['ROLE_USER'],
     ) {
     }
 
@@ -29,7 +31,7 @@ final readonly class SecurityUserDto implements UserInterface
 
     public function getRoles(): array
     {
-        return ['ROLE_USER'];
+        return $this->roles;
     }
 
     public function eraseCredentials(): void

@@ -20,6 +20,8 @@ use Nowo\YopassBundle\Form\SharePreviewType;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Security\YopassAccessDecider;
+use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
@@ -47,6 +49,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
+use function in_array;
 use function is_array;
 use function is_scalar;
 
@@ -75,6 +78,8 @@ final class ShareManageController extends AbstractController
 
     private readonly ShareListRouteResolver $listRoutes;
 
+    private readonly YopassAccessDecider $access;
+
     /**
      * Creates the manage controller with routes, templates, limits and share options.
      *
@@ -96,7 +101,7 @@ final class ShareManageController extends AbstractController
      * } $sharingOptions
      */
     public function __construct(
-        private readonly YopassAccessCheckerInterface $accessChecker,
+        YopassAccessPolicyInterface|YopassAccessCheckerInterface $accessChecker,
         private readonly ShareRepositoryInterface $shareRepository,
         private readonly ShareLister $shareLister,
         private readonly ShareAccessGuard $shareAccessGuard,
@@ -120,7 +125,9 @@ final class ShareManageController extends AbstractController
         private readonly ?EventDispatcherInterface $eventDispatcher = null,
         private readonly string $createMode = 'page',
         ?ShareListRouteResolver $listRoutes = null,
+        ?YopassAccessDecider $access = null,
     ) {
+        $this->access       = $access ?? new YopassAccessDecider($accessChecker);
         $this->shareDeleter = $shareDeleter ?? new ShareDeleter($shareRepository);
         $this->shareRevoker = $shareRevoker ?? new ShareRevoker($shareRepository);
         $this->listRoutes   = $listRoutes ?? new ShareListRouteResolver($routes['manage']['name']);
@@ -150,7 +157,7 @@ final class ShareManageController extends AbstractController
         $totalPages = $pageSize > 0 ? (int) max(1, ceil($total / $pageSize)) : 1;
         $page       = min($page, $totalPages);
 
-        $canCreate  = $this->accessChecker->canCreate($user);
+        $canCreate  = $this->access->allows('create', $user);
         $createForm = null;
         if ($canCreate) {
             $createForm = $this->buildShareCreateForm()->createView();
@@ -158,7 +165,7 @@ final class ShareManageController extends AbstractController
 
         $createDialog = $this->createMode === 'dialog' && $createForm instanceof FormView;
 
-        $canRevoke = $this->accessChecker->canRevoke($user);
+        $canRevoke = $this->access->allows('revoke', $user);
         $canExtend = $canRevoke;
         /** @var array<string, array{view: bool, extend: bool, revoke: bool, delete: bool}> $rowAccess */
         $rowAccess = [];
@@ -570,20 +577,25 @@ final class ShareManageController extends AbstractController
 
     private function denyUnlessFeature(string $feature): void
     {
-        if (!$this->accessChecker->canAccess()) {
+        // A framework-free policy receives the signed-in user as a UserRef; a legacy checker is called with no user.
+        $current = $this->access->usesPolicy() ? $this->currentUser() : null;
+        if (!$this->access->allows('access', null, $current)) {
             throw $this->createAccessDeniedException($this->translator->trans('yopass.access.denied', [], YopassBundle::TRANSLATION_DOMAIN));
         }
 
-        $allowed = match ($feature) {
-            'create' => $this->accessChecker->canCreate(),
-            'list'   => $this->accessChecker->canList(),
-            'revoke' => $this->accessChecker->canRevoke(),
-            default  => false,
-        };
+        // Deny by default: only these features exist.
+        $allowed = in_array($feature, ['create', 'list', 'revoke'], true) && $this->access->allows($feature, null, $current);
 
         if (!$allowed) {
             throw $this->createAccessDeniedException($this->translator->trans('yopass.feature.denied', [], YopassBundle::TRANSLATION_DOMAIN));
         }
+    }
+
+    private function currentUser(): ?UserInterface
+    {
+        $user = $this->getUser();
+
+        return $user instanceof UserInterface ? $user : null;
     }
 
     private function requireUser(): UserInterface

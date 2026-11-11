@@ -58,7 +58,9 @@ A bundle that is safe under **B** is safe under **A** and under classic mode / P
 | `Service\ShareAccessGuard`, `ShareLister` | yes | none; events are created per call | ✅ | ✅ |
 | `Service\ShareCreator`, `ShareExtender`, `ShareRetriever`, `ShareRetentionPurger` | yes | none (`readonly` config + `Clock`) | ✅ | ✅ (own state) |
 | `Service\ShareAccessLogger` | yes | none (`readonly` bool + repository) | ✅ | ✅ (own state) |
-| `Repository\DoctrineOrmShareRepository` / `DoctrineOrmShareAccessLogRepository` | yes | none itself; resolves the EntityManager from `doctrine` per call, reset when closed | ✅ | ✅ |
+| `Repository\DoctrineOrmShareRepository` / `DoctrineOrmShareAccessLogRepository` | yes | none itself; with the bundle's own entity manager (1.19 default) every call goes through `Doctrine\YopassEntityManager`, else resolves the EntityManager from `doctrine` per call, reset when closed | ✅ | ✅ |
+| `Doctrine\YopassEntityManager` (1.19) | yes | the private `EntityManager` (shares / access log only). Emptied (`clear()`) at the main `kernel.request`, `kernel.terminate`, `console.terminate` and Messenger `WorkerMessageHandledEvent` / `WorkerMessageFailedEvent`; replaced when closed or when the source connection changed; `reset()` (`kernel.reset`) drops it. Never touches the application's managers. Tests: `YopassEntityManagerTest`, `PrivateEntityManagerIntegrationTest::testOneTimeViewAndExpiryAreUnchanged` / `testAFailedWriteClosesOnlyThePrivateManager` | ✅ | ✅ |
+| `Security\YopassAccessDecider` (1.19) | yes | none (`readonly` checker); the `UserRef` is built per call | ✅ | ✅ |
 | `Repository\DoctrineMongoShareRepository` | yes | none itself; resolves DocumentManager from `doctrine_mongodb` per call, reset when closed; `find()` refreshes | ✅ | ✅ |
 | `Repository\NullShareAccessLogRepository` | yes | none | ✅ | ✅ |
 | `Doctrine\SecureShareMetadataListener` / `SecureShareDocumentMetadataListener` | yes | none (`readonly` table / class names); only runs on `loadClassMetadata` | ✅ | ✅ |

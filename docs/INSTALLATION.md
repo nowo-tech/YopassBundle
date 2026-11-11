@@ -73,7 +73,7 @@ security:
         - { path: ^/tools/yopass, roles: ROLE_USER }
 ```
 
-See [Configuration](CONFIGURATION.md) for `YopassAccessCheckerInterface`, [Access control events](examples/AccessControl.md), and public rate limiting (`public_rate_limit`, requires `cache.app`).
+See [Configuration](CONFIGURATION.md) for the access checker (`YopassAccessPolicyInterface`, 1.19), [Access control events](examples/AccessControl.md), and public rate limiting (`public_rate_limit`, requires `cache.app`).
 
 ## Translations
 

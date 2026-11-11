@@ -2,7 +2,7 @@
 
 The bundle stores **who created each share** (`creator`) but does **not** implement teams, roles, or ACLs itself. Use Symfony events to adapt listing and per-share checks to your application.
 
-Route-level features (`create`, `list`, `revoke`) still go through `YopassAccessCheckerInterface`. Events control **which shares appear** in the manage list and **who may open/preview/extend/revoke/delete** a given share.
+Route-level features (`create`, `list`, `revoke`) still go through the access checker (`YopassAccessPolicyInterface` since 1.19; `YopassAccessCheckerInterface` is deprecated). Events control **which shares appear** in the manage list and **who may open/preview/extend/revoke/delete** a given share.
 
 ## Table of contents
 
@@ -167,7 +167,7 @@ Copy from [`examples/access-control/`](../../examples/access-control/):
 
 | Layer | Scope | Example |
 |-------|-------|---------|
-| `YopassAccessCheckerInterface` | Can user open manage UI / create / list / revoke at all? | `ROLE_YOPASS_USER` |
+| `YopassAccessPolicyInterface` (deprecated: `YopassAccessCheckerInterface`) | Can user open manage UI / create / list / revoke at all? | `ROLE_YOPASS_USER` |
 | `ShareListQueryEvent` / `ShareListResultEvent` | Which shares appear in the list? | Team members |
 | `ShareAccessCheckEvent` | Can user act on this share? | Creator + team lead + grant table |
 
@@ -179,5 +179,5 @@ When using `overrideList()`, supply the **full** result set and total count. For
 
 ## Related
 
-- [Configuration](../CONFIGURATION.md) — `YopassAccessCheckerInterface`
+- [Configuration](../CONFIGURATION.md) — `YopassAccessPolicyInterface`
 - [Security](../SECURITY.md) — E2E encryption and route firewalls

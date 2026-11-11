@@ -88,7 +88,7 @@ The screenshots at the top of this README come from this demo (fake demo text on
 
 - [Installation](docs/INSTALLATION.md)
 - [Configuration](docs/CONFIGURATION.md)
-- [Usage](docs/USAGE.md)
+- [Usage](docs/USAGE.md) — [Standard Symfony host](docs/USAGE.md#standard-symfony-host) and [DDD / hexagonal host](docs/USAGE.md#using-it-from-a-ddd--hexagonal-application)
 - [Templates (UiKit page contract)](docs/TEMPLATES.md)
 - [Contributing](docs/CONTRIBUTING.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)

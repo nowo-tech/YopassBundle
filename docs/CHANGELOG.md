@@ -59,6 +59,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+REQ-ARCH-001 for DDD / hexagonal hosts, additive and opt-in on the API side.
+
+### Added
+
+- **Framework-free access policy (rule 3).** `Security\YopassAccessPolicyInterface` (`canAccess` / `canCreate` /
+  `canList` / `canRevoke` with a `?Security\UserRef`: id, identifier, roles), accepted by `security.access_checker`
+  and aliased. The default role checker implements it and the deprecated interface with the same answers; deny by
+  default is kept (unknown features and a signed-in user without id or identifier are denied).
+- **The bundle's own entity manager (rule 6).** `Doctrine\YopassEntityManager`: with the `doctrine_orm` driver, shares
+  and the access log are read and written through a private entity manager built on `database.entity_manager` (same
+  connection, mapping, events and tables). It is emptied at the request, console and Messenger boundaries and replaced
+  when closed (REQ-RUNTIME-002). New key `database.private_entity_manager` (default `true`).
+- **XML mapping (rule 2).** `database.mapping: xml` registers `src/Resources/config/doctrine/*` instead of the
+  attribute mapping (same tables and columns).
+- USAGE "Standard Symfony host" and "DDD host" sections; a kernel test for both host kinds.
+
+### Changed
+
+- **A share write no longer flushes the application's entity manager.** Before, `ShareCreator`, `ShareRevoker`,
+  `ShareExtender`, `ShareDeleter`, the retention purge and the access log flushed `database.entity_manager`, writing
+  every change the application had pending in it. Shares, the one-time view and expiry behave as before, and rows still
+  join a transaction the application opened (`PrivateEntityManagerIntegrationTest`).
+- With the relation mapping, a share's creator is a reference in the bundle's entity manager (same class and id), not
+  the application's managed user object; `getCreatorId()` is unchanged.
+
+### Deprecated
+
+- `Security\YopassAccessCheckerInterface`: implement `YopassAccessPolicyInterface`. Removed in 2.0.
+- `database.private_entity_manager: false`. Removed in 2.0.
+
 ## [1.18.0] - 2026-11-11
 
 DDD host path: creator ids instead of user relations, an id-typed repository port and a pluggable access log; binary collation on creator ids. See [UPGRADING](https://github.com/nowo-tech/YopassBundle/blob/v1.18.0/docs/UPGRADING.md#to-1180).

@@ -12,6 +12,7 @@ use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\DependencyInjection\Compiler\AccessLogMappingPass;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
+use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\EventListener\WasmCspListener;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
@@ -22,6 +23,8 @@ use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Security\YopassAccessDecider;
+use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
@@ -144,9 +147,19 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         }
 
         $container->setAlias(YopassAccessCheckerInterface::class, $accessCheckerId);
+        $container->setAlias(YopassAccessPolicyInterface::class, $accessCheckerId);
 
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
         $loader->load('services.yaml');
+
+        $container->setDefinition(YopassAccessDecider::class, new Definition(YopassAccessDecider::class, [new Reference($accessCheckerId)]));
+
+        // The configured checker may implement only YopassAccessPolicyInterface (1.19.0): wired by id, not by type.
+        if ($container->hasDefinition(ShareManageController::class)) {
+            $container->getDefinition(ShareManageController::class)
+                ->setArgument('$accessChecker', new Reference($accessCheckerId))
+                ->setArgument('$access', new Reference(YopassAccessDecider::class));
+        }
 
         $this->registerFileHandler($container, $config['file_handler'] ?? null);
     }
@@ -274,12 +287,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         if ($container->hasExtension('doctrine')) {
             $container->prependExtensionConfig('doctrine', [
                 'orm' => [
-                    'mappings' => [
-                        'YopassBundle' => [
-                            'type'      => 'attribute',
-                            'is_bundle' => true,
-                        ],
-                    ],
+                    'mappings' => self::ormMappings($this->resolvedConfigFromContainer($container)),
                 ],
             ]);
         }
@@ -434,6 +442,9 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $this->registerOrmShareRepository($container, $database, $storageName, $userClass, $config);
         $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$creators', new Reference(CreatorReferenceResolverInterface::class));
         $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine', (string) $database['entity_manager'], $config['user_mapping']);
+        if ($container->hasDefinition(YopassEntityManager::class)) {
+            $container->getDefinition(DoctrineCreatorReferenceResolver::class)->setArgument('$ownManager', new Reference(YopassEntityManager::class));
+        }
         $container->setAlias(ShareRepositoryInterface::class, DoctrineOrmShareRepository::class);
     }
 
@@ -472,6 +483,19 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             ->setArgument('$registry', new Reference('doctrine'))
             ->setArgument('$managerName', $entityManagerName));
 
+        // Rule 6 (1.19.0): the bundle's own entity manager, only when the bundle's ORM repository stores the shares
+        // (with the custom driver the shares come from the host repository and its manager).
+        $ownManager = null;
+        if ((bool) ($database['private_entity_manager'] ?? true) && DatabaseDriver::resolveDriver((string) $database['driver'], (string) $database['platform']) === DatabaseDriver::DOCTRINE_ORM) {
+            $container->setDefinition(YopassEntityManager::class, (new Definition(YopassEntityManager::class))
+                ->setArgument('$registry', new Reference('doctrine'))
+                ->setArgument('$entityManagerName', $entityManagerName)
+                ->addTag('kernel.event_subscriber')
+                ->addTag('kernel.reset', ['method' => 'reset']));
+            $ownManager = new Reference(YopassEntityManager::class);
+            $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$ownManager', $ownManager);
+        }
+
         $container->setDefinition(SecureShareMetadataListener::class, (new Definition(SecureShareMetadataListener::class))
             ->setArgument('$tableName', $storageName)
             ->setArgument('$userClass', $userClass)
@@ -484,7 +508,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 ->setAutowired(false)
                 ->setArgument('$entityManager', new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManagerName)))
                 ->setArgument('$registry', new Reference('doctrine'))
-                ->setArgument('$managerName', $entityManagerName));
+                ->setArgument('$managerName', $entityManagerName)
+                ->setArgument('$ownManager', $ownManager));
             $container->setAlias(ShareAccessLogRepositoryInterface::class, DoctrineOrmShareAccessLogRepository::class);
         } else {
             $this->registerNullAccessLogRepository($container);
@@ -522,18 +547,63 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
     private function resolveDriverFromContainerConfig(ContainerBuilder $container): string
     {
-        if (!$container->hasExtension('nowo_yopass')) {
+        $config = $this->resolvedConfigFromContainer($container);
+        if ($config === null) {
             return DatabaseDriver::DOCTRINE_ORM;
+        }
+        $database = $config['database'];
+
+        return DatabaseDriver::resolveDriver($database['driver'], $database['platform']);
+    }
+
+    /**
+     * The processed `nowo_yopass` configuration at prepend time (null when the host has none).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function resolvedConfigFromContainer(ContainerBuilder $container): ?array
+    {
+        if (!$container->hasExtension('nowo_yopass')) {
+            return null;
         }
 
         $configs = $container->getExtensionConfig('nowo_yopass');
         if ($configs === []) {
-            return DatabaseDriver::DOCTRINE_ORM;
+            return null;
         }
 
-        $config   = (new Processor())->processConfiguration(new Configuration(), $configs);
-        $database = $config['database'];
+        return (new Processor())->processConfiguration(new Configuration(), $configs);
+    }
 
-        return DatabaseDriver::resolveDriver($database['driver'], $database['platform']);
+    /**
+     * Doctrine ORM mapping entries of the bundle entities: the attribute mapping (default), or with
+     * `database.mapping: xml` (1.19.0) the XML files, the access log only when the bundle maps it.
+     *
+     * @param array<string, mixed>|null $config
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function ormMappings(?array $config): array
+    {
+        $database = $config['database'] ?? [];
+        if (!is_array($database) || ($database['mapping'] ?? 'attribute') !== 'xml') {
+            return ['YopassBundle' => ['type' => 'attribute', 'is_bundle' => true]];
+        }
+
+        $accessLog  = is_array($config['access_log'] ?? null) ? $config['access_log'] : [];
+        $hostLog    = is_string($accessLog['repository'] ?? null) && $accessLog['repository'] !== '';
+        $platform   = (string) ($database['platform'] ?? DatabaseDriver::PLATFORM_POSTGRESQL);
+        $driver     = DatabaseDriver::resolveDriver((string) ($database['driver'] ?? DatabaseDriver::DOCTRINE_ORM), $platform);
+        $relational = in_array($platform, DatabaseDriver::relationalPlatforms(), true);
+        $mapsLog    = ($accessLog['enabled'] ?? true) === true && !$hostLog && ($driver === DatabaseDriver::DOCTRINE_ORM || $relational);
+
+        // One directory: DoctrineBundle keys the mapping directories by namespace prefix (shares_only holds the same
+        // SecureShare.orm.xml without the access log, so no empty access log table is created).
+        return ['YopassBundle' => [
+            'type'      => 'xml',
+            'is_bundle' => false,
+            'dir'       => __DIR__ . '/../Resources/config/doctrine/' . ($mapsLog ? 'shares_and_access_log' : 'shares_only'),
+            'prefix'    => 'Nowo\\YopassBundle\\Entity',
+        ]];
     }
 }

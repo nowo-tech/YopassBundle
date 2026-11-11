@@ -1264,7 +1264,9 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         driver?: "doctrine_orm"|"doctrine_mongodb"|"custom"|Param, // Persistence driver. Use custom with database.repository for Redis, Couchbase, etc. // Default: "doctrine_orm"
  *         platform?: "postgresql"|"mysql"|"mariadb"|"sqlite"|"sqlserver"|"oracle"|"mongodb"|"other"|Param, // Documented platform (postgresql, mysql, mariadb, sqlite, sqlserver, oracle, mongodb, other). // Default: "postgresql"
  *         connection?: scalar|Param|null, // Doctrine DBAL connection name from config/packages/doctrine.yaml. // Default: "default"
- *         entity_manager?: scalar|Param|null, // Doctrine ORM entity manager name for relational databases. // Default: "default"
+ *         entity_manager?: scalar|Param|null, // Doctrine ORM entity manager name for relational databases: its connection, mapping and events are used; with private_entity_manager it is never flushed. // Default: "default"
+ *         private_entity_manager?: bool|Param, // Doctrine ORM driver: read and write shares and the access log through the bundle's own entity manager built on entity_manager (same connection and tables), so the application's pending changes are never flushed by the bundle (1.19.0). False is the pre-1.19 behaviour (flushes entity_manager itself), deprecated and removed in 2.0. // Default: true
+ *         mapping?: "attribute"|"xml"|Param, // Doctrine ORM mapping of the bundle entities: "attribute" (default) or "xml" (src/Resources/config/doctrine, for hosts that map by XML only) (1.19.0). Same tables and columns. // Default: "attribute"
  *         document_manager?: scalar|Param|null, // Doctrine MongoDB document manager name when platform/driver is mongodb. // Default: "default"
  *         collection?: scalar|Param|null, // MongoDB collection name. Defaults to {table_prefix}secure_shares. // Default: null
  *         repository?: scalar|Param|null, // Service id implementing ShareRepositoryInterface when driver is custom. // Default: null
@@ -1304,8 +1306,8 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         allow_embed_in_url?: bool|Param, // When false, hides the embed-in-URL option (short link only). // Default: true
  *         show_remember_notice?: bool|Param, // Show the one-time / do-not-open-yourself notice after creating a share. // Default: true
  *     },
- *     security?: array{ // Access control. Replace access_checker with a custom service implementing YopassAccessCheckerInterface.
- *         access_checker?: scalar|Param|null, // Service id implementing YopassAccessCheckerInterface. Null uses role-based defaults. // Default: null
+ *     security?: array{ // Access control. Replace access_checker with a custom service implementing YopassAccessPolicyInterface (or the deprecated YopassAccessCheckerInterface).
+ *         access_checker?: scalar|Param|null, // Service id implementing YopassAccessPolicyInterface (1.19.0) or the deprecated YopassAccessCheckerInterface. Null uses role-based defaults. // Default: null
  *         access_roles?: list<scalar|Param|null>,
  *         roles?: array{ // Roles per action (REQ-UI-003 security.roles.<action>). An empty list grants that action to nobody (only security.roles.admin).
  *             admin?: list<scalar|Param|null>,

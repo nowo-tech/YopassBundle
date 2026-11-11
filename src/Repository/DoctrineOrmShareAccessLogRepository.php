@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Repository;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
 
@@ -23,6 +24,7 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
         private EntityManagerInterface $entityManager,
         private ?ManagerRegistry $registry = null,
         private ?string $managerName = null,
+        private ?YopassEntityManager $ownManager = null,
     ) {
     }
 

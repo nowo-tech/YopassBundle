@@ -49,7 +49,9 @@ Configure which connection and persistence backend store encrypted shares.
 | `database.driver` | `doctrine_orm` | `doctrine_orm`, `doctrine_mongodb`, or `custom`. |
 | `database.platform` | `postgresql` | Documented platform: `postgresql`, `mysql`, `mariadb`, `sqlite`, `sqlserver`, `oracle`, `mongodb`, `other`. |
 | `database.connection` | `default` | Doctrine DBAL connection name from `config/packages/doctrine.yaml`. |
-| `database.entity_manager` | `default` | Doctrine ORM entity manager for relational databases. |
+| `database.entity_manager` | `default` | Doctrine ORM entity manager for relational databases: its connection, mapping and event manager are used; with `private_entity_manager` it is never flushed by the bundle. |
+| `database.private_entity_manager` | `true` | Since 1.19, `doctrine_orm` driver: shares and the access log go through the bundle's own entity manager built on `entity_manager` (same connection and tables), so your pending changes are never flushed by a share write (REQ-ARCH-001 rule 6). `false` = pre-1.19 behaviour, deprecated, removed in 2.0. See [USAGE](USAGE.md#ddd-host-the-bundles-own-entity-manager). |
+| `database.mapping` | `attribute` | Since 1.19: `attribute` or `xml` (the bundle's XML mapping, for hosts that map by XML only). Same tables and columns. See [USAGE](USAGE.md#ddd-host-xml-mapping). |
 | `database.document_manager` | `default` | Doctrine MongoDB document manager when using MongoDB. |
 | `database.collection` | `null` | MongoDB collection override (defaults to `{table_prefix}secure_shares`). |
 | `database.repository` | `null` | Custom service id implementing `ShareRepositoryInterface` when `driver: custom`. |
@@ -341,7 +343,7 @@ Default role configuration (REQ-UI-002 / REQ-UI-003 vocabulary):
 | `security.roles.create` | `[ROLE_ADMIN]` | Create shares |
 | `security.roles.list` | `[ROLE_ADMIN]` | List and preview own shares |
 | `security.roles.revoke` | `[ROLE_ADMIN]` | Revoke, extend and delete own shares |
-| `security.access_checker` | `null` | Service implementing `YopassAccessCheckerInterface` (replaces the role checker) |
+| `security.access_checker` | `null` | Service implementing `YopassAccessPolicyInterface` (1.19, `?UserRef`) or the deprecated `YopassAccessCheckerInterface` (replaces the role checker; deny by default) |
 | `security.allow_unauthenticated` | `false` | DEV/DEMO only: skip SecurityBundle requirement (never enable in production) |
 
 An empty list grants that permission to nobody (only `security.roles.admin` bypasses it). With the built-in role checker
