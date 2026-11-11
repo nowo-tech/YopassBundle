@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Event;
 
 use DateTimeImmutable;
+use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -37,11 +38,11 @@ final class ShareExtendedEvent extends Event
     /**
      * Builds the event from the share after the change and the limits before it.
      */
-    public static function fromShare(SecureShare $share, DateTimeImmutable $oldExpiresAt, int $oldMaxReads, ?UserInterface $extendedBy = null): self
+    public static function fromShare(SecureShare $share, DateTimeImmutable $oldExpiresAt, int $oldMaxReads, ?UserInterface $extendedBy = null, ?object $creator = null): self
     {
         return new self(
             $share->getId(),
-            $share->getCreator(),
+            $creator ?? $share->getCreator(),
             $extendedBy,
             $oldExpiresAt,
             $share->getExpiresAt(),
@@ -60,7 +61,9 @@ final class ShareExtendedEvent extends Event
     }
 
     /**
-     * Returns the creator of the share (application user entity).
+     * Returns the creator: with the relation mapping, the application user entity **in the application's entity
+     * manager** (since 1.19.0 a lazy reference built from the creator id when the bundle uses its own entity manager);
+     * with `user_mapping: id`, a {@see CreatorId}. Prefer {@see self::getCreatorId()}.
      */
     public function getCreator(): object
     {

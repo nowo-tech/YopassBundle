@@ -46,7 +46,8 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Repository/ShareAccessLogRepositoryInterface.php` | Repository contract | FR-REPO-001 |
 | `Repository/ShareRepositoryInterface.php` | Repository contract | FR-REPO-001 |
 | `Repository/ResolvesDocumentManagerTrait.php` | Per-call DocumentManager (closed-manager reset) | FR-WORKER-001, FR-REPO-001 |
-| `Repository/ResolvesEntityManagerTrait.php` | Per-call EntityManager (closed-manager reset) | FR-WORKER-001, FR-REPO-001 |
+| `Repository/ResolvesEntityManagerTrait.php` | Per-call EntityManager (closed-manager reset; the bundle's own manager when set) | FR-WORKER-001, FR-REPO-001 |
+| `Doctrine/YopassEntityManager.php` | Bundle-owned private EntityManager, boundary clear (1.19.0) | FR-WORKER-001, FR-REPO-001 |
 
 ## Forms
 
@@ -91,7 +92,9 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Security/ConfigurableYopassAccessChecker.php` | Configurable access checker | FR-SEC-001 |
 | `Security/PublicEndpointRateLimiter.php` | Rate limiting | FR-SEC-002 |
 | `Security/ShareEncryptionService.php` | Payload encryption | FR-CRYPT-001 |
-| `Security/YopassAccessCheckerInterface.php` | Access checker contract | FR-SEC-001 |
+| `Security/YopassAccessCheckerInterface.php` | Access checker contract (deprecated since 1.19.0) | FR-SEC-001 |
+| `Security/YopassAccessPolicyInterface.php`, `Security/UserRef.php` | Framework-free access policy port and user VO (1.19.0) | FR-SEC-001 |
+| `Security/YopassAccessDecider.php` | Calls the policy (UserRef) or the legacy checker (1.19.0) | FR-SEC-001 |
 | `Service/ShareAccessGuard.php` | Share access guard | FR-SEC-001 |
 
 ## Routing

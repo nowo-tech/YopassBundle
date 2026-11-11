@@ -59,6 +59,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+REQ-ARCH-001 for DDD / hexagonal hosts, additive and opt-in on the API side.
+
+### Added
+
+- **Framework-free access policy (rule 3).** `Security\YopassAccessPolicyInterface` (`canAccess` / `canCreate` /
+  `canList` / `canRevoke` with a `?Security\UserRef`: id, identifier, roles), accepted by `security.access_checker`
+  and aliased. The default role checker implements it and the deprecated interface with the same answers; deny by
+  default is kept (unknown features and a signed-in user without id or identifier are denied).
+- **The bundle's own entity manager (rule 6).** `Doctrine\YopassEntityManager`: with the `doctrine_orm` driver, shares
+  and the access log are read and written through a private entity manager built on `database.entity_manager` (same
+  connection, mapping, events and tables). It is emptied at the request, console and Messenger boundaries and replaced
+  when closed (REQ-RUNTIME-002). New key `database.private_entity_manager` (default `true`).
+- **XML mapping (rule 2).** `database.mapping: xml` registers `src/Resources/config/doctrine/*` instead of the
+  attribute mapping (same tables and columns).
+- USAGE "Standard Symfony host" and "DDD host" sections; a kernel test for both host kinds.
+
+### Changed
+
+- **A share write no longer flushes the application's entity manager.** Before, `ShareCreator`, `ShareRevoker`,
+  `ShareExtender`, `ShareDeleter`, the retention purge and the access log flushed `database.entity_manager`, writing
+  every change the application had pending in it. Shares, the one-time view and expiry behave as before, and rows still
+  join a transaction the application opened (`PrivateEntityManagerIntegrationTest`).
+- **BC (relation mapping):** `SecureShare::getCreator()` on a share loaded or created by the bundle is now a
+  reference in the bundle's entity manager (same class and id), not the application's managed user object. Do not
+  persist it into your own manager; use `getCreatorId()`. The lifecycle events (`ShareCreatedEvent`,
+  `ShareExtendedEvent`, `ShareRevokedEvent`, `ShareDeletedEvent`) are not affected: their `getCreator()` returns the
+  user **in the application's entity manager** (the managed instance, or a lazy reference built from the creator id),
+  so a listener can relate it to its own entities and flush (`Doctrine\HostCreatorReference`, audit MO-Y-L1).
+- The SQL filters enabled on `database.entity_manager` (tenant, soft delete…), with their parameters, are applied to
+  the bundle's entity manager on every call (MO-Y-L2); a filter whose parameters changed is re-created, so a value
+  the application no longer sets (a previous tenant) never survives (MO-Y-D-L1).
+- **Rule 6 covers the Doctrine ORM driver only.** With `database.driver: doctrine_mongodb` the bundle still flushes
+  the document manager `database.document_manager`, and with `custom` your repository decides (MO-Y-L3).
+- `UserRef::$idIsIdentifier` (true when the security user has no usable `getId()` and its identifier stands in for
+  the id, MO-Y-I4). `YopassAccessPolicyInterface` / `YopassAccessCheckerInterface` are aliased only when the
+  configured checker's class implements them (MO-Y-I2).
+
+### Deprecated
+
+- `Security\YopassAccessCheckerInterface`: implement `YopassAccessPolicyInterface`. Removed in 2.0.
+- `database.private_entity_manager: false` (triggers a deprecation when the container is built). Removed in 2.0.
+
 ## [1.18.0] - 2026-11-11
 
 DDD host path: creator ids instead of user relations, an id-typed repository port and a pluggable access log; binary collation on creator ids. See [UPGRADING](https://github.com/nowo-tech/YopassBundle/blob/v1.18.0/docs/UPGRADING.md#to-1180).

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    XML mapping of SecureShare (1.19.0, REQ-ARCH-001 rule 2), used with nowo_yopass.database.mapping: xml.
+    Same table, columns and relation as the attribute mapping. SecureShareMetadataListener still applies the table
+    name (table_prefix), the indexes and the creator mapping (user_class relation, or the creator id column with
+    user_mapping: id).
+-->
+<doctrine-mapping xmlns="http://doctrine-project.org/schemas/orm/doctrine-mapping"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://doctrine-project.org/schemas/orm/doctrine-mapping https://www.doctrine-project.org/schemas/orm/doctrine-mapping.xsd">
+    <entity name="Nowo\YopassBundle\Entity\SecureShare" table="yopass_secure_shares">
+        <id name="id" type="string" length="36"/>
+        <field name="ciphertext" type="text"/>
+        <field name="expiresAt" column="expires_at" type="datetime_immutable"/>
+        <field name="maxReads" column="max_reads" type="integer"/>
+        <field name="readsLeft" column="reads_left" type="integer"/>
+        <field name="createdAt" column="created_at" type="datetime_immutable"/>
+        <field name="revokedAt" column="revoked_at" type="datetime_immutable" nullable="true"/>
+        <field name="payloadKind" column="payload_kind" type="string" length="16">
+            <options>
+                <option name="default">text</option>
+            </options>
+        </field>
+        <many-to-one field="creator" target-entity="Symfony\Component\Security\Core\User\UserInterface">
+            <join-column name="creator_id" referenced-column-name="id" nullable="false" on-delete="CASCADE"/>
+        </many-to-one>
+    </entity>
+</doctrine-mapping>

@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Service;
 
 use LogicException;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
+use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
 use Nowo\YopassBundle\Event\ShareDeleteAllEvent;
@@ -37,6 +38,7 @@ final readonly class ShareDeleter
         private ?string $creatorClass = null,
         private ?LoggerInterface $logger = null,
         private ?CreatorReferenceResolverInterface $creators = null,
+        private ?HostCreatorReference $hostCreators = null,
     ) {
     }
 
@@ -46,7 +48,7 @@ final readonly class ShareDeleter
     public function delete(SecureShare $share, ?UserInterface $deletedBy = null): void
     {
         // Metadata is captured before removal; the event never references the entity (ciphertext).
-        $event = ShareDeletedEvent::fromShare($share, $deletedBy);
+        $event = ShareDeletedEvent::fromShare($share, $deletedBy, $this->hostCreators?->forHost($share->getCreator()));
 
         // @igor-ignore - Service coordinates I/O or request-scoped work; not unsafe worker singleton state.
         $this->shareRepository->remove($share);

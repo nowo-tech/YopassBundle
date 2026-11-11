@@ -10,6 +10,7 @@ use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
+use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
@@ -39,6 +40,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         private ?ManagerRegistry $registry = null,
         private ?string $managerName = null,
         private ?CreatorReferenceResolverInterface $creators = null,
+        private ?YopassEntityManager $ownManager = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }

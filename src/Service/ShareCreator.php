@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Service;
 
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
+use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareCreatedEvent;
@@ -30,6 +31,7 @@ final readonly class ShareCreator
      * @param ClockInterface|null $clock Clock used to compute expiration dates (REQ-DI-001)
      * @param EventDispatcherInterface|null $eventDispatcher Dispatches {@see YopassEvents::SHARE_CREATED} (metadata only)
      * @param CreatorReferenceResolverInterface|null $creators Turns a non-entity user into the stored creator reference
+     * @param HostCreatorReference|null $hostCreators The creator as the application's entity manager sees it, for the event (1.19.0)
      */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
@@ -37,6 +39,7 @@ final readonly class ShareCreator
         ?ClockInterface $clock = null,
         private ?EventDispatcherInterface $eventDispatcher = null,
         private ?CreatorReferenceResolverInterface $creators = null,
+        private ?HostCreatorReference $hostCreators = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -62,7 +65,7 @@ final readonly class ShareCreator
         $this->shareRepository->flush();
 
         // Zero-knowledge: the event carries metadata only (never the ciphertext).
-        $this->eventDispatcher?->dispatch(ShareCreatedEvent::fromShare($share), YopassEvents::SHARE_CREATED);
+        $this->eventDispatcher?->dispatch(ShareCreatedEvent::fromShare($share, $this->hostCreators?->forHost($share->getCreator())), YopassEvents::SHARE_CREATED);
 
         return $share;
     }

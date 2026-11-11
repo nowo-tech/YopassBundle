@@ -9,7 +9,10 @@
 - [Custom access control](#custom-access-control)
   - [Route-level checker](#route-level-checker)
   - [Share events (teams, grants, roles)](#share-events-teams-grants-roles)
+- [Standard Symfony host](#standard-symfony-host)
 - [Using it from a DDD / hexagonal application](#using-it-from-a-ddd--hexagonal-application)
+  - [DDD host: the bundle's own entity manager](#ddd-host-the-bundles-own-entity-manager)
+  - [DDD host: XML mapping](#ddd-host-xml-mapping)
 - [Twig overrides](#twig-overrides)
   - [Forms in templates (REQ-TWIG-005)](#forms-in-templates-req-twig-005)
 - [Clock (REQ-DI-001)](#clock-req-di-001)
@@ -90,7 +93,7 @@ Three layers — use only what you need:
 
 | Layer | Interface / event | Question |
 |-------|-------------------|----------|
-| Route features | `YopassAccessCheckerInterface` | Can the user open manage, create, list, or revoke at all? |
+| Route features | `YopassAccessPolicyInterface` (1.19; `YopassAccessCheckerInterface` deprecated) | Can the user open manage, create, list, or revoke at all? |
 | List query | `ShareListQueryEvent` | Which shares should the repository load? |
 | List filter | `ShareListResultEvent` | Which loaded shares should appear? |
 | Per share | `ShareAccessCheckEvent` | Can the user view/preview/extend/revoke/delete this share? (also decides which row actions are rendered) |
@@ -105,8 +108,32 @@ secret material). See [Configuration — Share lifecycle events](CONFIGURATION.m
 ```yaml
 nowo_yopass:
     security:
-        access_checker: App\Security\TeamYopassAccessChecker
+        access_checker: App\Security\TeamYopassAccessPolicy
 ```
+
+Since 1.19 implement the framework-free `YopassAccessPolicyInterface`: the signed-in user arrives as a `UserRef`
+(`id`: `getId()` as a string, else the identifier with `idIsIdentifier: true`, which an id-keyed policy must
+check and deny; `identifier`; `roles` as the security user reports them, without
+the role hierarchy), or `null` when nobody is signed in. Deny by default: return `true` only for what you grant.
+
+```php
+use Nowo\YopassBundle\Security\UserRef;
+use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
+
+final readonly class TeamYopassAccessPolicy implements YopassAccessPolicyInterface
+{
+    public function __construct(private TeamMembers $members) {}
+
+    public function canAccess(?UserRef $user = null): bool { return $user !== null && $this->members->isMember($user->id); }
+    public function canCreate(?UserRef $user = null): bool { return $this->canAccess($user); }
+    public function canList(?UserRef $user = null): bool { return $this->canAccess($user); }
+    public function canRevoke(?UserRef $user = null): bool { return $user?->hasRole('ROLE_TEAM_ADMIN') ?? false; }
+}
+```
+
+`YopassAccessCheckerInterface` (`?UserInterface`) still works and is **deprecated since 1.19** (removed in 2.0); a
+checker implementing only it is called exactly as before. The default role checker implements both and gives the same
+answers.
 
 ### Share events (teams, grants, roles)
 
@@ -131,6 +158,14 @@ final class MyShareAccessListener
 }
 ```
 
+## Standard Symfony host
+
+Nothing to configure beyond `user_class`: the entities are mapped by attributes, the creator is a Doctrine relation to
+your `User` entity, the default role checker guards the manage routes (`security.*_roles`), and since 1.19 the shares
+and the access log are written through the bundle's own entity manager, built on `database.entity_manager` (same
+connection, same tables): a share write never flushes the changes your controller has pending. See
+[the bundle's own entity manager](#ddd-host-the-bundles-own-entity-manager) for the details; they apply to both hosts.
+
 ## Using it from a DDD / hexagonal application
 
 **Layer.** YopassBundle is a small, self-contained bounded context ("ephemeral secret sharing") with its own
@@ -147,8 +182,8 @@ integrate through events and ports.
   `getDeletedById()`, `getExtendedById()`, `ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()` (the `getId()`
   value as a string), so your listener never has to know the user class. `SecureShare::getCreatorId()` does the same
   on the port.
-- Put authorisation rules behind the bundle's ports: implement `YopassAccessCheckerInterface` and set
-  `security.access_checker`, and listen to `YopassEvents::SHARE_ACCESS_CHECK` (`grant()` / `deny()`) for per-share
+- Put authorisation rules behind the bundle's ports: implement the framework-free `YopassAccessPolicyInterface`
+  (`?UserRef`, 1.19; see [Route-level checker](#route-level-checker)) and set `security.access_checker`, and listen to `YopassEvents::SHARE_ACCESS_CHECK` (`grant()` / `deny()`) for per-share
   rules. Use `SHARE_LIST_QUERY` / `SHARE_DELETE_ALL` for team or tenant scoping.
 - To own the storage, set `database.driver: custom` and `database.repository` to a service implementing
   `ShareRepositoryInterface` (its `consumeReadIfAvailable()` must be atomic; implement
@@ -211,10 +246,61 @@ final readonly class DeleteUserSharesOnUserDeleted
 }
 ```
 
-With the id mapping nothing ties the share table to your user class any more, which is the prerequisite for giving the
-bundle its own entity manager. Until then, the bundle's services flush the manager set in `database.entity_manager`
-(default `default`) on their own writes: call them outside your own pending unit of work (or inside
-`EntityManagerInterface::wrapInTransaction()`).
+With the id mapping nothing ties the share table to your user class any more. Since 1.19 the bundle writes through its
+own entity manager in both mappings (next section).
+
+### DDD host: the bundle's own entity manager
+
+Since **1.19** (`database.private_entity_manager: true`, the default with the `doctrine_orm` driver) the shares and the
+access log are read and written through a **private** entity manager built on the connection, mapping configuration
+and event manager of `database.entity_manager` (default `default`). The bundle never flushes, clears or closes your
+entity manager:
+
+- your pending changes stay pending: a share create / consume / extend / revoke / delete or an access log entry never
+  writes them, and they are written by your own `flush()` only;
+- the bundle's rows are in the database when its call returns (no write waits for your flush, none is lost if you
+  `clear()`);
+- the connection is shared: when you call the bundle inside your own transaction (`wrapInTransaction()`), its rows
+  commit or roll back with yours;
+- a failed bundle write closes only the private manager, which is replaced on the next call; its identity map is
+  emptied at every request, command and Messenger message boundary (FrankenPHP worker mode without kernel reset);
+- the tables do not move, and `doctrine:schema:*` / migrations keep seeing the entities through
+  `database.entity_manager`.
+
+With the relation mapping, `SecureShare::getCreator()` is a reference **in the private manager** (same class and id):
+use `getCreatorId()`, and load the user from your own manager if you need the entity. The lifecycle events'
+`getCreator()` already hands you the user in **your** manager (the managed instance, or a lazy reference from the
+id), so an event listener may relate it to its entities and flush. Shares returned by the bundle are never in your unit
+of work. The SQL filters enabled on `database.entity_manager` (with their parameters) are applied to the private
+manager on every call.
+
+This covers the Doctrine ORM driver only: the MongoDB driver still flushes `database.document_manager`, and with the
+custom driver your repository decides.
+
+`database.private_entity_manager: false` restores the pre-1.19 behaviour (the bundle flushes
+`database.entity_manager`); it is deprecated and removed in 2.0. With `database.driver: custom` your repository decides,
+and the bundle's ORM access log then keeps using `database.entity_manager` (the shares come from your repository).
+
+### DDD host: XML mapping
+
+Hosts that map by XML only set `database.mapping: xml` (1.19): the bundle registers its XML mapping
+(`src/Resources/config/doctrine/shares_and_access_log`, or `shares_only` when the bundle does not map the access log)
+instead of the attribute mapping. Same tables, columns, keys and indexes; `table_prefix`, `user_mapping` and the
+indexes are applied the same way.
+
+```yaml
+nowo_yopass:
+    user_class: App\Infrastructure\Security\SecurityUser
+    user_mapping: id
+    database:
+        mapping: xml
+    security:
+        access_checker: App\Infrastructure\Yopass\TeamYopassAccessPolicy   # YopassAccessPolicyInterface
+```
+
+`tests/Integration/DddHost/DddHostKernelTest.php` boots both host kinds: the standard host (attributes, relation, own
+entity manager by default) and the DDD host (XML-mapped aggregate and bundle entities, creator ids, an access policy on
+`UserRef`, pending aggregate changes left untouched by share writes).
 
 **Deleting a user deletes their shares, never the read history (relation mapping).** The creator foreign key is `ON DELETE CASCADE`: a
 share is a secret its creator handed out, and the bundle does not keep secrets of an erased account. The access-log

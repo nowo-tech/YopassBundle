@@ -8,9 +8,12 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * Role-based default implementation of {@see YopassAccessCheckerInterface}.
+ * Role-based default implementation of {@see YopassAccessPolicyInterface} and of the deprecated
+ * {@see YopassAccessCheckerInterface}: it decides on the roles of the current security token (role hierarchy
+ * included), whatever user is passed, so both forms give the same answer. Deny by default: an empty role list grants
+ * nothing.
  */
-final readonly class ConfigurableYopassAccessChecker implements YopassAccessCheckerInterface
+final readonly class ConfigurableYopassAccessChecker implements YopassAccessPolicyInterface, YopassAccessCheckerInterface
 {
     /**
      * Creates the checker with the configured role lists (an empty list grants nothing).
@@ -34,7 +37,7 @@ final readonly class ConfigurableYopassAccessChecker implements YopassAccessChec
     /**
      * Whether the current user may open the manage UI.
      */
-    public function canAccess(?UserInterface $user = null): bool
+    public function canAccess(UserRef|UserInterface|null $user = null): bool
     {
         if ($this->isAdmin()) {
             return true;
@@ -46,7 +49,7 @@ final readonly class ConfigurableYopassAccessChecker implements YopassAccessChec
     /**
      * Whether the current user may create shares.
      */
-    public function canCreate(?UserInterface $user = null): bool
+    public function canCreate(UserRef|UserInterface|null $user = null): bool
     {
         if ($this->isAdmin()) {
             return true;
@@ -58,7 +61,7 @@ final readonly class ConfigurableYopassAccessChecker implements YopassAccessChec
     /**
      * Whether the current user may list shares.
      */
-    public function canList(?UserInterface $user = null): bool
+    public function canList(UserRef|UserInterface|null $user = null): bool
     {
         if ($this->isAdmin()) {
             return true;
@@ -70,7 +73,7 @@ final readonly class ConfigurableYopassAccessChecker implements YopassAccessChec
     /**
      * Whether the current user may revoke shares.
      */
-    public function canRevoke(?UserInterface $user = null): bool
+    public function canRevoke(UserRef|UserInterface|null $user = null): bool
     {
         if ($this->isAdmin()) {
             return true;

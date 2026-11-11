@@ -16,6 +16,8 @@ services:
             - '../../Document/'
             - '../../Doctrine/'     # Metadata listeners wired in YopassExtension
             - '../../Security/PublicEndpointRateLimiter.php'
+            - '../../Security/UserRef.php'              # Value object (1.19.0)
+            - '../../Security/YopassAccessDecider.php'  # Wired with the configured access checker in YopassExtension
             - '../../Controller/'
 
     # Manage and public controllers must be public for Symfony routing.

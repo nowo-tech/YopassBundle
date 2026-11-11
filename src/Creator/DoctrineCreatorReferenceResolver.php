@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Creator;
 
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
@@ -37,6 +38,7 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         private ?string $managerName = null,
         private ?CreatorClassPolicy $classes = null,
         private string $userMapping = CreatorMapping::RELATION,
+        private ?YopassEntityManager $ownManager = null,
     ) {
     }
 
@@ -54,7 +56,7 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         }
 
         if ($user instanceof $class) {
-            return $user;
+            return $this->ownReference($user, $class);
         }
 
         // JX-Y1: only listed wrapper classes are mapped by id. Any other user fails closed: passing it on would let
@@ -70,12 +72,33 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
             return $user;
         }
 
-        $manager = $this->registry->getManager($this->managerName);
+        $manager = $this->ownManager instanceof YopassEntityManager ? $this->ownManager->get() : $this->registry->getManager($this->managerName);
         if (!method_exists($manager, 'getReference')) {
             return $user;
         }
 
         $reference = $manager->getReference($class, $id);
+
+        return is_object($reference) ? $reference : $user;
+    }
+
+    /**
+     * With the bundle's own entity manager (1.19.0): a `user_class` entity managed by the application's manager becomes
+     * a reference in the private manager (same class and id, no query), so the share's relation never points into
+     * another unit of work. Unchanged without the private manager or when it already manages the user.
+     */
+    private function ownReference(object $user, string $class): object
+    {
+        if (!$this->ownManager instanceof YopassEntityManager) {
+            return $user;
+        }
+
+        $manager = $this->ownManager->get();
+        if ($manager->contains($user)) {
+            return $user;
+        }
+        /** @var class-string $class */
+        $reference = $manager->getReference($class, $manager->getClassMetadata($class)->getIdentifierValues($user));
 
         return is_object($reference) ? $reference : $user;
     }

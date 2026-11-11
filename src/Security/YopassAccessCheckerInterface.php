@@ -10,6 +10,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * Application-specific access rules for Yopass manage routes.
  *
  * Replace this interface in the container to integrate team-based or custom ACL logic.
+ *
+ * @deprecated since 1.19.0, implement the framework-free {@see YopassAccessPolicyInterface} instead; removed in 2.0
  */
 interface YopassAccessCheckerInterface
 {

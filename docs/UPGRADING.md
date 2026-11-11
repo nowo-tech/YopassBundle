@@ -100,6 +100,43 @@
 
 ## Unreleased
 
+Minor release (1.19.0). No configuration change is required, and no schema change: the tables stay where they are.
+
+**The bundle's own entity manager (default).** With the `doctrine_orm` driver, shares and the access log are now
+written through a private entity manager built on `database.entity_manager`, on the same connection and mapping:
+
+- `doctrine:schema:validate` and `doctrine:migrations:diff` show no change, because the entities stay mapped in
+  `database.entity_manager`, so keep your migrations there;
+- nothing to migrate in the data, because the private manager reads and writes the same rows;
+- if your code relied on a share write flushing your own pending changes, flush them yourself. That was the bug this
+  release fixes (REQ-ARCH-001 rule 6);
+- **BC, relation mapping:** `SecureShare::getCreator()` on a share the bundle loaded returns a reference in the
+  bundle's manager. Read it, or use `getCreatorId()`, but do not relate it to your own entities (load the user from
+  your manager instead). The lifecycle events' `getCreator()` already returns the user in **your** manager;
+- the SQL filters enabled on `database.entity_manager`, with their parameters, are applied to the bundle's manager on
+  every call. A filter you enable through DoctrineBundle's `filters:` config or in a request listener therefore also
+  applies to share reads, as before;
+- **ORM only:** the MongoDB driver still flushes `database.document_manager`, and the custom driver uses your
+  repository; neither changes in this release;
+- to keep the old behaviour for now: `database.private_entity_manager: false` (deprecated, removed in 2.0).
+
+**Deprecations (removed in 2.0)**
+
+| Deprecated | Replacement |
+|---|---|
+| `Security\YopassAccessCheckerInterface` (`canX(?UserInterface)`) | `Security\YopassAccessPolicyInterface` (`canX(?UserRef)`): `$user->getId()` becomes `$user->id`, `getUserIdentifier()` becomes `$user->identifier`, `in_array('ROLE_X', $user->getRoles())` becomes `$user->hasRole('ROLE_X')` |
+| `database.private_entity_manager: false` | the default (`true`) |
+
+`UserRef::$id` is the security user's `getId()`; when it has none, the identifier stands in and `UserRef::$idIsIdentifier`
+is true. Each interface is aliased to your checker only if its class implements that interface.
+
+A checker that implements only `YopassAccessCheckerInterface` keeps working, is called exactly as before, and triggers
+one `E_USER_DEPRECATED` notice when the manage controller is built. Implementing both interfaces is fine: the policy is
+used.
+
+**XML mapping (optional).** Hosts that map by XML only can set `database.mapping: xml`, which gives the same tables and
+columns. Do not also keep the attribute mapping entry for `Nowo\YopassBundle\Entity` in your own Doctrine config.
+
 ## To 1.18.0
 
 From **1.17.0** (minor):

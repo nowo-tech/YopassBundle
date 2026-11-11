@@ -23,7 +23,9 @@ use Nowo\YopassBundle\Event\ShareRevokedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Security\UserRef;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
@@ -1194,8 +1196,57 @@ final class ShareManageControllerTest extends TestCase
         };
     }
 
+    public function testAFrameworkFreePolicyReceivesTheSignedInUserAsAUserRef(): void
+    {
+        $policy = new class implements YopassAccessPolicyInterface {
+            /** @var list<string|null> */
+            public array $seen = [];
+
+            public function canAccess(?UserRef $user = null): bool
+            {
+                $this->seen[] = 'access:' . $user?->id;
+
+                return $user?->id === 'user-1';
+            }
+
+            public function canCreate(?UserRef $user = null): bool
+            {
+                $this->seen[] = 'create:' . $user?->id;
+
+                return false;
+            }
+
+            public function canList(?UserRef $user = null): bool
+            {
+                $this->seen[] = 'list:' . $user?->id;
+
+                return false;
+            }
+
+            public function canRevoke(?UserRef $user = null): bool
+            {
+                return false;
+            }
+        };
+
+        $controller = $this->controller(accessChecker: $policy);
+        ControllerContainerBuilder::bind($controller, new TestUser());
+        try {
+            $controller->index(Request::create('/tools/yopass'));
+            self::fail('Expected the list feature to be denied');
+        } catch (AccessDeniedException) {
+        }
+        self::assertSame(['access:user-1', 'list:user-1'], $policy->seen);
+
+        // Nobody signed in: the policy gets null and denies.
+        $controller = $this->controller(accessChecker: $policy);
+        ControllerContainerBuilder::bind($controller);
+        $this->expectException(AccessDeniedException::class);
+        $controller->index(Request::create('/tools/yopass'));
+    }
+
     private function controller(
-        ?YopassAccessCheckerInterface $accessChecker = null,
+        YopassAccessPolicyInterface|YopassAccessCheckerInterface|null $accessChecker = null,
         ?ShareRepositoryInterface $shareRepository = null,
         ?ShareCreator $shareCreator = null,
         ?ShareRetriever $shareRetriever = null,

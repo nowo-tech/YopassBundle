@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Event;
 
 use DateTimeImmutable;
+use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -33,11 +34,11 @@ final class ShareRevokedEvent extends Event
     /**
      * Copies the metadata of a revoked share; the ciphertext is deliberately left out.
      */
-    public static function fromShare(SecureShare $share, ?UserInterface $revokedBy = null): self
+    public static function fromShare(SecureShare $share, ?UserInterface $revokedBy = null, ?object $creator = null): self
     {
         return new self(
             $share->getId(),
-            $share->getCreator(),
+            $creator ?? $share->getCreator(),
             $revokedBy,
             $share->getRevokedAt() ?? new DateTimeImmutable(),
             $share->getPayloadKind(),
@@ -53,7 +54,9 @@ final class ShareRevokedEvent extends Event
     }
 
     /**
-     * Returns the creator of the share (application user entity).
+     * Returns the creator: with the relation mapping, the application user entity **in the application's entity
+     * manager** (since 1.19.0 a lazy reference built from the creator id when the bundle uses its own entity manager);
+     * with `user_mapping: id`, a {@see CreatorId}. Prefer {@see self::getCreatorId()}.
      */
     public function getCreator(): object
     {
