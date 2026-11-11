@@ -6,7 +6,6 @@
 - [To 1.18.0](#to-1180)
 - [To 1.17.0](#to-1170)
 - [To 1.16.0](#to-1160)
-- [To 1.16.0](#to-1160-1)
   - [Behaviour change: only accepted user classes own shares](#behaviour-change-only-accepted-user-classes-own-shares)
   - [Access log rows outlive their shares (migration)](#access-log-rows-outlive-their-shares-migration)
   - [Other changes](#other-changes)
@@ -167,14 +166,6 @@ stored public read; nothing listens to it by default. `ShareRetriever` takes a n
 Listeners must be idempotent: with Doctrine ORM two concurrent reads can report the same counters (see USAGE). The Doctrine ORM access log is
 unchanged (still written by the public controller, kept after share deletion as in 1.16). A listener that throws does
 not fail the reader's request; it is logged at `error` level.
-
-## To 1.16.0
-
-From **1.15.1**:
-
-```bash
-composer update nowo-tech/yopass-bundle
-```
 
 ## To 1.16.0
 
