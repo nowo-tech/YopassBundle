@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Psr\Clock\ClockInterface;
@@ -16,7 +17,7 @@ use Symfony\Component\Clock\Clock;
 /**
  * Doctrine ORM implementation for PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle, etc.
  */
-final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface
+final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface, CreatorIdShareRepositoryInterface
 {
     use ResolvesEntityManagerTrait;
 
@@ -218,9 +219,36 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         $this->em()->flush();
     }
 
-    private function creator(object $creator): object
+    /**
+     * Returns all shares created by the user with this id (1.18.0).
+     */
+    public function findByCreatorId(string $creatorId): array
     {
-        return $this->creators?->reference($creator) ?? $creator;
+        return $this->findByCreator(new CreatorId($creatorId));
+    }
+
+    /**
+     * Counts the shares created by the user with this id (1.18.0).
+     */
+    public function countByCreatorId(string $creatorId): int
+    {
+        return $this->countByCreator(new CreatorId($creatorId));
+    }
+
+    /**
+     * Deletes every share of the user with this id at once (one DQL DELETE, no flush) (1.18.0).
+     */
+    public function removeAllByCreatorId(string $creatorId): int
+    {
+        return $this->removeAllByCreator(new CreatorId($creatorId));
+    }
+
+    /**
+     * The value compared with the stored creator: the reference (relation mapping) or the plain id (id mapping).
+     */
+    private function creator(object $creator): object|string
+    {
+        return CreatorId::unwrap($this->creators?->reference($creator) ?? $creator);
     }
 
     private function now(): DateTimeImmutable

@@ -32,6 +32,18 @@ final class AccessLogMappingPassTest extends TestCase
         self::assertContains(ShareAccessLog::class, $classes);
     }
 
+    public function testHostAccessLogRepositoryUnmapsTheEntity(): void
+    {
+        $container = new ContainerBuilder();
+        $container->setParameter(AccessLogMappingPass::ENABLED_PARAMETER, true);
+        $container->setParameter(AccessLogMappingPass::MAPPED_PARAMETER, false);
+        $container->setDefinition('doctrine.orm.default_attribute_metadata_driver', new Definition(AttributeDriver::class, [[]]));
+
+        (new AccessLogMappingPass())->process($container);
+
+        self::assertCount(1, $container->getDefinition('doctrine.orm.default_attribute_metadata_driver')->getMethodCalls());
+    }
+
     public function testWithoutParameterNothingChanges(): void
     {
         $container = new ContainerBuilder();

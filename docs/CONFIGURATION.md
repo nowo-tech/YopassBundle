@@ -36,6 +36,7 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
 | Option | Description |
 |--------|-------------|
 | `user_class` | FQCN of your User entity (`UserInterface` + `getId()`). Used for the `creator` relation on shares (`ON DELETE CASCADE`: deleting a user deletes their shares; their access-log rows stay, see [Access log](#access-log)). The security user may be another class exposing the same `getId()` when listed in `accepted_user_classes` (since 1.16). |
+| `user_mapping` | Since 1.18; default `relation`. `relation`: the share creator is a Doctrine relation to `user_class` (`ON DELETE CASCADE`). `id`: the creator id in a string column (`creator_id VARCHAR(128)`) / field, no relation and no foreign key; `user_class` need not be mapped; delete the shares of a deleted user with `CreatorIdShareRepositoryInterface::removeAllByCreatorId()`. See [USAGE](USAGE.md#using-it-from-a-ddd--hexagonal-application). |
 | `accepted_user_classes` | Since 1.16; default `[]`. Security-user classes other than `user_class` that map to a share creator by `getId()` (wrappers / read models carrying the `user_class` id). With the default only `user_class` instances create, list, bulk-delete and own shares; any other user is refused (403), so a second identity domain with overlapping ids (Admin#5 / Customer#5) fails closed. Ids ≤ 0 and empty ids are refused. |
 
 ## Database
@@ -228,7 +229,11 @@ rows of one share together and lets an auditor match a share id they already kno
 user agent: include the table in your own retention / personal-data policy. Migration:
 [UPGRADING › To 1.16.0](UPGRADING.md#to-1160).
 
-When disabled (or with the MongoDB / custom non-relational backends, which always disable it) the
+**Your own store (1.18).** `access_log.repository: <service id>` (a `ShareAccessLogRepositoryInterface`) is used with
+every driver, MongoDB and custom included; the history is then available whatever the backend and the bundle does not
+map `ShareAccessLog`.
+
+When disabled (or with the MongoDB / custom non-relational backends without `access_log.repository`) the
 `ShareAccessLog` entity is **not mapped**: it is excluded from the Doctrine ORM attribute drivers, so no
 `<table_prefix>_share_access_logs` table is created. See [UPGRADING](UPGRADING.md#access-log-table-no-longer-mapped-when-disabled)
 for an existing empty table.

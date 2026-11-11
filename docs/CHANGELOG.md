@@ -58,6 +58,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target **1.18.0** (minor): strict DDD / hexagonal hosts can use Yopass without a Doctrine user class (architecture
+bar rules 2 and 5). The standard path (Doctrine relation to `user_class`) is the default and does not change; no schema
+change for it.
+
+### Added
+
+- **`user_mapping: relation|id`** (default `relation`). With `id`, a share stores its creator id in a string column
+  (`creator_id`, length 128, ORM) or a string field (`creator`, MongoDB): no relation, no foreign key, no metadata
+  remap, and `user_class` need not be mapped in the bundle's entity / document manager (plain PHP security users,
+  UUID ids). Shares then return a `CreatorId` value object (`getId()`) from `getCreator()`; owner checks, events
+  (`getCreatorId()`), listings and the custom driver work the same. `CreatorReferenceResolverInterface` returns a
+  `CreatorId` in that mode; any user that is neither `user_class`, a `CreatorId` nor listed in
+  `accepted_user_classes` is still refused.
+- **`CreatorIdShareRepositoryInterface`** (implemented by the ORM and MongoDB repositories): `findByCreatorId()`,
+  `countByCreatorId()`, `removeAllByCreatorId()` for hosts that only know the user id. With the id mapping there is
+  no `ON DELETE CASCADE`: call `removeAllByCreatorId()` from your "user deleted" handler.
+- **`access_log.repository`** (rule 5): a service implementing `ShareAccessLogRepositoryInterface` used with every
+  database driver (MongoDB and custom included). The access history is then available whatever the backend, and the
+  bundle no longer maps its `ShareAccessLog` entity.
+- `SecureShare` / `SecureShareDocument` constructors accept the creator id as a string (or a `CreatorId`).
+- Tests on both host kinds: the standard ORM host (relation), and a strict DDD host with only the bundle entities
+  mapped, plain-PHP users with UUID ids (ORM and MongoDB).
+
 ## [1.17.0] - 2026-11-10
 
 Target: **1.17.0** (DDD P2, audit 2026-11-09: "link consumed" event). See [UPGRADING](UPGRADING.md#to-1170).

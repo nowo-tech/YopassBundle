@@ -181,7 +181,40 @@ services:
 
 A `SHARE_ACCESS_CHECK` listener can still grant other users (team admins) per share.
 
-**Deleting a user deletes their shares, never the read history.** The creator foreign key is `ON DELETE CASCADE`: a
+**Plain creator ids for a strict DDD host (opt-in, 1.18).** When your users are plain PHP objects, are mapped in XML
+in another entity manager or are not in Doctrine at all, store ids instead of a relation:
+
+```yaml
+nowo_yopass:
+    user_class: App\Infrastructure\Security\SecurityUser   # its getId() is stored (UUIDs welcome)
+    user_mapping: id
+```
+
+The share then holds `creator_id VARCHAR(128)` (MongoDB: a string `creator` field) without any foreign key, and
+`SecureShare::getCreator()` returns a `CreatorId` (`getId()`); prefer `getCreatorId()` in your code. Owner checks,
+events, listings and the fail-closed rule for other identity domains work as with the relation. Nothing cascades when
+a user is deleted: call the id-typed repository port from your handler:
+
+```php
+use Nowo\YopassBundle\Repository\CreatorIdShareRepositoryInterface;
+
+final readonly class DeleteUserSharesOnUserDeleted
+{
+    public function __construct(private CreatorIdShareRepositoryInterface $shares) {}
+
+    public function __invoke(UserDeleted $event): void
+    {
+        $this->shares->removeAllByCreatorId($event->userId->toString());
+    }
+}
+```
+
+With the id mapping nothing ties the share table to your user class any more, which is the prerequisite for giving the
+bundle its own entity manager. Until then, the bundle's services flush the manager set in `database.entity_manager`
+(default `default`) on their own writes: call them outside your own pending unit of work (or inside
+`EntityManagerInterface::wrapInTransaction()`).
+
+**Deleting a user deletes their shares, never the read history (relation mapping).** The creator foreign key is `ON DELETE CASCADE`: a
 share is a secret its creator handed out, and the bundle does not keep secrets of an erased account. The access-log
 rows of those shares stay (1.16, `share_id` `ON DELETE SET NULL`), with `share_ref` (SHA-256 of the share id) so the
 trail stays meaningful; see [CONFIGURATION › Access log](CONFIGURATION.md#access-log). With the MongoDB driver there is
@@ -242,15 +275,26 @@ final readonly class YopassShareConsumedAdapter
 }
 ```
 
+**Your own access log store (1.18).** Set `access_log.repository` to a service implementing
+`ShareAccessLogRepositoryInterface` to keep the read history in your own store, with any driver (MongoDB and custom
+included); the bundle then stops mapping `ShareAccessLog`. Or listen to `YopassEvents::SHARE_CONSUMED` (since 1.17;
+ids and counters, no IP address or user agent).
+
+**Both paths in short**
+
+| | Standard Symfony project (default) | Strict DDD / hexagonal host (opt-in) |
+|---|---|---|
+| Creator storage | Doctrine relation to `user_class` (`ON DELETE CASCADE`) | `user_mapping: id`: string id, no foreign key |
+| Security user | `user_class`, or a class in `accepted_user_classes` | `user_class` (any PHP class with `getId()`), or listed classes |
+| User deletion | cascades to the shares | call `removeAllByCreatorId()` |
+| Access log | ORM entity (`access_log.enabled`) | `access_log.repository`, or `SHARE_CONSUMED` |
+
 **Known limitations**
 
-- With the Doctrine drivers the creator column stays a relation to `user_class` (there is no plain-id mode); the
-  host needs a Doctrine user class in the bundle's manager, even if its security user is not that class.
-- `ShareRepositoryInterface` still takes creator objects and returns the `SecureShare` entity; services are final
-  classes (replace them through the ports above).
-- The access log (`access_log.enabled`, IP address and user agent) is Doctrine ORM only and cannot be replaced by your
-  own repository. To audit reads in your own context with any driver, listen to `YopassEvents::SHARE_CONSUMED`
-  (since 1.17; ids and counters, no IP address or user agent).
+- `ShareRepositoryInterface` still takes creator objects and returns the `SecureShare` entity (the id-typed
+  `CreatorIdShareRepositoryInterface` sits next to it); services are final classes (replace them through the ports
+  above).
+- `ShareAccessLogRepositoryInterface` is still typed on the `ShareAccessLog` / `SecureShare` classes.
 
 ## Twig overrides
 

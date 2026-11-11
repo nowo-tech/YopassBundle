@@ -52,11 +52,12 @@ final readonly class CreatorClassPolicy
     }
 
     /**
-     * Whether the user is a `user_class` instance or an instance of a listed accepted class.
+     * Whether the user is a `user_class` instance, a {@see CreatorId} or an instance of a listed accepted class.
      */
     public function isAccepted(object $user): bool
     {
-        if ($this->isCreatorClass($user)) {
+        // 1.18.0: a CreatorId is what a share returns as its creator with the id mapping.
+        if ($user instanceof CreatorId || $this->isCreatorClass($user)) {
             return true;
         }
 

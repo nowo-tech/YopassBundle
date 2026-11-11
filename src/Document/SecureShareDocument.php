@@ -6,9 +6,11 @@ namespace Nowo\YopassBundle\Document;
 
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\Mapping\Annotations as ODM;
+use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Symfony\Component\Security\Core\User\UserInterface;
 
+use function is_string;
 use function max;
 
 /**
@@ -47,10 +49,12 @@ class SecureShareDocument
      * Creates a share document for the given id and creator, stamped with the creation time.
      */
     public function __construct(#[ODM\Id(type: 'string', strategy: 'NONE')]
-        private string $id, /** @var object Application user entity (nowo_yopass.user_class) */
+        private string $id, /** Application user document (nowo_yopass.user_class), or its id with the id mapping (1.18.0) */
         #[ODM\ReferenceOne(storeAs: 'id', targetDocument: UserInterface::class)]
-        private object $creator)
+        private object|string $creator)
     {
+        // A CreatorId (id mapping) is stored as its plain id.
+        $this->creator   = is_string($creator) ? $creator : CreatorId::unwrap($creator);
         $this->createdAt = new DateTimeImmutable();
     }
 
@@ -127,11 +131,11 @@ class SecureShareDocument
     }
 
     /**
-     * Returns the user who created the share.
+     * Returns the user who created the share (a {@see CreatorId} with the id mapping, 1.18.0).
      */
     public function getCreator(): object
     {
-        return $this->creator;
+        return CreatorId::wrap($this->creator);
     }
 
     /**

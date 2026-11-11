@@ -3,8 +3,8 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.18.0](#to-1180)
 - [To 1.17.0](#to-1170)
-- [To 1.17.0](#to-1170-1)
 - [To 1.16.0](#to-1160)
 - [To 1.16.0](#to-1160-1)
   - [Behaviour change: only accepted user classes own shares](#behaviour-change-only-accepted-user-classes-own-shares)
@@ -101,13 +101,38 @@
 
 ## Unreleased
 
-## To 1.17.0
+## To 1.18.0
 
-From **1.16.0**:
+From **1.17.0** (minor):
 
 ```bash
 composer update nowo-tech/yopass-bundle
 ```
+
+**Standard hosts:** nothing to do. `user_mapping` defaults to `relation` (the Doctrine relation to `user_class`, `ON
+DELETE CASCADE`), `access_log.repository` to `null`, and the schema does not change.
+
+**BC notes:** `SecureShare` / `SecureShareDocument` hold the creator internally as `object|string` (the id with the id
+mapping); `getCreator()` keeps its `object` return type. `DoctrineOrmShareRepository` and
+`DoctrineMongoShareRepository` implement the new `CreatorIdShareRepositoryInterface`; `ShareRepositoryInterface` is
+unchanged, so custom repositories keep working.
+
+**Opt-in: id mapping for DDD / hexagonal hosts.** New installs can store creator ids instead of a relation:
+
+```yaml
+nowo_yopass:
+    user_class: App\Infrastructure\Security\SecurityUser   # its getId() is stored; need not be a Doctrine class
+    user_mapping: id
+```
+
+With an existing database, switching from `relation` to `id` turns `creator_id` from a foreign key into
+`VARCHAR(128)` (MongoDB: the `creator` field keeps the stored id): generate the migration
+(`doctrine:migrations:diff`), check that it drops the foreign key and keeps the values, then migrate. Shares are no
+longer deleted with their user: call `CreatorIdShareRepositoryInterface::removeAllByCreatorId()` when you delete one.
+
+**Opt-in: your own access log store** (`access_log.repository: app.yopass_access_log`, a service implementing
+`ShareAccessLogRepositoryInterface`), with any driver. The bundle then stops mapping `ShareAccessLog`; an existing
+`<prefix>_share_access_logs` table is left as is (migrate or drop it yourself).
 
 ## To 1.17.0
 

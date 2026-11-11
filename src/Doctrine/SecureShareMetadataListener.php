@@ -7,15 +7,19 @@ namespace Nowo\YopassBundle\Doctrine;
 use Doctrine\ORM\Event\LoadClassMetadataEventArgs;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use LogicException;
+use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
 
 use function array_replace_recursive;
+use function is_array;
+use function is_string;
 use function ltrim;
 use function sprintf;
 
 /**
- * Applies configurable table name and user entity mapping to SecureShare.
+ * Applies configurable table name and user entity mapping to SecureShare: a relation to `user_class` (default) or,
+ * with `nowo_yopass.user_mapping: id` (1.18.0), a string creator id column without any relation to the host.
  */
 final readonly class SecureShareMetadataListener
 {
@@ -26,6 +30,7 @@ final readonly class SecureShareMetadataListener
         private string $tableName,
         private string $userClass,
         private ?string $accessLogTableName = null,
+        private string $userMapping = CreatorMapping::RELATION,
     ) {
     }
 
@@ -63,7 +68,35 @@ final readonly class SecureShareMetadataListener
 
         /** @var ClassMetadata<SecureShare> $secureShareMetadata */
         $secureShareMetadata = $metadata;
+        if ($this->userMapping === CreatorMapping::ID) {
+            $this->mapCreatorIdColumn($secureShareMetadata);
+
+            return;
+        }
+
         $this->remapCreatorAssociation($secureShareMetadata);
+    }
+
+    /**
+     * Id mapping (1.18.0): replaces the relation to the host user by a string column of the same name holding the
+     * creator id (no foreign key, no join to the host users table).
+     *
+     * @param ClassMetadata<SecureShare> $metadata
+     */
+    private function mapCreatorIdColumn(ClassMetadata $metadata): void
+    {
+        $mapping    = $metadata->associationMappings['creator']->toArray();
+        $joinColumn = is_array($mapping['joinColumns'] ?? null) && is_array($mapping['joinColumns'][0] ?? null) ? $mapping['joinColumns'][0] : [];
+
+        unset($metadata->associationMappings['creator']);
+
+        $metadata->mapField([
+            'fieldName'  => 'creator',
+            'columnName' => is_string($joinColumn['name'] ?? null) ? $joinColumn['name'] : 'creator_id',
+            'type'       => 'string',
+            'length'     => CreatorMapping::ID_LENGTH,
+            'nullable'   => false,
+        ]);
     }
 
     /**

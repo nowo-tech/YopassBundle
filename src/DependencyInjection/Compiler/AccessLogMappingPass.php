@@ -13,7 +13,7 @@ use function preg_match;
 
 /**
  * Conditional mapping of {@see ShareAccessLog}: with `access_log.enabled: false` (or a backend without the ORM
- * access log: MongoDB, custom non-relational), the entity file is excluded from every Doctrine ORM attribute
+ * access log: MongoDB, custom non-relational), or with a host `access_log.repository` (1.18.0), the entity file is excluded from every Doctrine ORM attribute
  * metadata driver, so `doctrine:schema:update` / `make:migration` do not create an empty
  * `<table_prefix>_share_access_logs` table.
  *
@@ -23,6 +23,9 @@ final class AccessLogMappingPass implements CompilerPassInterface
 {
     public const ENABLED_PARAMETER = 'nowo_yopass.access_log_enabled';
 
+    /** False when the host stores the access log itself (`access_log.repository`, 1.18.0): the entity is not mapped. */
+    public const MAPPED_PARAMETER = 'nowo_yopass.access_log_mapped';
+
     private const DRIVER_ID_PATTERN = '/^doctrine\.orm\.[^.]+_attribute_metadata_driver$/';
 
     /**
@@ -30,7 +33,9 @@ final class AccessLogMappingPass implements CompilerPassInterface
      */
     public function process(ContainerBuilder $container): void
     {
-        if (!$container->hasParameter(self::ENABLED_PARAMETER) || $container->getParameter(self::ENABLED_PARAMETER) !== false) {
+        $disabled = $container->hasParameter(self::ENABLED_PARAMETER) && $container->getParameter(self::ENABLED_PARAMETER) === false;
+        $unmapped = $container->hasParameter(self::MAPPED_PARAMETER) && $container->getParameter(self::MAPPED_PARAMETER) === false;
+        if (!$disabled && !$unmapped) {
             return;
         }
 

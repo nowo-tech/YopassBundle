@@ -9,6 +9,7 @@ use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Database\DatabaseDriver;
+use Nowo\YopassBundle\DependencyInjection\Compiler\AccessLogMappingPass;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
 use Nowo\YopassBundle\EventListener\WasmCspListener;
@@ -128,6 +129,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             ]);
 
         $this->registerShareRepository($container, $driver, $database, $storageName, $collection, $config);
+        $this->registerHostAccessLogRepository($container, $config['access_log']);
 
         $accessCheckerId = $config['security']['access_checker'] ?? null;
         if (!is_string($accessCheckerId) || $accessCheckerId === '') {
@@ -401,7 +403,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
             $container->setAlias(ShareRepositoryInterface::class, $repositoryId);
             // The host repository receives the users as given (no Doctrine manager to build references on).
-            $this->registerCreatorReferenceResolver($container, $userClass, null, null);
+            $this->registerCreatorReferenceResolver($container, $userClass, null, null, $config['user_mapping']);
 
             return;
         }
@@ -416,11 +418,12 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 ->setArgument('$registry', new Reference('doctrine_mongodb'))
                 ->setArgument('$managerName', $documentManagerName)
                 ->setArgument('$creators', new Reference(CreatorReferenceResolverInterface::class)));
-            $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine_mongodb', $documentManagerName);
+            $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine_mongodb', $documentManagerName, $config['user_mapping']);
 
             $container->setDefinition(SecureShareDocumentMetadataListener::class, (new Definition(SecureShareDocumentMetadataListener::class))
                 ->setArgument('$collectionName', $collection)
                 ->setArgument('$userClass', $userClass)
+                ->setArgument('$userMapping', $config['user_mapping'])
                 ->addTag('doctrine_mongodb.odm.event_listener', ['event' => 'loadClassMetadata']));
 
             $container->setAlias(ShareRepositoryInterface::class, DoctrineMongoShareRepository::class);
@@ -430,20 +433,21 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
         $this->registerOrmShareRepository($container, $database, $storageName, $userClass, $config);
         $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$creators', new Reference(CreatorReferenceResolverInterface::class));
-        $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine', (string) $database['entity_manager']);
+        $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine', (string) $database['entity_manager'], $config['user_mapping']);
         $container->setAlias(ShareRepositoryInterface::class, DoctrineOrmShareRepository::class);
     }
 
     /**
      * Default {@see CreatorReferenceResolverInterface} (aliased: a host alias or service for the interface wins).
      */
-    private function registerCreatorReferenceResolver(ContainerBuilder $container, string $userClass, ?string $registry, ?string $managerName): void
+    private function registerCreatorReferenceResolver(ContainerBuilder $container, string $userClass, ?string $registry, ?string $managerName, string $userMapping): void
     {
         $container->setDefinition(DoctrineCreatorReferenceResolver::class, (new Definition(DoctrineCreatorReferenceResolver::class))
             ->setArgument('$userClass', $userClass)
             ->setArgument('$registry', $registry !== null ? new Reference($registry) : null)
             ->setArgument('$managerName', $managerName)
-            ->setArgument('$classes', new Reference(CreatorClassPolicy::class)));
+            ->setArgument('$classes', new Reference(CreatorClassPolicy::class))
+            ->setArgument('$userMapping', $userMapping));
         $container->setAlias(CreatorReferenceResolverInterface::class, DoctrineCreatorReferenceResolver::class);
     }
 
@@ -472,6 +476,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             ->setArgument('$tableName', $storageName)
             ->setArgument('$userClass', $userClass)
             ->setArgument('$accessLogTableName', $accessLogEnabled ? $accessLogTable : null)
+            ->setArgument('$userMapping', $config['user_mapping'])
             ->addTag('doctrine.event_listener', ['event' => 'loadClassMetadata']));
 
         if ($accessLogEnabled) {
@@ -484,6 +489,24 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         } else {
             $this->registerNullAccessLogRepository($container);
         }
+    }
+
+    /**
+     * `access_log.repository` (1.18.0): the host's ShareAccessLogRepositoryInterface service, with every driver. The
+     * history is then enabled whatever the backend, and the bundle no longer maps its ShareAccessLog entity.
+     *
+     * @param array{enabled: bool, repository: ?string} $accessLog
+     */
+    private function registerHostAccessLogRepository(ContainerBuilder $container, array $accessLog): void
+    {
+        $repositoryId = $accessLog['repository'];
+        if (!$accessLog['enabled'] || !is_string($repositoryId) || $repositoryId === '') {
+            return;
+        }
+
+        $container->setAlias(ShareAccessLogRepositoryInterface::class, $repositoryId);
+        $container->setParameter(AccessLogMappingPass::ENABLED_PARAMETER, true);
+        $container->setParameter(AccessLogMappingPass::MAPPED_PARAMETER, false);
     }
 
     private function registerNullAccessLogRepository(ContainerBuilder $container): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\DependencyInjection;
 
 use DateTimeImmutable;
+use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\Support\RelativeInterval;
 use Nowo\YopassBundle\Ui\CssFramework;
@@ -57,6 +58,11 @@ final class Configuration implements ConfigurationInterface
                     ->info('Security-user classes other than user_class that map to a creator by getId() (wrappers / read models carrying the user_class id). Empty (default): only user_class instances own and list shares; users of another identity domain fail closed.')
                     ->scalarPrototype()->cannotBeEmpty()->end()
                     ->defaultValue([])
+                ->end()
+                ->enumNode('user_mapping')
+                    ->info('How a share stores its creator: "relation" (default, Doctrine relation to user_class with ON DELETE CASCADE) or "id" (the creator id in a string column / field, no relation and no foreign key; user_class need not be mapped in the bundle\'s entity / document manager; delete the shares of a deleted user with CreatorIdShareRepositoryInterface::removeAllByCreatorId()) (1.18.0).')
+                    ->values(CreatorMapping::values())
+                    ->defaultValue(CreatorMapping::RELATION)
                 ->end()
                 ->scalarNode('table_prefix')
                     ->info('Prefix for the secure_shares table/collection (final name: {prefix}secure_shares).')
@@ -120,6 +126,10 @@ final class Configuration implements ConfigurationInterface
                         ->booleanNode('enabled')
                             ->defaultTrue()
                             ->info('When false, opens are not persisted, the history UI stays hidden and the ShareAccessLog entity is not mapped (no table).')
+                        ->end()
+                        ->scalarNode('repository')
+                            ->defaultNull()
+                            ->info('Service id implementing ShareAccessLogRepositoryInterface, used with every database driver (MongoDB and custom included); the bundle then does not map the ShareAccessLog entity. Null (default): the ORM repository on relational platforms, none otherwise (1.18.0).')
                         ->end()
                     ->end()
                 ->end()

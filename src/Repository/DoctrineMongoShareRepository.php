@@ -7,6 +7,8 @@ namespace Nowo\YopassBundle\Repository;
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\Persistence\ManagerRegistry;
+use MongoDB\DeleteResult;
+use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
@@ -18,7 +20,7 @@ use function is_int;
 /**
  * Doctrine MongoDB ODM implementation for MongoDB deployments.
  */
-final readonly class DoctrineMongoShareRepository implements ShareRepositoryInterface
+final readonly class DoctrineMongoShareRepository implements ShareRepositoryInterface, CreatorIdShareRepositoryInterface
 {
     use ResolvesDocumentManagerTrait;
 
@@ -237,9 +239,43 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         return $count;
     }
 
-    private function creator(object $creator): object
+    /**
+     * Returns all shares created by the user with this id (1.18.0).
+     */
+    public function findByCreatorId(string $creatorId): array
     {
-        return $this->creators?->reference($creator) ?? $creator;
+        return $this->findByCreator(new CreatorId($creatorId));
+    }
+
+    /**
+     * Counts the shares created by the user with this id (1.18.0).
+     */
+    public function countByCreatorId(string $creatorId): int
+    {
+        return $this->countByCreator(new CreatorId($creatorId));
+    }
+
+    /**
+     * Deletes every share of the user with this id at once, without flushing the document manager (1.18.0).
+     */
+    public function removeAllByCreatorId(string $creatorId): int
+    {
+        // One delete query, applied at once: the caller's document manager is not flushed (rule 6).
+        $result = $this->dm()->createQueryBuilder(SecureShareDocument::class)
+            ->remove()
+            ->field('creator')->equals($this->creator(new CreatorId($creatorId)))
+            ->getQuery()
+            ->execute();
+
+        return $result instanceof DeleteResult ? $result->getDeletedCount() : 0;
+    }
+
+    /**
+     * The value compared with the stored creator: the reference (relation mapping) or the plain id (id mapping).
+     */
+    private function creator(object $creator): object|string
+    {
+        return CreatorId::unwrap($this->creators?->reference($creator) ?? $creator);
     }
 
     private function now(): DateTimeImmutable

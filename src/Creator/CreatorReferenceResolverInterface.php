@@ -10,8 +10,9 @@ namespace Nowo\YopassBundle\Creator;
  *
  * The default ({@see DoctrineCreatorReferenceResolver}) returns instances of `nowo_yopass.user_class` unchanged and
  * turns any other user exposing `getId()` (a security user that is no Doctrine entity, a DTO, a read model) into a
- * Doctrine reference of `user_class` with that id, so the token user does not have to be the mapped entity. Alias the
- * interface to your own service when the ids differ.
+ * Doctrine reference of `user_class` with that id, so the token user does not have to be the mapped entity. With
+ * `nowo_yopass.user_mapping: id` (1.18.0) it returns a {@see CreatorId} instead. Alias the interface to your own
+ * service when the ids differ.
  */
 interface CreatorReferenceResolverInterface
 {
