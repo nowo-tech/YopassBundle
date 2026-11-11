@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.18.0] - 2026-11-11](#1180---2026-11-11)
 - [[1.17.0] - 2026-11-10](#1170---2026-11-10)
 - [[1.16.0] - 2026-11-09](#1160---2026-11-09)
 - [[1.15.1] - 2026-11-09](#1151---2026-11-09)
@@ -58,9 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Target **1.18.0** (minor): strict DDD / hexagonal hosts can use Yopass without a Doctrine user class (architecture
-bar rules 2 and 5). The standard path (Doctrine relation to `user_class`) is the default and does not change; no schema
-change for it.
+## [1.18.0] - 2026-11-11
+
+DDD host path: creator ids instead of user relations, an id-typed repository port and a pluggable access log; binary collation on creator ids. See [UPGRADING](https://github.com/nowo-tech/YopassBundle/blob/v1.18.0/docs/UPGRADING.md#to-1180).
+
 
 ### Added
 
@@ -85,6 +87,8 @@ change for it.
   conversion). CI job on MySQL 8.0, MariaDB 11.4 and PostgreSQL 17.
 - Tests on both host kinds: the standard ORM host (relation), and a strict DDD host with only the bundle entities
   mapped, plain-PHP users with UUID ids (ORM and MongoDB).
+
+[1.18.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.18.0
 
 ## [1.17.0] - 2026-11-10
 
@@ -924,7 +928,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.18.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
