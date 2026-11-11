@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.19.0](#to-1190)
 - [To 1.18.0](#to-1180)
 - [To 1.17.0](#to-1170)
 - [To 1.16.0](#to-1160)
@@ -99,6 +100,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.19.0
+
+From **1.18.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 Minor release (1.19.0). No configuration change is required, and no schema change: the tables stay where they are.
 
