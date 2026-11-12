@@ -53,6 +53,8 @@ final class SecretMaterialSourceScanTest extends TestCase
         'Service/ShareRetentionPurger.php',
         // Logs a failing SHARE_CONSUMED listener: share id and exception class only (no message, no ciphertext).
         'Service/ShareConsumedNotifier.php',
+        // Warns with the number of discarded private-manager changes only (1.20.0): no share data.
+        'Doctrine/YopassEntityManager.php',
         // TreeBuilder ->info() node descriptions, not a logger.
         'DependencyInjection/Configuration.php',
     ];

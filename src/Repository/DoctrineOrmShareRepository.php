@@ -11,6 +11,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
+use Nowo\YopassBundle\Doctrine\YopassSavepoint;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
@@ -69,7 +70,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     public function consumeReadIfAvailable(string $id): ?SecureShare
     {
         $now     = $this->now();
-        $updated = (int) $this->em()->createQueryBuilder()
+        $updated = $this->execute($this->em()->createQueryBuilder()
             ->update(SecureShare::class, 's')
             ->set('s.readsLeft', 's.readsLeft - 1')
             ->where('s.id = :id')
@@ -78,8 +79,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->andWhere('s.readsLeft > 0')
             ->setParameter('id', $id)
             ->setParameter('now', $now)
-            ->getQuery()
-            ->execute();
+            ->getQuery());
 
         if ($updated === 0) {
             return null;
@@ -99,7 +99,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             return false;
         }
 
-        $updated = (int) $this->em()->createQueryBuilder()
+        $updated = $this->execute($this->em()->createQueryBuilder()
             ->update(SecureShare::class, 's')
             ->set('s.readsLeft', 's.readsLeft + :delta')
             ->set('s.maxReads', ':maxReads')
@@ -110,8 +110,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->setParameter('maxReads', $maxReads)
             ->setParameter('id', $share->getId())
             ->setParameter('oldMaxReads', $oldMaxReads)
-            ->getQuery()
-            ->execute();
+            ->getQuery());
 
         if ($this->em()->contains($share)) {
             $this->em()->refresh($share);
@@ -175,14 +174,13 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             return $this->removeIds($this->exactIds($value, $before));
         }
 
-        return (int) $this->em()->createQueryBuilder()
+        return $this->execute($this->em()->createQueryBuilder()
             ->delete(SecureShare::class, 's')
             ->where('s.creator = :creator')
             ->andWhere('s.createdAt < :before')
             ->setParameter('creator', $value)
             ->setParameter('before', $before)
-            ->getQuery()
-            ->execute();
+            ->getQuery());
     }
 
     /**
@@ -195,12 +193,11 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             return $this->removeIds($this->exactIds($value));
         }
 
-        return (int) $this->em()->createQueryBuilder()
+        return $this->execute($this->em()->createQueryBuilder()
             ->delete(SecureShare::class, 's')
             ->where('s.creator = :creator')
             ->setParameter('creator', $value)
-            ->getQuery()
-            ->execute();
+            ->getQuery());
     }
 
     /**
@@ -208,12 +205,11 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
      */
     public function removeOlderThan(DateTimeImmutable $before): int
     {
-        return (int) $this->em()->createQueryBuilder()
+        return $this->execute($this->em()->createQueryBuilder()
             ->delete(SecureShare::class, 's')
             ->where('s.createdAt < :before')
             ->setParameter('before', $before)
-            ->getQuery()
-            ->execute();
+            ->getQuery());
     }
 
     /**
@@ -323,6 +319,19 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     }
 
     /**
+     * Runs a bulk DQL write; with the bundle's own entity manager inside a savepoint when the application opened a
+     * transaction (1.20.0, {@see YopassSavepoint}), so a failing statement never aborts the application's transaction.
+     */
+    private function execute(Query $query): int
+    {
+        if (!$this->ownManager instanceof YopassEntityManager) {
+            return (int) $query->execute();
+        }
+
+        return (int) YopassSavepoint::write($this->em()->getConnection(), static fn (): mixed => $query->execute());
+    }
+
+    /**
      * Deletes the given shares (DQL DELETE per chunk, no flush).
      *
      * @param list<string> $ids
@@ -331,12 +340,11 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     {
         $removed = 0;
         foreach (array_chunk($ids, 500) as $chunk) {
-            $removed += (int) $this->em()->createQueryBuilder()
+            $removed += $this->execute($this->em()->createQueryBuilder()
                 ->delete(SecureShare::class, 's')
                 ->where('s.id IN (:ids)')
                 ->setParameter('ids', $chunk)
-                ->getQuery()
-                ->execute();
+                ->getQuery());
         }
 
         return $removed;

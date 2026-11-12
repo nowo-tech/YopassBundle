@@ -9,10 +9,12 @@ use Nowo\YopassBundle\DependencyInjection\Compiler\AccessLogMappingPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\CsrfProtectionPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\ManageWebUiSecurityPass;
+use Nowo\YopassBundle\DependencyInjection\Compiler\PrivateEntityManagerPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\PublicRateLimitCachePass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\ShareFileHandlerPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\TwigPathsPass;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
+use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
@@ -37,6 +39,9 @@ final class YopassBundle extends Bundle
         $container->addCompilerPass(new PublicRateLimitCachePass());
         $container->addCompilerPass(new AccessLogMappingPass());
         $container->addCompilerPass(new AccessCheckerAliasPass());
+        // 1.20.0: the private entity manager's rollback middleware only on its own connection, before DoctrineBundle's
+        // middleware pass.
+        $container->addCompilerPass(new PrivateEntityManagerPass(), PassConfig::TYPE_BEFORE_OPTIMIZATION, 10);
     }
 
     /**
