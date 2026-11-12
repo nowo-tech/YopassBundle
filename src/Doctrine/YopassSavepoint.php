@@ -46,7 +46,13 @@ final class YopassSavepoint
         try {
             $result = $write();
         } catch (Throwable $exception) {
-            $connection->rollbackSavepoint($name);
+            // The write's own failure is what the caller must see (audit NX): a rollback that fails too (connection
+            // lost, savepoint already gone) never replaces it.
+            try {
+                $connection->rollbackSavepoint($name);
+            } catch (Throwable) {
+                // Keep the original exception.
+            }
 
             throw $exception;
         }

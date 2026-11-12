@@ -18,6 +18,8 @@ use Nowo\YopassBundle\Tests\Support\Orm\CreatorNameFilter;
 use Nowo\YopassBundle\Tests\Support\Orm\GuardUser;
 use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
 use PHPUnit\Framework\TestCase;
+use ReflectionProperty;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -123,6 +125,46 @@ final class YopassEntityManagerTest extends TestCase
         self::assertFalse($own->isCreated());
         self::assertCount(1, $logger->records);
         self::assertSame(['count' => 1], $logger->records[0]['context']);
+        self::assertNotSame($em, $own->get());
+    }
+
+    /**
+     * Audit NX Y1: computing the change sets (and clearing) can throw; the boundary still drops the broken manager, logs
+     * a generic warning and the next call gets a fresh, working one.
+     */
+    public function testAThrowingChangeSetComputationNeverKeepsTheBrokenManager(): void
+    {
+        $logger = new SecretCapturingLogger();
+        $own    = new YopassEntityManager($this->registry($this->source()), 'default', $logger);
+        $own->get();
+
+        $broken = $this->createMock(EntityManagerInterface::class);
+        $broken->method('isOpen')->willReturn(true);
+        $broken->method('getUnitOfWork')->willThrowException(new RuntimeException('computeChangeSets failed'));
+        $broken->expects(self::once())->method('clear')->willThrowException(new RuntimeException('clear failed'));
+        (new ReflectionProperty(YopassEntityManager::class, 'entityManager'))->setValue($own, $broken);
+
+        $own->reset();
+
+        self::assertFalse($own->isCreated(), 'The broken manager is dropped first');
+        self::assertCount(2, $logger->records);
+        self::assertSame(['exception' => RuntimeException::class], $logger->records[0]['context']);
+        self::assertSame(['exception' => RuntimeException::class], $logger->records[1]['context']);
+        $fresh = $own->get();
+        self::assertNotSame($broken, $fresh);
+        self::assertTrue($fresh->isOpen());
+        self::assertSame(0, $own->pendingCount());
+        $own->reset();
+        self::assertCount(2, $logger->records, 'A healthy drop logs nothing');
+    }
+
+    public function testAClosedManagerIsDroppedWithoutInspection(): void
+    {
+        $own = new YopassEntityManager($this->registry($this->source()), 'default', new SecretCapturingLogger());
+        $em  = $own->get();
+        $em->close();
+        $own->reset();
+        self::assertFalse($own->isCreated());
         self::assertNotSame($em, $own->get());
     }
 

@@ -181,6 +181,32 @@ final class PrivateEntityManagerRollbackTest extends TestCase
         self::assertSame(3, YopassSavepoint::write($connection, static fn (): int => 3), 'Outside a transaction it just runs');
     }
 
+    /**
+     * Audit NX: when rolling back to the savepoint fails too, the caller still gets the write's own exception.
+     */
+    public function testAFailingSavepointRollbackKeepsTheOriginalException(): void
+    {
+        $connection = $this->host->getConnection();
+        $connection->beginTransaction();
+        try {
+            YopassSavepoint::write($connection, static function () use ($connection): never {
+                // The savepoint disappears with the inner transaction rollback, so rolling back to it fails as well.
+                $connection->executeStatement('ROLLBACK');
+
+                throw new RuntimeException('bundle write failed');
+            });
+            self::fail('Expected the bundle failure');
+        } catch (RuntimeException $exception) {
+            self::assertSame('bundle write failed', $exception->getMessage());
+        } finally {
+            try {
+                $connection->rollBack();
+            } catch (Throwable) {
+                // The test broke the transaction on purpose.
+            }
+        }
+    }
+
     private function creator(): ShareCreator
     {
         return new ShareCreator($this->shares, DefaultShareOptions::get()['expiration_options'], null, null, $this->creators);

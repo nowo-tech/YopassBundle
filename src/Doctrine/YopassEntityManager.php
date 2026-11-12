@@ -13,6 +13,7 @@ use LogicException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Contracts\Service\ResetInterface;
+use Throwable;
 
 use function array_keys;
 use function is_array;
@@ -212,17 +213,37 @@ final class YopassEntityManager implements ResetInterface
     /**
      * Drops the private manager (an outermost unit-of-work boundary or `kernel.reset`); the next call creates a fresh
      * one. Unflushed bundle changes of the finished unit are discarded (logged as a warning), never written later.
+     *
+     * The manager is dropped FIRST (audit NX Y1): counting the pending work computes change sets, which can throw (a
+     * wrongly typed association, a throwing listener); a broken manager must never survive the boundary. The count and
+     * the clear() of the dropped manager each run in their own try/catch and only log a generic warning.
      */
     public function reset(): void
     {
-        $pending = $this->pendingCount();
-        if ($pending > 0) {
-            $this->logger?->warning('Discarding {count} unflushed Yopass share change(s) at a unit-of-work boundary.', ['count' => $pending]);
-        }
-        $this->clear();
+        $dropped = $this->entityManager;
         // @igor-ignore - Boundary drop of the bundle's own manager (no state kept).
         $this->entityManager = null;
         // @igor-ignore - Boundary drop of the bundle's own manager (no state kept).
         $this->stale = false;
+        if (!$dropped instanceof EntityManagerInterface) {
+            return;
+        }
+
+        try {
+            $pending = $dropped->isOpen() ? PendingWork::count($dropped) : 0;
+            if ($pending > 0) {
+                $this->logger?->warning('Discarding {count} unflushed Yopass share change(s) at a unit-of-work boundary.', ['count' => $pending]);
+            }
+        } catch (Throwable $exception) {
+            $this->logger?->warning('Could not inspect the unflushed Yopass changes discarded at a unit-of-work boundary.', ['exception' => $exception::class]);
+        }
+
+        try {
+            if ($dropped->isOpen()) {
+                $dropped->clear();
+            }
+        } catch (Throwable $exception) {
+            $this->logger?->warning('Could not clear the dropped Yopass entity manager at a unit-of-work boundary.', ['exception' => $exception::class]);
+        }
     }
 }

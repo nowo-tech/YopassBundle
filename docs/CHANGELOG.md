@@ -89,6 +89,13 @@ entity manager. No configuration change; the defaults are unchanged (`database.p
 - **Savepoints for bulk writes inside an application transaction.** Consume, raise max reads and the bulk deletes run
   inside a savepoint when the application opened a transaction on the connection, so a failing bundle statement never
   leaves the application's transaction aborted (PostgreSQL). Outside a transaction nothing changes.
+- **A failing boundary inspection never keeps a broken manager (audit NX Y1).** `YopassEntityManager::reset()` counted
+  the unflushed work (which computes change sets) before dropping the manager; when that threw (a wrongly typed
+  association from a custom creator resolver, a throwing listener) the broken manager was kept and every later
+  request failed until the worker restarted. The manager is now dropped first; counting and clearing the dropped
+  manager each run in their own `try`/`catch` and only log a generic warning (exception class, no values).
+- **The original exception wins over a failing savepoint rollback (audit NX).** When rolling back to the bundle's
+  savepoint fails too, `YopassSavepoint` now rethrows the write's own exception instead of the rollback error.
 
 ### Changed
 

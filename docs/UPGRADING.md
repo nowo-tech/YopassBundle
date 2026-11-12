@@ -126,6 +126,8 @@ left at `true`:
 - `YopassEntityManager` is no longer an event subscriber. If you called `YopassEntityManager::onKernelRequest()`
   yourself, stop: it is deprecated and removed in 2.0 (the bundle's `YopassEntityManagerBoundarySubscriber` handles
   the boundaries).
+- A `repository_factory` you configured on the Doctrine entity manager no longer applies to Yopass entities: the
+  private manager uses its own `DefaultRepositoryFactory` (your `default_repository_class` is still honoured).
 
 Nothing changes with `database.private_entity_manager: false`, the `doctrine_mongodb` driver or the `custom` driver.
 
