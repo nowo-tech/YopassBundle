@@ -7,7 +7,6 @@ namespace Nowo\YopassBundle\Doctrine;
 use Doctrine\Common\EventManager;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Repository\DefaultRepositoryFactory;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
 use Psr\Log\LoggerInterface;
@@ -82,8 +81,9 @@ final class YopassEntityManager implements ResetInterface
             // Same mapping, caches and proxies, but a repository factory owned by this manager (1.20.0): the shared
             // factory (DoctrineBundle's ContainerRepositoryFactory, ORM's DefaultRepositoryFactory) keeps one repository
             // per manager instance for the life of the process, so every replaced private manager would stay in memory.
+            // Service repositories (ServiceEntityRepositoryInterface) still come from the source factory (audit NZ-M1).
             $configuration = clone $source->getConfiguration();
-            $configuration->setRepositoryFactory(new DefaultRepositoryFactory());
+            $configuration->setRepositoryFactory(new PrivateManagerRepositoryFactory($configuration->getRepositoryFactory()));
 
             // @igor-ignore - Bundle-owned unit of work: dropped at every outermost boundary, replaced when closed, stale or on another connection.
             $current = $this->entityManager = new EntityManager($source->getConnection(), $configuration, $eventManager instanceof EventManager ? $eventManager : null);
