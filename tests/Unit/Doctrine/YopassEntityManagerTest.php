@@ -158,6 +158,35 @@ final class YopassEntityManagerTest extends TestCase
         self::assertCount(2, $logger->records, 'A healthy drop logs nothing');
     }
 
+    /**
+     * Audit NX follow-up: the stale-manager check in get() counts pending work, which can throw; the manager is treated as
+     * stale (dropped, even when clear() throws too) and a fresh one is built. Only exception classes are logged.
+     */
+    public function testAThrowingStaleCheckReplacesTheManager(): void
+    {
+        $source = $this->source();
+        $logger = new SecretCapturingLogger();
+        $own    = new YopassEntityManager($this->registry($source), 'default', $logger);
+        $own->get();
+
+        $broken = $this->createMock(EntityManagerInterface::class);
+        $broken->method('isOpen')->willReturn(true);
+        $broken->method('getConnection')->willReturn($source->getConnection());
+        $broken->method('getUnitOfWork')->willThrowException(new RuntimeException('secret value'));
+        $broken->method('clear')->willThrowException(new RuntimeException('secret value'));
+        (new ReflectionProperty(YopassEntityManager::class, 'entityManager'))->setValue($own, $broken);
+        $own->connectionRolledBack();
+
+        $fresh = $own->get();
+
+        self::assertNotSame($broken, $fresh);
+        self::assertTrue($fresh->isOpen());
+        self::assertFalse($own->isStale());
+        self::assertCount(2, $logger->records);
+        self::assertSame(['exception' => RuntimeException::class], $logger->records[0]['context']);
+        self::assertSame(['exception' => RuntimeException::class], $logger->records[1]['context']);
+    }
+
     public function testAClosedManagerIsDroppedWithoutInspection(): void
     {
         $own = new YopassEntityManager($this->registry($this->source()), 'default', new SecretCapturingLogger());

@@ -74,10 +74,8 @@ final class YopassEntityManager implements ResetInterface
         $source  = $this->source();
         $current = $this->entityManager;
         if (!$current instanceof EntityManagerInterface || !$current->isOpen() || $current->getConnection() !== $source->getConnection()
-            || ($this->stale && PendingWork::count($current) === 0)) {
-            if ($current instanceof EntityManagerInterface && $current->isOpen()) {
-                $current->clear();
-            }
+            || ($this->stale && !$this->hasScheduledWork($current))) {
+            $this->clearQuietly($current);
             // DoctrineBundle's ContainerAwareEventManager extends EventManager; any other implementation gets a fresh one.
             $eventManager = $source->getEventManager();
 
@@ -95,6 +93,40 @@ final class YopassEntityManager implements ResetInterface
         $this->syncFilters($source, $current);
 
         return $current;
+    }
+
+    /**
+     * Whether the stale manager still has scheduled work. Counting computes change sets and can throw (a wrongly typed
+     * association, a throwing listener): the failure is logged (class only) and the manager is treated as stale without
+     * work, so it is dropped and replaced (audit NX follow-up, 1.20.1).
+     */
+    private function hasScheduledWork(EntityManagerInterface $manager): bool
+    {
+        try {
+            return PendingWork::count($manager) > 0;
+        } catch (Throwable $exception) {
+            $this->logger?->warning('Could not inspect the pending Yopass changes of a stale entity manager; it is replaced.', ['exception' => $exception::class]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Clears a manager about to be replaced; a failure never escapes.
+     */
+    private function clearQuietly(?EntityManagerInterface $manager): void
+    {
+        if (!$manager instanceof EntityManagerInterface) {
+            return;
+        }
+
+        try {
+            if ($manager->isOpen()) {
+                $manager->clear();
+            }
+        } catch (Throwable $exception) {
+            $this->logger?->warning('Could not clear the replaced Yopass entity manager.', ['exception' => $exception::class]);
+        }
     }
 
     /**
