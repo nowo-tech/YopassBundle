@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.20.2] - 2026-11-12](#1202---2026-11-12)
 - [[1.20.1] - 2026-11-12](#1201---2026-11-12)
 - [[1.20.0] - 2026-11-12](#1200---2026-11-12)
 - [[1.19.0] - 2026-11-11](#1190---2026-11-11)
@@ -62,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.2] - 2026-11-12
+
 ### Fixed
 
 - **1.20.0–1.20.1: host listeners using service repositories crashed on the private manager (audit NZ-M1):** the
@@ -75,6 +78,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registered on the source configuration after the private manager existed made `get()` throw
   `InvalidArgumentException: Filter 'x' does not exist`. The class of each enabled source filter instance is now
   registered on the copy, also when a filter is registered again under the same name with another class.
+
+[1.20.2]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.20.2
 
 ## [1.20.1] - 2026-11-12
 
@@ -1059,7 +1064,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.1...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.2...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
