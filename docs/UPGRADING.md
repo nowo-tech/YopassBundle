@@ -4,6 +4,7 @@
 
 - [Unreleased](#unreleased)
 - [To 1.20.0](#to-1200)
+- [To 1.20.0](#to-1200-1)
 - [To 1.19.0](#to-1190)
 - [To 1.18.0](#to-1180)
 - [To 1.17.0](#to-1170)
@@ -101,6 +102,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.20.0
+
+From **1.19.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ## To 1.20.0
 

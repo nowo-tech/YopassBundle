@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.20.0] - 2026-11-12](#1200---2026-11-12)
 - [[1.19.0] - 2026-11-11](#1190---2026-11-11)
 - [[1.18.0] - 2026-11-11](#1180---2026-11-11)
 - [[1.17.0] - 2026-11-10](#1170---2026-11-10)
@@ -59,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [[1.0.0] - 2026-07-04](#100---2026-07-04)
 
 ## [Unreleased]
+
+## [1.20.0] - 2026-11-12
 
 Target version: 1.20.0 (minor). REQ-RUNTIME-002 (FrankenPHP worker mode, kernel reset false) for the bundle's own
 entity manager. No configuration change; the defaults are unchanged (`database.private_entity_manager: true` with the
@@ -116,6 +119,8 @@ entity manager. No configuration change; the defaults are unchanged (`database.p
   failed message then a stopped worker, request without `kernel.finish_request`).
 - `tests/Integration/PrivateEntityManagerRollbackTest.php`: rollback / savepoint rollback / failed commit replace the
   private manager; bulk writes inside an application transaction use a savepoint.
+
+[1.20.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.20.0
 
 ## [1.19.0] - 2026-11-11
 
@@ -1031,7 +1036,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.19.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
