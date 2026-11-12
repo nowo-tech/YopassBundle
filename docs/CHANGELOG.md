@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The stale-manager check of the private entity manager could throw out of `get()`** (audit NX follow-up, Low). Counting the pending work of a manager marked stale by a rollback computes change sets and was unguarded, unlike `reset()`. It is now guarded: on any `Throwable` only the exception class is logged, the manager is treated as stale and replaced by a fresh one.
+
 ## [1.20.0] - 2026-11-12
 
 Target version: 1.20.0 (minor). REQ-RUNTIME-002 (FrankenPHP worker mode, kernel reset false) for the bundle's own
