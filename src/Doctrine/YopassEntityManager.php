@@ -144,6 +144,16 @@ final class YopassEntityManager implements ResetInterface
             }
         }
         foreach ($wanted as $name => $filter) {
+            // The class of the source's enabled instance is mirrored exactly: a filter registered after this manager was
+            // created, or registered again with another class, is registered on the copy (an instance of the old class
+            // is dropped first).
+            $class = $filter::class;
+            if ($target->getConfiguration()->getFilterClassName($name) !== $class) {
+                if ($filters->isEnabled($name)) {
+                    $filters->disable($name);
+                }
+                $target->getConfiguration()->addFilter($name, $class);
+            }
             $state = (string) $filter;
             if ($filters->isEnabled($name)) {
                 if ((string) $filters->getFilter($name) === $state) {

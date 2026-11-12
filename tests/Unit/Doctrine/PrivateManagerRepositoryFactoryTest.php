@@ -18,6 +18,8 @@ use LogicException;
 use Nowo\YopassBundle\Doctrine\PrivateManagerRepositoryFactory;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
+use Nowo\YopassBundle\Tests\Support\RepoFactory\FilterA;
+use Nowo\YopassBundle\Tests\Support\RepoFactory\FilterB;
 use Nowo\YopassBundle\Tests\Support\RepoFactory\HostThing;
 use Nowo\YopassBundle\Tests\Support\RepoFactory\HostThingRepository;
 use Nowo\YopassBundle\Tests\Support\RetainingRepositoryFactory;
@@ -116,6 +118,36 @@ final class PrivateManagerRepositoryFactoryTest extends TestCase
 
         self::assertSame([$service], $loaded->repositories, 'The listener on the shared event manager reached the private manager and got the service.');
         self::assertSame($source->getEventManager(), $own->get()->getEventManager());
+    }
+
+    public function testAFilterRegisteredOnTheSourceAfterTheManagerWasCreatedIsMirrored(): void
+    {
+        $source = $this->source(new RetainingRepositoryFactory());
+        $own    = new YopassEntityManager($this->registry($source));
+        $own->get();
+
+        $source->getConfiguration()->addFilter('late', FilterA::class);
+        $source->getFilters()->enable('late');
+
+        self::assertInstanceOf(FilterA::class, $own->get()->getFilters()->getFilter('late'));
+    }
+
+    public function testAFilterRegisteredAgainWithAnotherClassIsPickedUp(): void
+    {
+        $source = $this->source(new RetainingRepositoryFactory());
+        $own    = new YopassEntityManager($this->registry($source));
+
+        $source->getConfiguration()->addFilter('swap', FilterA::class);
+        $source->getFilters()->enable('swap');
+        $before = $own->get()->getFilters()->getFilter('swap');
+        self::assertInstanceOf(FilterA::class, $before);
+
+        $source->getConfiguration()->addFilter('swap', FilterB::class);
+        $source->getFilters()->disable('swap');
+        $source->getFilters()->enable('swap');
+
+        $after = $own->get()->getFilters()->getFilter('swap');
+        self::assertInstanceOf(FilterB::class, $after, 'The instance of the previous class was dropped.');
     }
 
     /**
