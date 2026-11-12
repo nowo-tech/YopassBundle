@@ -60,6 +60,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Target version: 1.20.0 (minor). REQ-RUNTIME-002 (FrankenPHP worker mode, kernel reset false) for the bundle's own
+entity manager. No configuration change; the defaults are unchanged (`database.private_entity_manager: true` with the
+`doctrine_orm` driver, as in 1.19.0).
+
+### Fixed
+
+- **Outermost boundaries only (C9).** The private entity manager (`YopassEntityManager`) was cleared at every
+  `kernel.terminate`, `console.terminate` and Messenger handled / failed event, including those of a command, a
+  message or a main request run in-process inside another unit (a command started from a controller, a nested
+  `HttpKernel::handle()`), which detached the outer unit's shares and dropped its unflushed bundle changes. It is now
+  dropped by `YopassEntityManagerBoundarySubscriber` at the OUTERMOST boundary of a main request, a Messenger message
+  (now also when the message is received) and a console command only. The bookkeeping (`UnitOfWorkFrames`, same
+  design as PageBuilderKitBundle 1.15.1 / TranslationYamlToolsBundle 1.18.1, audits NM / NL2-v / NL2-v2 / NR-b)
+  changes at `PHP_INT_MAX` and survives listeners that throw or stop the propagation: console runs are frames keyed by
+  command and input that save and restore the message / request state, a run whose `console.error` listener threw is
+  dropped at the next unit, a top-level `kernel.terminate` resets the main-request counter, and
+  `WorkerMessageSkipEvent` / `WorkerStoppedEvent` end the in-flight message.
+- **Rollback on the connection (doctrine/dbal 4).** A DBAL middleware on the connection of
+  `database.entity_manager` (only that connection) tells the private manager when a transaction or savepoint was
+  rolled back or a commit failed; the manager is replaced at its next use unless it still has scheduled work, so an
+  identity map describing rolled-back shares is never reused.
+- **Replaced private managers no longer stay in memory.** The private manager used the application's repository
+  factory (DoctrineBundle's `ContainerRepositoryFactory`), which keeps one repository per manager instance for the
+  life of the process, so every manager replaced after a failed flush or dropped by `kernel.reset` stayed in memory.
+  The private manager now uses a copy of the source configuration with its own `DefaultRepositoryFactory` (same
+  mapping, caches and proxies). Found by the new kept-alive kernel test (about 34 KB per replaced manager).
+- **Savepoints for bulk writes inside an application transaction.** Consume, raise max reads and the bulk deletes run
+  inside a savepoint when the application opened a transaction on the connection, so a failing bundle statement never
+  leaves the application's transaction aborted (PostgreSQL). Outside a transaction nothing changes.
+
+### Changed
+
+- The private manager is dropped (not only cleared) at a boundary and at `kernel.reset`; unflushed bundle changes of
+  the finished unit are discarded and logged as a warning (`logger`, when present).
+- `YopassEntityManager` is no longer an event subscriber; `YopassEntityManager::onKernelRequest()` is deprecated (no
+  longer called by the bundle, removed in 2.0). New read-only helpers: `isCreated()`, `isStale()`, `pendingCount()`.
+
+### Tests
+
+- `tests/Integration/Worker/WorkerKeptAliveKernelTest.php`: one kept-alive kernel, `services_resetter` never called,
+  1,000 units (requests through `http_kernel` and Messenger messages) alternating two users; per-user isolation, the
+  private manager never survives a unit, the application's pending insert is never flushed, memory growth < 4 MB
+  after a 100-unit warm-up.
+- `tests/Integration/Worker/ConsoleBoundaryCounterTest.php`: probes with a real console Application and HttpKernel
+  (throwing terminate / error listeners, unknown and stopped nested commands, self-recursive command, error listener
+  at `PHP_INT_MIN`, throwing received listener inside a consume command, nested main request, failed command inside a
+  failed message then a stopped worker, request without `kernel.finish_request`).
+- `tests/Integration/PrivateEntityManagerRollbackTest.php`: rollback / savepoint rollback / failed commit replace the
+  private manager; bulk writes inside an application transaction use a savepoint.
+
 ## [1.19.0] - 2026-11-11
 
 REQ-ARCH-001 for DDD / hexagonal hosts, additive and opt-in on the API side.

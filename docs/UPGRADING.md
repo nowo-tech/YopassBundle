@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.20.0](#to-1200)
 - [To 1.19.0](#to-1190)
 - [To 1.18.0](#to-1180)
 - [To 1.17.0](#to-1170)
@@ -100,6 +101,33 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.20.0
+
+From **1.19.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
+No configuration change and no migration. With the default `doctrine_orm` driver and `database.private_entity_manager`
+left at `true`:
+
+- The bundle's private entity manager is dropped only at the **outermost** boundary of a main request, a Messenger
+  message or a console command. A command run in-process from a controller or another command, a message handled
+  in-process, or a nested `HttpKernel::handle()` no longer clears the manager of the unit that runs it. Shares you
+  loaded through the bundle stay managed until that outer unit ends.
+- Unflushed bundle changes left at the end of a unit are discarded, as before, and are now logged as a warning.
+- With doctrine/dbal 4, a DBAL middleware is registered on the connection of `database.entity_manager` (only that one)
+  to replace the private manager after a rollback. It only observes `commit()`, `rollBack()` and
+  `ROLLBACK TO SAVEPOINT`; it does not change any statement.
+- Consume, raise max reads and the bulk deletes run inside a savepoint when your code already opened a transaction on
+  that connection.
+- `YopassEntityManager` is no longer an event subscriber. If you called `YopassEntityManager::onKernelRequest()`
+  yourself, stop: it is deprecated and removed in 2.0 (the bundle's `YopassEntityManagerBoundarySubscriber` handles
+  the boundaries).
+
+Nothing changes with `database.private_entity_manager: false`, the `doctrine_mongodb` driver or the `custom` driver.
 
 ## To 1.19.0
 

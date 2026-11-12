@@ -7,11 +7,11 @@ namespace Nowo\YopassBundle\Doctrine;
 use Doctrine\Common\EventManager;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Repository\DefaultRepositoryFactory;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
-use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Contracts\Service\ResetInterface;
 
 use function array_keys;
@@ -25,39 +25,44 @@ use function unserialize;
  *
  * The bundle never flushes, clears, closes or resets an entity manager of the application. Shares and access log rows
  * are read and written through a **private** entity manager created on the connection, configuration (mapping,
- * metadata cache, proxies) and event manager of `nowo_yopass.database.entity_manager` (`default`). Its unit of work
+ * metadata cache, proxies; its own repository factory since 1.20.0) and event manager of
+ * `nowo_yopass.database.entity_manager` (`default`). Its unit of work
  * holds only bundle rows, so a share write never commits a change the application left pending, and a failed write
  * closes only this private manager. The tables do not move: the private manager uses the same connection and mapping.
  * The connection is shared, so a transaction the application opened around a bundle call includes the bundle's rows.
  *
- * Worker-safe without `kernel.reset` (REQ-RUNTIME-002 rule 4): a closed private manager, or one whose connection is not
- * the source manager's any more, is replaced on the next call, and its identity map is emptied at every boundary (main
- * `kernel.request`, `kernel.terminate`, `console.terminate`, Messenger worker message handled / failed), so no managed
- * share outlives the request, command or message that loaded it.
+ * Worker-safe without `kernel.reset` (REQ-RUNTIME-002 rule 4). The private manager is replaced on the next call when:
+ *
+ * - it was closed (its own failed flush) or the source connection changed;
+ * - a rollback (transaction or savepoint) happened on the connection since it was created, so its identity map may
+ *   describe rows that no longer exist (1.20.0, {@see PrivateEntityManagerMiddleware}, doctrine/dbal 4). A stale
+ *   manager that still has scheduled inserts, updates or deletes is **kept** (replacing it would silently drop them)
+ *   until that work is flushed or the next boundary;
+ * - {@see reset()} ran: at every OUTERMOST unit-of-work boundary ({@see YopassEntityManagerBoundarySubscriber}, 1.20.0:
+ *   main request, Messenger message, outermost console command; a command, message or request run in-process inside
+ *   another unit never drops the outer unit's manager) and at `kernel.reset`. Unflushed bundle work is discarded and
+ *   logged as a warning.
+ *
+ * Before 1.20.0 this class subscribed itself and cleared the manager at every `kernel.terminate`, `console.terminate`
+ * and Messenger handled / failed event, including those of a command or request run in-process inside another unit.
  */
-final class YopassEntityManager implements ResetInterface, EventSubscriberInterface
+final class YopassEntityManager implements ResetInterface
 {
     private ?EntityManagerInterface $entityManager = null;
+
+    /** A rollback happened on the connection since the private manager was created (1.20.0). */
+    private bool $stale = false;
 
     /**
      * @param ManagerRegistry $registry Doctrine registry (the source manager is resolved per call)
      * @param string $entityManagerName `nowo_yopass.database.entity_manager`
+     * @param LoggerInterface|null $logger warns when a boundary discards unflushed bundle work (1.20.0)
      */
     public function __construct(
         private readonly ManagerRegistry $registry,
         private readonly string $entityManagerName = 'default',
+        private readonly ?LoggerInterface $logger = null,
     ) {
-    }
-
-    public static function getSubscribedEvents(): array
-    {
-        return [
-            KernelEvents::REQUEST                                         => ['onKernelRequest', 2048],
-            KernelEvents::TERMINATE                                       => ['clear', -2048],
-            'console.terminate'                                           => ['clear', -2048],
-            'Symfony\Component\Messenger\Event\WorkerMessageHandledEvent' => ['clear', -2048],
-            'Symfony\Component\Messenger\Event\WorkerMessageFailedEvent'  => ['clear', -2048],
-        ];
     }
 
     /**
@@ -67,12 +72,24 @@ final class YopassEntityManager implements ResetInterface, EventSubscriberInterf
     {
         $source  = $this->source();
         $current = $this->entityManager;
-        if (!$current instanceof EntityManagerInterface || !$current->isOpen() || $current->getConnection() !== $source->getConnection()) {
+        if (!$current instanceof EntityManagerInterface || !$current->isOpen() || $current->getConnection() !== $source->getConnection()
+            || ($this->stale && PendingWork::count($current) === 0)) {
+            if ($current instanceof EntityManagerInterface && $current->isOpen()) {
+                $current->clear();
+            }
             // DoctrineBundle's ContainerAwareEventManager extends EventManager; any other implementation gets a fresh one.
             $eventManager = $source->getEventManager();
 
-            // @igor-ignore - Bundle-owned unit of work: emptied at every boundary, replaced when closed or when the connection changed.
-            $current = $this->entityManager = new EntityManager($source->getConnection(), $source->getConfiguration(), $eventManager instanceof EventManager ? $eventManager : null);
+            // Same mapping, caches and proxies, but a repository factory owned by this manager (1.20.0): the shared
+            // factory (DoctrineBundle's ContainerRepositoryFactory, ORM's DefaultRepositoryFactory) keeps one repository
+            // per manager instance for the life of the process, so every replaced private manager would stay in memory.
+            $configuration = clone $source->getConfiguration();
+            $configuration->setRepositoryFactory(new DefaultRepositoryFactory());
+
+            // @igor-ignore - Bundle-owned unit of work: dropped at every outermost boundary, replaced when closed, stale or on another connection.
+            $current = $this->entityManager = new EntityManager($source->getConnection(), $configuration, $eventManager instanceof EventManager ? $eventManager : null);
+            // @igor-ignore - Bundle-owned flag of the private manager, reset when the manager is replaced.
+            $this->stale = false;
         }
         $this->syncFilters($source, $current);
 
@@ -133,6 +150,8 @@ final class YopassEntityManager implements ResetInterface, EventSubscriberInterf
 
     /**
      * Main request start: the previous request's shares are detached.
+     *
+     * @deprecated since 1.20.0, the boundaries are handled by {@see YopassEntityManagerBoundarySubscriber}; removed in 2.0
      */
     public function onKernelRequest(RequestEvent $event): void
     {
@@ -142,19 +161,68 @@ final class YopassEntityManager implements ResetInterface, EventSubscriberInterf
     }
 
     /**
-     * Detaches every row from the private manager. Never touches an application manager.
+     * Whether a private manager exists right now (no side effect).
      */
-    public function clear(): void
+    public function isCreated(): bool
     {
-        $this->entityManager?->clear();
+        return $this->entityManager instanceof EntityManagerInterface;
     }
 
     /**
-     * Drops the private manager (kernel.reset); the next call creates a fresh one.
+     * Whether a rollback made the private manager's identity map stale (no side effect).
+     */
+    public function isStale(): bool
+    {
+        return $this->stale;
+    }
+
+    /**
+     * Scheduled inserts, updates and deletes of the private manager (0 when it does not exist or is closed; no manager
+     * is created).
+     */
+    public function pendingCount(): int
+    {
+        return $this->entityManager instanceof EntityManagerInterface && $this->entityManager->isOpen() ? PendingWork::count($this->entityManager) : 0;
+    }
+
+    /**
+     * A transaction or savepoint was rolled back on the connection (told by {@see PrivateEntityManagerConnection}).
+     * The manager is replaced at its next use unless it has scheduled work; it is never cleared here (the rollback
+     * may run inside the private manager's own failing flush).
+     */
+    public function connectionRolledBack(): void
+    {
+        if ($this->entityManager instanceof EntityManagerInterface) {
+            // @igor-ignore - Bundle-owned flag of the private manager, cleared when the manager is replaced.
+            $this->stale = true;
+        }
+    }
+
+    /**
+     * Detaches every row from the private manager. Never touches an application manager and never creates the private
+     * one.
+     */
+    public function clear(): void
+    {
+        if ($this->entityManager instanceof EntityManagerInterface && $this->entityManager->isOpen()) {
+            $this->entityManager->clear();
+        }
+    }
+
+    /**
+     * Drops the private manager (an outermost unit-of-work boundary or `kernel.reset`); the next call creates a fresh
+     * one. Unflushed bundle changes of the finished unit are discarded (logged as a warning), never written later.
      */
     public function reset(): void
     {
-        $this->entityManager?->clear();
+        $pending = $this->pendingCount();
+        if ($pending > 0) {
+            $this->logger?->warning('Discarding {count} unflushed Yopass share change(s) at a unit-of-work boundary.', ['count' => $pending]);
+        }
+        $this->clear();
+        // @igor-ignore - Boundary drop of the bundle's own manager (no state kept).
         $this->entityManager = null;
+        // @igor-ignore - Boundary drop of the bundle's own manager (no state kept).
+        $this->stale = false;
     }
 }

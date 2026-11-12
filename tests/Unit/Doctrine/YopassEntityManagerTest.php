@@ -15,11 +15,12 @@ use LogicException;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
 use Nowo\YopassBundle\Tests\Support\Orm\CreatorNameFilter;
+use Nowo\YopassBundle\Tests\Support\Orm\GuardUser;
+use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\HttpKernel\KernelEvents;
 
 use function dirname;
 use function extension_loaded;
@@ -49,7 +50,10 @@ final class YopassEntityManagerTest extends TestCase
         $em = $own->get();
         self::assertNotSame($source, $em);
         self::assertSame($source->getConnection(), $em->getConnection());
-        self::assertSame($source->getConfiguration(), $em->getConfiguration());
+        self::assertNotSame($source->getConfiguration(), $em->getConfiguration(), 'A copy with its own repository factory');
+        self::assertSame($source->getConfiguration()->getMetadataDriverImpl(), $em->getConfiguration()->getMetadataDriverImpl());
+        self::assertSame($source->getConfiguration()->getMetadataCache(), $em->getConfiguration()->getMetadataCache());
+        self::assertNotSame($source->getConfiguration()->getRepositoryFactory(), $em->getConfiguration()->getRepositoryFactory());
         self::assertSame($source->getEventManager(), $em->getEventManager());
         self::assertSame($em, $own->get(), 'Reused while open');
         self::assertSame($source, $own->source());
@@ -100,12 +104,48 @@ final class YopassEntityManagerTest extends TestCase
 
         $own->reset();
         self::assertNotSame($em, $own->get(), 'kernel.reset drops it');
+    }
 
-        $events = YopassEntityManager::getSubscribedEvents();
-        self::assertSame(['onKernelRequest', 2048], $events[KernelEvents::REQUEST]);
-        foreach ([KernelEvents::TERMINATE, 'console.terminate', 'Symfony\Component\Messenger\Event\WorkerMessageHandledEvent', 'Symfony\Component\Messenger\Event\WorkerMessageFailedEvent'] as $event) {
-            self::assertSame(['clear', -2048], $events[$event], $event);
-        }
+    public function testResetDiscardsPendingWorkAndWarns(): void
+    {
+        $logger = new SecretCapturingLogger();
+        $own    = new YopassEntityManager($this->registry($this->source()), 'default', $logger);
+        self::assertFalse($own->isCreated());
+        self::assertSame(0, $own->pendingCount(), 'No manager is created to count');
+        $own->reset();
+        self::assertSame([], $logger->records);
+
+        $em  = $own->get();
+        $log = new GuardUser(1, 'alice');
+        $em->persist($log);
+        self::assertSame(1, $own->pendingCount());
+        $own->reset();
+        self::assertFalse($own->isCreated());
+        self::assertCount(1, $logger->records);
+        self::assertSame(['count' => 1], $logger->records[0]['context']);
+        self::assertNotSame($em, $own->get());
+    }
+
+    public function testARollbackReplacesTheManagerUnlessItHasPendingWork(): void
+    {
+        $own = new YopassEntityManager($this->registry($this->source()));
+        $own->connectionRolledBack();
+        self::assertFalse($own->isStale(), 'Nothing to mark without a manager');
+
+        $first = $own->get();
+        $first->persist(new GuardUser(2, 'bob'));
+        $own->connectionRolledBack();
+        self::assertTrue($own->isStale());
+        self::assertSame($first, $own->get(), 'Kept while it has scheduled work');
+
+        $first->clear();
+        $second = $own->get();
+        self::assertNotSame($first, $second, 'Replaced once nothing is pending');
+        self::assertFalse($own->isStale());
+
+        $second->close();
+        $own->clear();
+        self::assertSame(0, $own->pendingCount(), 'A closed manager has nothing pending');
     }
 
     public function testTheApplicationsEnabledFiltersAndParametersAreApplied(): void

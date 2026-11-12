@@ -7,9 +7,12 @@ namespace Nowo\YopassBundle\Tests\Unit\DependencyInjection;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\DependencyInjection\Compiler\AccessCheckerAliasPass;
+use Nowo\YopassBundle\DependencyInjection\Compiler\PrivateEntityManagerPass;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
 use Nowo\YopassBundle\Doctrine\HostCreatorReference;
+use Nowo\YopassBundle\Doctrine\PrivateEntityManagerMiddleware;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
+use Nowo\YopassBundle\Doctrine\YopassEntityManagerBoundarySubscriber;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
@@ -42,8 +45,15 @@ final class YopassExtensionArchTest extends TestCase
         $definition = $container->getDefinition(YopassEntityManager::class);
         self::assertSame(YopassEntityManager::class, (string) $container->getDefinition(HostCreatorReference::class)->getArgument(0));
         self::assertSame('default', $definition->getArgument('$entityManagerName'));
-        self::assertTrue($definition->hasTag('kernel.event_subscriber'));
+        self::assertFalse($definition->hasTag('kernel.event_subscriber'), '1.20.0: the boundary subscriber drops it');
         self::assertSame([['method' => 'reset']], $definition->getTag('kernel.reset'));
+        $subscriber = $container->getDefinition(YopassEntityManagerBoundarySubscriber::class);
+        self::assertTrue($subscriber->hasTag('kernel.event_subscriber'));
+        self::assertSame(YopassEntityManager::class, (string) $subscriber->getArgument('$entityManager'));
+        if (PrivateEntityManagerPass::supportsRollbackMiddleware()) {
+            self::assertSame('default', $container->getParameter(PrivateEntityManagerPass::MANAGER_PARAMETER));
+            self::assertSame(YopassEntityManager::class, (string) $container->getDefinition(PrivateEntityManagerMiddleware::class)->getArgument('$entityManager'));
+        }
         foreach ([DoctrineOrmShareRepository::class, DoctrineOrmShareAccessLogRepository::class, DoctrineCreatorReferenceResolver::class] as $service) {
             $own = $container->getDefinition($service)->getArgument('$ownManager');
             self::assertInstanceOf(Reference::class, $own, $service);
@@ -71,6 +81,8 @@ final class YopassExtensionArchTest extends TestCase
         self::assertSame(['Since nowo-tech/yopass-bundle 1.19.0: Setting "nowo_yopass.database.private_entity_manager" to false is deprecated: the bundle then flushes the application\'s entity manager. Remove the option; it is removed in 2.0.'], $deprecations);
         self::assertFalse($legacy->hasDefinition(HostCreatorReference::class));
         self::assertFalse($legacy->hasDefinition(YopassEntityManager::class));
+        self::assertFalse($legacy->hasDefinition(YopassEntityManagerBoundarySubscriber::class));
+        self::assertFalse($legacy->hasDefinition(PrivateEntityManagerMiddleware::class));
         self::assertNull($legacy->getDefinition(DoctrineOrmShareAccessLogRepository::class)->getArgument('$ownManager'));
 
         $custom = $this->load(['database' => ['driver' => 'custom', 'repository' => 'app.shares', 'platform' => 'postgresql']]);

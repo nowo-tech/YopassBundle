@@ -10,10 +10,13 @@ use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\DependencyInjection\Compiler\AccessLogMappingPass;
+use Nowo\YopassBundle\DependencyInjection\Compiler\PrivateEntityManagerPass;
 use Nowo\YopassBundle\Doctrine\HostCreatorReference;
+use Nowo\YopassBundle\Doctrine\PrivateEntityManagerMiddleware;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
+use Nowo\YopassBundle\Doctrine\YopassEntityManagerBoundarySubscriber;
 use Nowo\YopassBundle\EventListener\WasmCspListener;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
@@ -495,8 +498,19 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             $container->setDefinition(YopassEntityManager::class, (new Definition(YopassEntityManager::class))
                 ->setArgument('$registry', new Reference('doctrine'))
                 ->setArgument('$entityManagerName', $entityManagerName)
-                ->addTag('kernel.event_subscriber')
+                ->setArgument('$logger', new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE))
                 ->addTag('kernel.reset', ['method' => 'reset']));
+            // 1.20.0 (REQ-RUNTIME-002): dropped at the OUTERMOST request / message / command boundaries only.
+            $container->setDefinition(YopassEntityManagerBoundarySubscriber::class, (new Definition(YopassEntityManagerBoundarySubscriber::class))
+                ->setArgument('$entityManager', new Reference(YopassEntityManager::class))
+                ->addTag('kernel.event_subscriber'));
+            // 1.20.0: replaced after a rollback on its connection (doctrine/dbal 4 only).
+            if (PrivateEntityManagerPass::supportsRollbackMiddleware()) {
+                $container->setParameter(PrivateEntityManagerPass::MANAGER_PARAMETER, $entityManagerName);
+                $container->setDefinition(PrivateEntityManagerMiddleware::class, (new Definition(PrivateEntityManagerMiddleware::class))
+                    ->setArgument('$entityManager', new Reference(YopassEntityManager::class))
+                    ->addTag('doctrine.middleware'));
+            }
             $ownManager = new Reference(YopassEntityManager::class);
             $container->setDefinition(HostCreatorReference::class, new Definition(HostCreatorReference::class, [$ownManager]));
             $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$ownManager', $ownManager);

@@ -3,8 +3,8 @@
 | Field | Value |
 |-------|-------|
 | Package | `nowo-tech/yopass-bundle` (`symfony-bundle`) |
-| Audited revision | `v1.4.6` |
-| Audit date | 2026-09-25 |
+| Audited revision | `v1.4.6`; private entity manager re-audited for `1.20.0` (REQ-RUNTIME-002, C9) |
+| Audit date | 2026-09-25; 2026-11-12 (1.20.0) |
 | Method | Manual review of every PHP file under `src/` (controllers, services, repositories, Doctrine listeners, form type / model transformers, route loader, Twig extension, command, DI extension, compiler passes, `Resources/config/services.yaml`) + PHPStan `ruleset-worker-no-kernel-reset.neon` |
 | **Verdict** | ✅ **Viable under scenario B** (after remediation) — the bundle's own services are stateless; share reads always hit the database; a closed EntityManager / DocumentManager is replaced on the next call. Clearing the identity map between requests (memory) remains the application's responsibility |
 | Remediation (2026-09-23 / 2026-09-25) | W-01 resolved (ORM + MongoDB registry reopen), W-02 accepted (host cache configuration), W-03 `clear()` note resolved. Form `ShareCreateType` model transformers / PRE_SUBMIT are request-scoped closures; FormKit `withBuilder()` restores bound builder in `finally` (no SearchForm-style sticky model setters on the shared form type). Regression tests simulate consecutive requests on the same repository instances without `reset()` |
@@ -18,6 +18,7 @@
   - [W-01 — Correctness depends on Doctrine resetting the managers (Medium)](#w-01--correctness-depends-on-doctrine-resetting-the-managers-medium)
   - [W-02 — Rate limiter effectiveness depends on the `cache.app` adapter (Low)](#w-02--rate-limiter-effectiveness-depends-on-the-cacheapp-adapter-low)
   - [W-03 — Notes (Info)](#w-03--notes-info)
+- [Kept-alive kernel test (1.20.0)](#kept-alive-kernel-test-1200)
 - [Usage recommendations in worker mode](#usage-recommendations-in-worker-mode)
 - [Re-audit triggers](#re-audit-triggers)
 
@@ -34,7 +35,7 @@ A bundle that is safe under **B** is safe under **A** and under classic mode / P
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Mutable state in shared services | ✅ | All bundle services are `readonly` (or only hold `readonly` promoted config); no memoized caches or `$this->current*` |
+| Mutable state in shared services | ✅ | Bundle services are `readonly`, except the private entity manager holder and its boundary bookkeeping (1.19 / 1.20, see below) |
 | Static properties / `static` locals | ✅ | Only pure static helpers (`UserIdResolver`, `DatabaseDriver`, `Uuid`, UI enums); no static properties |
 | `ResetInterface` / `kernel.reset` coverage | ✅ N/A | Nothing in the bundle needs resetting; Doctrine managers are reset by Doctrine's own registries |
 | Request / user / locale captured in services | ✅ | User comes from `getUser()` / `Security::isGranted()` per call; `Request` is always a method argument |
@@ -59,7 +60,9 @@ A bundle that is safe under **B** is safe under **A** and under classic mode / P
 | `Service\ShareCreator`, `ShareExtender`, `ShareRetriever`, `ShareRetentionPurger` | yes | none (`readonly` config + `Clock`) | ✅ | ✅ (own state) |
 | `Service\ShareAccessLogger` | yes | none (`readonly` bool + repository) | ✅ | ✅ (own state) |
 | `Repository\DoctrineOrmShareRepository` / `DoctrineOrmShareAccessLogRepository` | yes | none itself; with the bundle's own entity manager (1.19 default) every call goes through `Doctrine\YopassEntityManager`, else resolves the EntityManager from `doctrine` per call, reset when closed | ✅ | ✅ |
-| `Doctrine\YopassEntityManager` (1.19) | yes | the private `EntityManager` (shares / access log only). Emptied (`clear()`) at the main `kernel.request`, `kernel.terminate`, `console.terminate` and Messenger `WorkerMessageHandledEvent` / `WorkerMessageFailedEvent`; replaced when closed or when the source connection changed; `reset()` (`kernel.reset`) drops it. Never touches the application's managers. Tests: `YopassEntityManagerTest`, `PrivateEntityManagerIntegrationTest::testOneTimeViewAndExpiryAreUnchanged` / `testAFailedWriteClosesOnlyThePrivateManager` | ✅ | ✅ |
+| `Doctrine\YopassEntityManager` (1.19; 1.20) | yes | the private `EntityManager` (shares / access log only) and a `stale` flag. Dropped (`reset()`: cleared, then discarded; unflushed bundle work logged as a warning) at the OUTERMOST unit-of-work boundaries by `YopassEntityManagerBoundarySubscriber`, and at `kernel.reset`; replaced when closed, when the source connection changed, or after a rollback on its connection (`PrivateEntityManagerMiddleware`, doctrine/dbal 4) once it has no scheduled work. Never touches the application's managers. Tests: `YopassEntityManagerTest`, `PrivateEntityManagerIntegrationTest`, `PrivateEntityManagerRollbackTest`, `WorkerKeptAliveKernelTest` | ✅ | ✅ |
+| `Doctrine\YopassEntityManagerBoundarySubscriber` + `UnitOfWorkFrames` (1.20) | yes | process-lifetime bookkeeping of the running units (console frames keyed by command + input, main-request counter, message flag; bounded by the nesting depth, no request data, deliberately not reset by `kernel.reset`). Every state change at `PHP_INT_MAX`; failing frames dropped first (audits NM / NL2-v / NL2-v2 / NR-b). Boundaries: main `kernel.request` (PHP_INT_MAX) / `kernel.terminate` (-2048) outside a command, message or outer main request; Messenger received (PHP_INT_MAX) / handled / failed (-2048); outermost `console.command` (PHP_INT_MAX) / `console.terminate` (-2048). Tests: `ConsoleBoundaryCounterTest` (probes), `WorkerKeptAliveKernelTest` | ✅ | ✅ |
+| `Doctrine\PrivateEntityManagerMiddleware` (1.20, DBAL 4) | yes | none (wraps the driver of the `database.entity_manager` connection only; reports `commit()` failures, `rollBack()` and `ROLLBACK TO SAVEPOINT` to the private manager) | ✅ | ✅ |
 | `Security\YopassAccessDecider` (1.19) | yes | none (`readonly` checker); the `UserRef` is built per call | ✅ | ✅ |
 | `Repository\DoctrineMongoShareRepository` | yes | none itself; resolves DocumentManager from `doctrine_mongodb` per call, reset when closed; `find()` refreshes | ✅ | ✅ |
 | `Repository\NullShareAccessLogRepository` | yes | none | ✅ | ✅ |
@@ -100,9 +103,21 @@ A bundle that is safe under **B** is safe under **A** and under classic mode / P
 
 No other findings. No High findings: no user, token, request or share data is kept in any bundle service between requests.
 
+## Kept-alive kernel test (1.20.0)
+
+`tests/Integration/Worker/WorkerKeptAliveKernelTest.php`: one booted kernel (standard host, private entity manager by
+default), `services_resetter` never called, **1,000 units** alternating **two users** (alice / bob): 800 main
+requests through `http_kernel` (`handle()` + `terminate()`, never `Kernel::handle()`) and 200 Messenger messages
+(`WorkerMessageReceivedEvent` / `WorkerMessageHandledEvent`). Each unit creates a share as its user, consumes it and
+lists that user's shares. Asserted: a user never sees the other user's shares, the private manager never survives a
+unit, the application's pending insert is never flushed, every share consumed once, memory growth **< 4 MB** after a
+100-unit warm-up. Probes for throwing / propagation-stopping listeners: `tests/Integration/Worker/ConsoleBoundaryCounterTest.php`.
+
+Igor (`composer igor`) and the PHPStan worker rulesets run in the QA pipeline (`composer qa` / CI).
+
 ## Usage recommendations in worker mode
 
-- Keeping `services_resetter` / `kernel.reset` active is still recommended so Doctrine ORM and MongoDB ODM identity maps are cleared between requests; without it the bundle stays correct (fresh reads, closed-manager recovery) but memory is bounded only by `max_requests`.
+- Keeping `services_resetter` / `kernel.reset` active is still recommended so the application's Doctrine ORM and MongoDB ODM identity maps are cleared between requests. Without it the bundle stays correct: with the default private entity manager (1.19+) the bundle's own rows never stay managed across units (1.20 outermost boundaries); the application's own managers are the application's to clear (REQ-RUNTIME-002 rule 7).
 - Use a persistent, shared cache adapter for `cache.app` when `public_rate_limit` is enabled.
 - A custom `security.access_checker` service or `database.repository` (driver `custom`) must stay stateless, or implement `ResetInterface`. Do not cache the current user, token or share list in properties.
 - Event listeners on `YopassEvents::SHARE_ACCESS_CHECK` / `SHARE_LIST_QUERY` / `SHARE_LIST_RESULT` must not keep the event's user or shares in properties; they receive fresh objects on every dispatch.
