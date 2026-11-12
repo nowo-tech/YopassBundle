@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.20.1] - 2026-11-12](#1201---2026-11-12)
 - [[1.20.0] - 2026-11-12](#1200---2026-11-12)
 - [[1.19.0] - 2026-11-11](#1190---2026-11-11)
 - [[1.18.0] - 2026-11-11](#1180---2026-11-11)
@@ -61,9 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.1] - 2026-11-12
+
 ### Fixed
 
 - **The stale-manager check of the private entity manager could throw out of `get()`** (audit NX follow-up, Low). Counting the pending work of a manager marked stale by a rollback computes change sets and was unguarded, unlike `reset()`. It is now guarded: on any `Throwable` only the exception class is logged, the manager is treated as stale and replaced by a fresh one.
+
+[1.20.1]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.20.1
 
 ## [1.20.0] - 2026-11-12
 
@@ -1040,7 +1045,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.1...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
