@@ -62,6 +62,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **1.20.0–1.20.1: host listeners using service repositories crashed on the private manager (audit NZ-M1):** the
+  private manager's own `DefaultRepositoryFactory` cannot build a `ServiceEntityRepository` (its constructor takes a
+  registry), and the private manager shares the host's event manager, so a host `onFlush` or `postLoad` listener that
+  called `getRepository()` on a host entity made the bundle's next flush throw a `TypeError`. `YopassEntityManager` now uses
+  a bundle-owned `PrivateManagerRepositoryFactory`: service repositories (`ServiceEntityRepositoryInterface`) come from
+  the source configuration's factory, every other repository is built and kept per manager, so replaced managers are
+  still not retained (audit NX, about 58 KB each in worker mode with kernel reset false). Patch release 1.20.2.
+- **SQL filter mirroring (audit NZ-L4):** since 1.20.0 the private manager has a copy of the configuration, so a filter
+  registered on the source configuration after the private manager existed made `get()` throw
+  `InvalidArgumentException: Filter 'x' does not exist`. The class of each enabled source filter instance is now
+  registered on the copy, also when a filter is registered again under the same name with another class.
+
 ## [1.20.1] - 2026-11-12
 
 ### Fixed

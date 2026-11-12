@@ -103,6 +103,12 @@
 
 ## Unreleased
 
+- The bundle's private entity manager has its own repository factory. A `repository_factory` you configured on the
+  Doctrine entity manager is used by it only for service repositories (repositories implementing
+  `ServiceEntityRepositoryInterface`); every other repository of the private manager is built by the bundle, from the
+  mapped `repositoryClass` or your `default_repository_class`.
+  This corrects the 1.20.0 note: service repositories of host entities keep working on the private manager.
+
 ## To 1.20.1
 
 From **1.20.0**:
