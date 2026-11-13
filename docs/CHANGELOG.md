@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.20.3] - 2026-11-13](#1203---2026-11-13)
 - [[1.20.2] - 2026-11-12](#1202---2026-11-12)
 - [[1.20.1] - 2026-11-12](#1201---2026-11-12)
 - [[1.20.0] - 2026-11-12](#1200---2026-11-12)
@@ -63,6 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.3] - 2026-11-13
+
 ### Fixed
 
 - **Unit boundary tracker: per-worker message depth, request stack (audit NX CR1–CR3).** The tracker kept one
@@ -87,6 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Audit OB2-L1: a main request also drops the requests left in flight when the oldest one is not the kernel's main
   request (host code left the `RequestStack` unbalanced, then a request threw out of `HttpKernel::handle()`), so the
   next requests keep clearing instead of never clearing again for the rest of the worker's life.
+
+[1.20.3]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.20.3
 
 ## [1.20.2] - 2026-11-12
 
@@ -1089,7 +1094,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.2...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.3...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
