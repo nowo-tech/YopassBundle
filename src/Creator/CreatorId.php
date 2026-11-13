@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Creator;
 
 use InvalidArgumentException;
-use ReflectionClass;
 use Nowo\YopassBundle\Support\UserIdResolver;
+use ReflectionClass;
 use Stringable;
 
 use function is_string;
@@ -92,7 +92,9 @@ final readonly class CreatorId implements Stringable
 
         // A value stored before 1.20.4 that is no longer a usable id (`bob `): the share keeps it as is, and no request
         // can name it any more, so it is unreachable through the creator lookups (fail closed).
-        $legacy     = (new ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        // (Initialising the uninitialised readonly property from the class scope is allowed.)
+        $legacy = (new ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        // @phpstan-ignore property.readOnlyAssignNotInConstructor
         $legacy->id = $stored;
 
         return $legacy;

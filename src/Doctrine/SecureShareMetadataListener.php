@@ -8,6 +8,7 @@ use Doctrine\DBAL\Platforms\SQLServerPlatform;
 use Doctrine\ORM\Event\LoadClassMetadataEventArgs;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use LogicException;
+use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
@@ -118,7 +119,7 @@ final readonly class SecureShareMetadataListener
      *
      * Since 1.20.4 (REQ-SEC-006) the MySQL / MariaDB collation is binary NO PAD ({@see ExactCollation}):
      * `utf8mb4_0900_bin` (MySQL 8.0.17+) or `utf8mb4_nopad_bin` (MariaDB) instead of the PAD SPACE `utf8mb4_bin`
-     * (`abc ` = `abc`), which only MySQL 5.7 keeps, with a logged warning. {@see \Nowo\YopassBundle\Creator\CreatorId}
+     * (`abc ` = `abc`), which only MySQL 5.7 keeps, with a logged warning. {@see CreatorId}
      * refuses padded ids before any query, which also covers SQL Server's trailing-space rule.
      *
      * @return array<string, string>

@@ -142,7 +142,7 @@ final class OrmIdMappingDatabaseTest extends TestCase
     public function testPagesMatchExactlyBeforeTheLimitUnderACaseInsensitiveCollation(): void
     {
         $this->foldCase($this->em->getConnection());
-        $own = $this->creator->create(new SecurityUserDto('abc'), $this->data());
+        $own        = $this->creator->create(new SecurityUserDto('abc'), $this->data());
         $connection = $this->em->getConnection();
         $connection->executeStatement('UPDATE yopass_secure_shares SET created_at = ? WHERE id = ?', ['2026-11-13 09:00:00', $own->getId()]);
         foreach ([1, 2, 3] as $minute) {
