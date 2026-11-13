@@ -65,6 +65,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Create form no longer answers HTTP 500 to a POST that omits the choices:** a request with a valid CSRF token but
+  without `expiresIn` / `maxReads` (or with them empty), or a form submitted with `null`, mapped `null` onto the
+  non-nullable `ShareCreateData` properties and raised a `TypeError` (`InvalidTypeException`) from `handleRequest()`.
+  The missing or empty values now take the configured `default_expiration` / `default_max_reads`, so the request is
+  rejected by the ciphertext constraint and redirected to the manage page as any other invalid create.
+
+### Changed
+
+- **Coverage gate at 100%:** the `Code Coverage` CI job runs `composer test-coverage-100`, and `composer coverage-check`
+  (and `make coverage-check`) now require 100% too; they previously asked for 99%, which contradicted
+  `test-coverage-100`.
+
+### Tests
+
+- `ShareManageController`: the not-found paths of `created()` and `preview()` (foreign share, share deleted between the
+  guard and the retriever), the access log in the preview payload, and the `extend()` and `delete()` rejection paths
+  (invalid CSRF, foreign share, empty or non-positive bodies, unknown expiration, non-increasing max reads).
+- `ShareCreateType` and `ClientOnlyFieldsTrait`: submissions without usable fields and scalar submissions, detaching
+  and renaming children that are absent. Statement coverage is 100%.
+
 ## [1.20.4] - 2026-11-13
 
 ### Security

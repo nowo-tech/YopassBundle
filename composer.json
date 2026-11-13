@@ -115,7 +115,7 @@
         ],
         "coverage-check": [
             "@test-coverage",
-            "@php scripts/check-coverage.php coverage.xml --min-percent=99"
+            "@php scripts/check-coverage.php coverage.xml --min-percent=100"
         ],
         "cs-check": "@php vendor/bin/php-cs-fixer fix --dry-run --diff",
         "cs-fix": "@php vendor/bin/php-cs-fixer fix",
@@ -135,7 +135,7 @@
         "test": "Run PHPUnit tests",
         "test-coverage": "Run PHPUnit tests with code coverage",
         "test-coverage-100": "Run test-coverage and fail if coverage is below 100%",
-        "coverage-check": "Run test-coverage and fail if coverage is below 99%",
+        "coverage-check": "Run test-coverage and fail if coverage is below 100%",
         "cs-check": "Check code style with PHP-CS-Fixer",
         "cs-fix": "Fix code style with PHP-CS-Fixer",
         "phpstan": "Run PHPStan static analysis",

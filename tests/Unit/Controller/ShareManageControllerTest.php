@@ -9,6 +9,7 @@ use Nowo\UiKitBundle\View\Action;
 use Nowo\UiKitBundle\View\ListPage;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Entity\ShareAccessLog;
 use Nowo\YopassBundle\Event\ShareAccessAction;
 use Nowo\YopassBundle\Event\ShareAccessCheckEvent;
 use Nowo\YopassBundle\Event\ShareCreatedEvent;
@@ -62,6 +63,8 @@ use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Contracts\Translation\TranslatorInterface;
+
+use function is_array;
 
 use const JSON_THROW_ON_ERROR;
 
@@ -1243,6 +1246,206 @@ final class ShareManageControllerTest extends TestCase
         ControllerContainerBuilder::bind($controller);
         $this->expectException(AccessDeniedException::class);
         $controller->index(Request::create('/tools/yopass'));
+    }
+
+    /**
+     * @return iterable<string, array{0: array<string, mixed>|string}>
+     */
+    public static function malformedCreatePayloads(): iterable
+    {
+        yield 'only the token' => [[]];
+        yield 'unknown field only' => [['unknown' => 'x']];
+        yield 'scalar instead of the form array' => ['not-an-array'];
+    }
+
+    /**
+     * @param array<string, mixed>|string $payload
+     */
+    #[DataProvider('malformedCreatePayloads')]
+    public function testCreateRedirectsToManageOnAMalformedPostInsteadOfFailing(array|string $payload): void
+    {
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::never())->method('persist');
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        $container  = ControllerContainerBuilder::bind($controller, new TestUser());
+        $token      = ControllerContainerBuilder::csrfToken($container, 'yopass_create');
+
+        $request = Request::create('/tools/yopass/create', 'POST', [
+            'share_create' => is_array($payload) ? $payload + ['_token' => $token] : $payload,
+        ]);
+
+        self::assertTrue($controller->create($request)->isRedirect('/generated/nowo_yopass_index'));
+    }
+
+    private function ownedShare(string $id, TestUser $owner): SecureShare
+    {
+        $share = new SecureShare($id, $owner);
+        $share->setCiphertext('PLACEHOLDER-CT')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
+
+        return $share;
+    }
+
+    public function testCreatedThrowsNotFoundForForeignOrMissingShare(): void
+    {
+        $owner = new TestUser('owner');
+        $other = new TestUser('other');
+        $share = $this->ownedShare('00000000-0000-4000-8000-0000000000e1', $owner);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturnOnConsecutiveCalls($share, null);
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        ControllerContainerBuilder::bind($controller, $other);
+
+        // Foreign share: indistinguishable from a missing one.
+        try {
+            $controller->created($share->getId());
+            self::fail('Expected a 404 for a foreign share');
+        } catch (NotFoundHttpException) {
+        }
+
+        $this->expectException(NotFoundHttpException::class);
+        $controller->created($share->getId());
+    }
+
+    public function testPreviewThrowsNotFoundWhenTheShareVanishesBetweenTheGuardAndTheRetriever(): void
+    {
+        $user  = new TestUser();
+        $share = $this->ownedShare('00000000-0000-4000-8000-0000000000e2', $user);
+
+        // The controller finds the share for the guard; the retriever looks it up again and it is gone (concurrent delete).
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturnOnConsecutiveCalls($share, null);
+
+        $controller = $this->controller(shareRepository: $shareRepository, shareRetriever: new ShareRetriever($shareRepository));
+        ControllerContainerBuilder::bind($controller, $user);
+
+        $this->expectException(NotFoundHttpException::class);
+        $controller->preview($share->getId());
+    }
+
+    public function testPreviewAddsTheAccessLogOnlyWhenLoggingIsEnabled(): void
+    {
+        $user  = new TestUser();
+        $share = $this->ownedShare('00000000-0000-4000-8000-0000000000e3', $user);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+
+        $logRepository = $this->createMock(ShareAccessLogRepositoryInterface::class);
+        $logRepository->method('findByShare')->willReturn([new ShareAccessLog('00000000-0000-4000-8000-0000000000f1', $share, 1, '203.0.113.7', 'PLACEHOLDER-UA')]);
+
+        $controller = $this->controller(
+            shareRepository: $shareRepository,
+            shareRetriever: new ShareRetriever($shareRepository),
+            accessLogger: new ShareAccessLogger($logRepository, true),
+        );
+        ControllerContainerBuilder::bind($controller, $user, ['router' => $this->prefixedRouter()]);
+
+        /** @var array<string, mixed> $payload */
+        $payload = json_decode((string) $controller->preview($share->getId())->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        self::assertCount(1, $payload['accessLog']);
+        self::assertSame(1, $payload['accessLog'][0]['readNumber']);
+        self::assertSame('203.0.113.7', $payload['accessLog'][0]['ipAddress']);
+        // The preview never carries a plaintext field.
+        self::assertArrayNotHasKey('plaintext', $payload);
+    }
+
+    public function testExtendAnswers403WithoutTouchingTheShareWhenCsrfIsInvalid(): void
+    {
+        $user  = new TestUser();
+        $share = $this->ownedShare('00000000-0000-4000-8000-0000000000e4', $user);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->expects(self::never())->method('find');
+        $shareRepository->expects(self::never())->method('flush');
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        ControllerContainerBuilder::bind($controller, $user);
+
+        $request = Request::create('/', 'POST', [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode(['maxReads' => 3], JSON_THROW_ON_ERROR));
+        $request->headers->set('X-CSRF-TOKEN', 'invalid');
+
+        $response = $controller->extend($share->getId(), $request);
+
+        self::assertSame(Response::HTTP_FORBIDDEN, $response->getStatusCode());
+        self::assertSame(['error' => 'invalid_csrf'], json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR));
+        self::assertSame(1, $share->getMaxReads());
+    }
+
+    public function testExtendThrowsNotFoundForForeignShare(): void
+    {
+        $owner = new TestUser('owner');
+        $other = new TestUser('other');
+        $share = $this->ownedShare('00000000-0000-4000-8000-0000000000e5', $owner);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+        $shareRepository->expects(self::never())->method('flush');
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        $container  = ControllerContainerBuilder::bind($controller, $other);
+
+        $request = Request::create('/', 'POST', [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode(['maxReads' => 9], JSON_THROW_ON_ERROR));
+        $request->headers->set('X-CSRF-TOKEN', ControllerContainerBuilder::csrfToken($container, 'yopass_extend'));
+
+        $this->expectException(NotFoundHttpException::class);
+        $controller->extend($share->getId(), $request);
+    }
+
+    /**
+     * @return iterable<string, array{0: string, 1: string}>
+     */
+    public static function extendBodiesThatChangeNothing(): iterable
+    {
+        yield 'empty expiresIn and non-positive maxReads' => ['{"expiresIn":"  ","maxReads":0}', 'nothing_to_extend'];
+        yield 'negative maxReads' => ['{"maxReads":-5}', 'nothing_to_extend'];
+        yield 'empty body' => ['', 'nothing_to_extend'];
+        yield 'unknown expiration id' => ['{"expiresIn":"no-such-option"}', 'invalid_expiration'];
+        yield 'maxReads not above the current value' => ['{"maxReads":1}', 'max_reads_not_increased'];
+    }
+
+    #[DataProvider('extendBodiesThatChangeNothing')]
+    public function testExtendAnswers400WithTheErrorCodeAndLeavesTheShareUntouched(string $body, string $code): void
+    {
+        $user   = new TestUser();
+        $share  = $this->ownedShare('00000000-0000-4000-8000-0000000000e6', $user);
+        $before = $share->getExpiresAt();
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+        $shareRepository->expects(self::never())->method('flush');
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        $container  = ControllerContainerBuilder::bind($controller, $user);
+
+        $request = Request::create('/', 'POST', [], [], [], ['CONTENT_TYPE' => 'application/json'], $body);
+        $request->headers->set('X-CSRF-TOKEN', ControllerContainerBuilder::csrfToken($container, 'yopass_extend'));
+
+        $response = $controller->extend($share->getId(), $request);
+
+        self::assertSame(Response::HTTP_BAD_REQUEST, $response->getStatusCode());
+        self::assertSame(['error' => $code], json_decode((string) $response->getContent(), true, 512, JSON_THROW_ON_ERROR));
+        self::assertSame(1, $share->getMaxReads());
+        self::assertSame($before, $share->getExpiresAt());
+    }
+
+    public function testDeleteThrowsAccessDeniedForInvalidCsrfAndKeepsTheShare(): void
+    {
+        $user  = new TestUser();
+        $share = $this->ownedShare('00000000-0000-4000-8000-0000000000e7', $user);
+
+        $shareRepository = $this->createMock(ShareRepositoryInterface::class);
+        $shareRepository->method('find')->willReturn($share);
+        $shareRepository->expects(self::never())->method('remove');
+
+        $controller = $this->controller(shareRepository: $shareRepository);
+        ControllerContainerBuilder::bind($controller, $user);
+
+        $this->expectException(AccessDeniedException::class);
+        $controller->delete($share->getId(), Request::create('/', 'POST', ['_token' => 'invalid']));
     }
 
     private function controller(
