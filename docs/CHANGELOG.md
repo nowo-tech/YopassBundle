@@ -67,11 +67,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Create form no longer answers HTTP 500 to a POST that omits the choices:** a request with a valid CSRF token but
-  without `expiresIn` / `maxReads` (or with them empty), or a form submitted with `null`, mapped `null` onto the
-  non-nullable `ShareCreateData` properties and raised a `TypeError` (`InvalidTypeException`) from `handleRequest()`.
-  The missing or empty values now take the configured `default_expiration` / `default_max_reads`, so the request is
-  rejected by the ciphertext constraint and redirected to the manage page as any other invalid create.
+- **Create form no longer answers HTTP 500 to a POST that omits the choices:** a POST without `expiresIn` /
+  `maxReads` (or with them empty), or a form submitted with `null`, mapped `null` onto the non-nullable
+  `ShareCreateData` properties and raised a `TypeError` (`InvalidTypeException`) from `handleRequest()`. This happened
+  before the CSRF verdict, so even an invalid token produced the 500 (with a stack trace in debug mode). The non-nullable
+  properties exist since 1.0.0, so every release `>= 1.0.0 < 1.20.5` is affected. Impact: an authorized user (create
+  role, default `ROLE_ADMIN`) hurting only their own request; no share, ciphertext, key or other user's data is
+  exposed and nothing is persisted. Cross-site use is blocked by the `Sec-Fetch-Site` check. The missing or empty values
+  now take the configured `default_expiration` / `default_max_reads`; a post without a ciphertext is then rejected by
+  the ciphertext constraint as before (a plain redirect instead of a 500). A post that does carry a ciphertext now
+  stores a share with those defaults (302, or 201 for JSON). The defaults are always offered choices (the container
+  build refuses a `default_expiration` that is not an `expiration_options` id or a `default_max_reads` that is not in
+  `max_reads_options`), so the submitter gets nothing they could not already select by hand, and the share is theirs only.
 
 ### Changed
 
