@@ -64,6 +64,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Exact creator ids (`user_mapping: id`, REQ-SEC-006, patch 1.20.4):**
+  - `CreatorId` refuses ids with spaces (edge or inner, NBSP), control, zero-width, bidi or BOM characters, and invalid
+    UTF-8. A security user with such an id is refused as a creator. Shares stored earlier with such an id are no longer
+    reachable through the creator lookups.
+  - `findByCreatorPaginated()` matches the creator with `===` before it cuts the page (ORM and MongoDB). Before, a
+    look-alike creator's rows (`AbC` under a folding collation) could take the page, and the creator's own shares were
+    missing from it. No other creator's share was ever returned.
+  - `creator_id` gets `utf8mb4_0900_bin` (MySQL 8.0.17+) or `utf8mb4_nopad_bin` (MariaDB) instead of the PAD SPACE
+    `utf8mb4_bin`. MySQL 5.7, or a `server_version` without its patch number, keeps it, with a logged warning.
+  - MongoDB: creator queries and deletions use the binary `simple` collation. The legacy int / ObjectId forms of an id
+    are matched with `\z` (before, `7\n` also deleted the shares stored for the int creator `7`) and the lower-case hex
+    form only.
+  - Existing tables: detection queries and `ALTER TABLE` in UPGRADING.
+
 ## [1.20.3] - 2026-11-13
 
 ### Fixed

@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Repository;
 
 use DateTimeImmutable;
 use Doctrine\ODM\MongoDB\DocumentManager;
+use Doctrine\ODM\MongoDB\Query\Builder;
 use Doctrine\Persistence\ManagerRegistry;
 use MongoDB\BSON\ObjectId;
 use MongoDB\BSON\UTCDateTime;
@@ -27,6 +28,9 @@ use function preg_match;
 final readonly class DoctrineMongoShareRepository implements ShareRepositoryInterface, CreatorIdShareRepositoryInterface
 {
     use ResolvesDocumentManagerTrait;
+
+    /** MongoDB's binary string comparison, whatever default collation the collection has (REQ-SEC-006). */
+    private const EXACT_COLLATION = ['locale' => 'simple'];
 
     private ClockInterface $clock;
 
@@ -87,9 +91,17 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
      */
     public function findByCreator(object $creator): array
     {
+        $value = $this->creator($creator);
+        if (is_string($value)) {
+            /** @var iterable<SecureShareDocument> $exact */
+            $exact = $this->creatorQuery($value)->sort('createdAt', 'desc')->getQuery(self::exactOptions($value))->execute();
+
+            return $this->exactShares($exact, $value);
+        }
+
         /** @var list<SecureShareDocument> $documents */
         $documents = $this->dm()->getRepository(SecureShareDocument::class)->findBy(
-            ['creator' => $this->creator($creator)],
+            ['creator' => $value],
             ['createdAt' => 'DESC'],
         );
 
@@ -101,10 +113,10 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
      */
     public function countByCreator(object $creator): int
     {
-        $result = $this->dm()->createQueryBuilder(SecureShareDocument::class)
-            ->field('creator')->equals($this->creator($creator))
+        $value  = $this->creator($creator);
+        $result = $this->creatorQuery($value)
             ->count()
-            ->getQuery()
+            ->getQuery(self::exactOptions($value))
             ->execute();
 
         if (is_int($result)) {
@@ -119,22 +131,17 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
      */
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array
     {
+        $value = $this->creator($creator);
         /** @var iterable<SecureShareDocument> $documents */
-        $documents = $this->dm()->createQueryBuilder(SecureShareDocument::class)
-            ->field('creator')->equals($this->creator($creator))
+        $documents = $this->creatorQuery($value)
             ->sort('createdAt', 'desc')
             ->limit($limit)
             ->skip($offset)
-            ->getQuery()
+            ->getQuery(self::exactOptions($value))
             ->execute();
 
         // execute() returns a cursor iterator, not an array (array_map() threw a TypeError before 1.16).
-        $shares = [];
-        foreach ($documents as $document) {
-            $shares[] = $this->toEntity($document);
-        }
-
-        return $shares;
+        return $this->exactShares($documents, $value);
     }
 
     /**
@@ -301,7 +308,47 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
             $filter['createdAt'] = ['$lt' => new UTCDateTime($before)];
         }
 
-        return $this->dm()->getDocumentCollection(SecureShareDocument::class)->deleteMany($filter)->getDeletedCount();
+        return $this->dm()->getDocumentCollection(SecureShareDocument::class)->deleteMany($filter, ['collation' => self::EXACT_COLLATION])->getDeletedCount();
+    }
+
+    /**
+     * The creator query. For a creator id (id mapping) it runs with {@see exactOptions()}, the binary `simple` collation
+     * (REQ-SEC-006, since 1.20.4), so a case-insensitive default collation a host gave the collection never makes `AbC`
+     * match `abc` (MongoDB compares strings byte for byte by default). The exact match happens before `limit` / `skip`.
+     */
+    private function creatorQuery(object|string $value): Builder
+    {
+        return $this->dm()->createQueryBuilder(SecureShareDocument::class)->field('creator')->equals($value);
+    }
+
+    /**
+     * Options of a creator query ({@see creatorQuery()}): the binary `simple` collation for a creator id.
+     *
+     * @return array<string, mixed>
+     */
+    private static function exactOptions(object|string $value): array
+    {
+        return is_string($value) ? ['collation' => self::EXACT_COLLATION] : [];
+    }
+
+    /**
+     * Maps the documents to shares; for a creator id, only those whose stored id is exactly `$value` (`===`).
+     *
+     * @param iterable<SecureShareDocument> $documents
+     *
+     * @return list<SecureShare>
+     */
+    private function exactShares(iterable $documents, object|string $value): array
+    {
+        $shares = [];
+        foreach ($documents as $document) {
+            $share = $this->toEntity($document);
+            if (!is_string($value) || $share->getCreatorId() === $value) {
+                $shares[] = $share;
+            }
+        }
+
+        return $shares;
     }
 
     /**
@@ -313,10 +360,11 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     public static function storedCreatorValues(string $creatorId): array
     {
         $values = [$creatorId];
-        if (preg_match('/^[1-9][0-9]{0,17}$/', $creatorId) === 1) {
+        // REQ-SEC-006 item 5 (1.20.4): `\z` (a `$` also accepted `7\n`), and an ObjectId's own lower-case form only
+        if (preg_match('/^[1-9][0-9]{0,17}\z/', $creatorId) === 1) {
             $values[] = (int) $creatorId;
         }
-        if (preg_match('/^[0-9a-f]{24}$/i', $creatorId) === 1) {
+        if (preg_match('/^[0-9a-f]{24}\z/', $creatorId) === 1) {
             $values[] = new ObjectId($creatorId);
         }
 

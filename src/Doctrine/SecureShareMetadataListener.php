@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Doctrine;
 
-use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\SQLServerPlatform;
 use Doctrine\ORM\Event\LoadClassMetadataEventArgs;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -12,6 +11,7 @@ use LogicException;
 use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Entity\ShareAccessLog;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
 use function array_replace_recursive;
@@ -34,6 +34,7 @@ final readonly class SecureShareMetadataListener
         private string $userClass,
         private ?string $accessLogTableName = null,
         private string $userMapping = CreatorMapping::RELATION,
+        private ?LoggerInterface $logger = null,
     ) {
     }
 
@@ -115,20 +116,27 @@ final readonly class SecureShareMetadataListener
      * Column options that make the creator id compare byte for byte (1.18.0, LQ-Y-L1): MySQL / MariaDB and SQL Server
      * default to case-insensitive collations (`abc` would match `AbC`); PostgreSQL, SQLite and Oracle need nothing.
      *
+     * Since 1.20.4 (REQ-SEC-006) the MySQL / MariaDB collation is binary NO PAD ({@see ExactCollation}):
+     * `utf8mb4_0900_bin` (MySQL 8.0.17+) or `utf8mb4_nopad_bin` (MariaDB) instead of the PAD SPACE `utf8mb4_bin`
+     * (`abc ` = `abc`), which only MySQL 5.7 keeps, with a logged warning. {@see \Nowo\YopassBundle\Creator\CreatorId}
+     * refuses padded ids before any query, which also covers SQL Server's trailing-space rule.
+     *
      * @return array<string, string>
      */
     private function binaryCollation(LoadClassMetadataEventArgs $args): array
     {
         try {
-            $platform = $args->getEntityManager()->getConnection()->getDatabasePlatform();
+            $connection = $args->getEntityManager()->getConnection();
+            $platform   = $connection->getDatabasePlatform();
+            $collation  = ExactCollation::forConnection($connection, $this->logger);
         } catch (Throwable) {
             return [];
         }
 
         return match (true) {
-            $platform instanceof AbstractMySQLPlatform => ['charset' => 'utf8mb4', 'collation' => 'utf8mb4_bin'],
-            $platform instanceof SQLServerPlatform     => ['collation' => 'Latin1_General_100_BIN2'],
-            default                                    => [],
+            $collation !== null                    => ['charset' => 'utf8mb4', 'collation' => $collation],
+            $platform instanceof SQLServerPlatform => ['collation' => 'Latin1_General_100_BIN2'],
+            default                                => [],
         };
     }
 

@@ -226,8 +226,10 @@ nowo_yopass:
 ```
 
 The share then holds `creator_id VARCHAR(128)` (MongoDB: a string `creator` field) without any foreign key, indexed and
-compared byte for byte (`utf8mb4_bin` on MySQL / MariaDB, `Latin1_General_100_BIN2` on SQL Server; the repository also
-keeps only exact matches in lists, counts and deletions), and
+compared byte for byte (since 1.20.4 `utf8mb4_0900_bin` on MySQL 8.0.17+ and `utf8mb4_nopad_bin` on MariaDB, the PAD
+SPACE `utf8mb4_bin` with a logged warning on MySQL 5.7; `Latin1_General_100_BIN2` on SQL Server; the repository also
+keeps only exact matches in lists, pages, counts and deletions, and refuses ids with spaces, control or invisible
+characters), and
 `SecureShare::getCreator()` returns a `CreatorId` (`getId()`); prefer `getCreatorId()` in your code. Owner checks,
 events, listings and the fail-closed rule for other identity domains work as with the relation. Nothing cascades when
 a user is deleted: call the id-typed repository port from your handler:

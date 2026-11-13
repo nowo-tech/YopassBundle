@@ -3,6 +3,8 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Exact creator ids (`user_mapping: id`)](#exact-creator-ids-user_mapping-id)
+  - [Exact collation of the creator id column (MySQL / MariaDB)](#exact-collation-of-the-creator-id-column-mysql--mariadb)
 - [To 1.20.3](#to-1203)
 - [To 1.20.2](#to-1202)
 - [To 1.20.1](#to-1201)
@@ -104,6 +106,64 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+Target **1.20.4** (patch), from **1.20.3**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
+Nothing changes with the default `user_mapping: relation`, except that `findByCreatorId()`, `countByCreatorId()` and
+`removeAllByCreatorId()` now refuse an id with spaces, control or invisible characters (`InvalidArgumentException`).
+
+### Exact creator ids (`user_mapping: id`)
+
+- **Refused ids.** `CreatorId` refuses ids with spaces (edge or inner, NBSP included), control characters, format
+  characters (zero-width, bidi marks, BOM), other default-ignorable characters, or invalid UTF-8. Ids are never trimmed.
+  A security user whose id is not usable is refused as a creator (`AccessDeniedException`), like a user of another
+  identity domain. A share stored before 1.20.4 with such an id keeps it. No request can name that id any more, so the
+  creator lookups can no longer reach the share (fail closed). The retention purge still removes it.
+- **Pages.** `findByCreatorPaginated()` matches the creator exactly (`===`) before it cuts the page, on Doctrine ORM and
+  MongoDB. A look-alike creator's newer shares no longer push the creator's own shares off a page.
+- **MongoDB.** Creator queries and deletions use the binary `simple` collation, whatever default collation your
+  collection has. The legacy int / ObjectId forms of a creator id match only `[1-9][0-9]*` and a lower-case 24-digit
+  hex id exactly (a trailing newline matched before).
+
+### Exact collation of the creator id column (MySQL / MariaDB)
+
+1.18.0–1.20.3 gave `creator_id` the collation `utf8mb4_bin`. That collation is case- and accent-sensitive but PAD SPACE:
+`abc` and `abc ` compare equal. Since 1.20.4 the column gets a binary NO PAD collation: `utf8mb4_0900_bin` on MySQL
+8.0.17+, `utf8mb4_nopad_bin` on MariaDB. MySQL 5.7, or a `doctrine.dbal.server_version` without its patch number (`8`,
+`8.0`), keeps `utf8mb4_bin`, and the bundle logs a warning when it builds its metadata. Configure the full version (for
+example `8.4.3`). The repository already re-checked lists, counts and deletions with `===`. The ALTER is defence in depth
+and not required for safety.
+
+**1. Detection (before the ALTER).** The NO PAD collation only splits values that compare equal today; it adds no
+unique-key conflict. Compare the bytes: `TRIM`, `DISTINCT`, `LOWER` or a `*_ci` / `*_ai_*` collation fold them too.
+
+```sql
+-- look-alike creator ids that compare equal today (abc / AbC / ábc / "abc ")
+SELECT creator_id, COUNT(DISTINCT HEX(creator_id)) AS variants, COUNT(*) AS shares
+FROM yopass_secure_shares
+GROUP BY creator_id HAVING COUNT(DISTINCT HEX(creator_id)) > 1;
+
+-- creator ids that 1.20.4 refuses (spaces, controls, NBSP, zero-width, bidi marks, BOM): unreachable afterwards
+SELECT id, HEX(creator_id), expires_at FROM yopass_secure_shares
+WHERE HEX(creator_id) REGEXP '^(..)*([01][0-9A-F]|20|7F|C2A0|C2AD|E2808[0-9A-F]|E280A[89A-F]|E281A[0-9A-F]|E38080|EFBBBF)';
+```
+
+Shares found by the second query belong to whoever's id was stored with the extra character. If that id came from
+your user provider, fix the provider. The shares expire as configured.
+
+**2. ALTER** (use your table name, and `utf8mb4_nopad_bin` instead of `utf8mb4_0900_bin` on MariaDB). MySQL 8.0.17+:
+
+```sql
+ALTER TABLE yopass_secure_shares
+  MODIFY creator_id VARCHAR(128) CHARACTER SET utf8mb4 COLLATE `utf8mb4_0900_bin` NOT NULL;
+```
+
+Your `doctrine:migrations:diff` generates the same statement. Afterwards `doctrine:schema:update --dump-sql` shows
+nothing for this column.
 
 ## To 1.20.3
 

@@ -18,9 +18,11 @@ use Symfony\Component\Clock\Clock;
 
 use function array_chunk;
 use function array_filter;
+use function array_slice;
 use function array_values;
 use function count;
 use function is_string;
+use function max;
 
 /**
  * Doctrine ORM implementation for PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle, etc.
@@ -153,6 +155,10 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     public function findByCreatorPaginated(object $creator, int $limit, int $offset): array
     {
         $value = $this->creator($creator);
+        if ($this->mapsCreatorById() && is_string($value)) {
+            return $this->exactPage($value, $limit, $offset);
+        }
+
         /** @var list<SecureShare> $shares */
         $shares = $this->em()->getRepository(SecureShare::class)->findBy(
             ['creator' => $value],
@@ -295,7 +301,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
      *
      * @return list<string>
      */
-    private function exactIds(string $creatorId, ?DateTimeImmutable $before = null): array
+    private function exactIds(string $creatorId, ?DateTimeImmutable $before = null, bool $newestFirst = false): array
     {
         $query = $this->em()->createQueryBuilder()
             ->select('s.id AS id', 's.creator AS creator')
@@ -304,6 +310,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->setParameter('creator', $creatorId);
         if ($before instanceof DateTimeImmutable) {
             $query->andWhere('s.createdAt < :before')->setParameter('before', $before);
+        }
+        if ($newestFirst) {
+            $query->orderBy('s.createdAt', 'DESC')->addOrderBy('s.id', 'DESC');
         }
 
         $ids = [];
@@ -316,6 +325,43 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         }
 
         return $ids;
+    }
+
+    /**
+     * Id mapping (REQ-SEC-006 item 6, since 1.20.4): one page of the shares whose creator id is exactly `$creatorId`,
+     * newest first. The exact match happens before the page is cut: the ids of the matching rows are read and
+     * re-checked with `===` first, then the page is sliced and loaded by primary key, so rows of a look-alike creator
+     * (`AbC`, `abc `) that a folding collation returns never take the place of the creator's own shares.
+     *
+     * @return list<SecureShare>
+     */
+    private function exactPage(string $creatorId, int $limit, int $offset): array
+    {
+        $ids = array_slice($this->exactIds($creatorId, null, true), max(0, $offset), max(0, $limit));
+        if ($ids === []) {
+            return [];
+        }
+
+        /** @var list<SecureShare> $shares */
+        $shares = $this->em()->createQueryBuilder()
+            ->select('s')
+            ->from(SecureShare::class, 's')
+            ->where('s.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getResult();
+        $byId = [];
+        foreach ($shares as $share) {
+            $byId[$share->getId()] = $share;
+        }
+        $page = [];
+        foreach ($ids as $id) {
+            if (isset($byId[$id])) {
+                $page[] = $byId[$id];
+            }
+        }
+
+        return $this->exact($page, $creatorId);
     }
 
     /**

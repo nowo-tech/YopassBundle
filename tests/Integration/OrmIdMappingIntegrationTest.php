@@ -33,9 +33,11 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
+use function array_map;
 use function dirname;
 use function extension_loaded;
 use function method_exists;
+use function str_replace;
 use function sys_get_temp_dir;
 
 use const PHP_VERSION_ID;
@@ -145,6 +147,42 @@ final class OrmIdMappingIntegrationTest extends TestCase
 
         $this->expectException(AccessDeniedException::class);
         $creator->create(new GuardAdmin(7), $this->data());
+    }
+
+    /**
+     * REQ-SEC-006 item 6 (1.20.4): a page holds the creator's own shares even when the column folds case (here SQLite
+     * NOCASE, like a host's MySQL `*_ci` column) and newer shares of a look-alike creator come first: the exact match
+     * happens before the page is cut. Before 1.20.4 the first page of `abc` was empty.
+     */
+    public function testPagesMatchTheCreatorExactlyBeforeTheLimit(): void
+    {
+        $connection = $this->em->getConnection();
+        $tool       = new SchemaTool($this->em);
+        $metadata   = $this->em->getMetadataFactory()->getAllMetadata();
+        $tool->dropSchema($metadata);
+        foreach ($tool->getCreateSchemaSql($metadata) as $sql) {
+            $connection->executeStatement(str_replace('creator_id VARCHAR(128) NOT NULL', 'creator_id VARCHAR(128) NOT NULL COLLATE NOCASE', $sql));
+        }
+
+        $creator = new ShareCreator($this->repository, DefaultShareOptions::get()['expiration_options'], null, null, $this->creators);
+        $own     = [];
+        foreach (['abc', 'AbC', 'abc', 'AbC', 'ABC', 'abc'] as $minute => $id) {
+            $share = $creator->create(new SecurityUserDto($id), $this->data());
+            $connection->executeStatement('UPDATE yopass_secure_shares SET created_at = ? WHERE id = ?', ['2026-11-13 10:0' . $minute . ':00', $share->getId()]);
+            if ($id === 'abc') {
+                $own[] = $share->getId();
+            }
+        }
+        $this->em->clear();
+        self::assertSame(6, (int) $connection->fetchOne("SELECT COUNT(*) FROM yopass_secure_shares WHERE creator_id = 'abc'"), 'The collation folds case.');
+
+        $page = static fn (array $shares): array => array_map(static fn (SecureShare $s): string => $s->getId(), $shares);
+        self::assertSame([$own[2], $own[1]], $page($this->repository->findByCreatorPaginated(new SecurityUserDto('abc'), 2, 0)));
+        self::assertSame([$own[0]], $page($this->repository->findByCreatorPaginated(new SecurityUserDto('abc'), 2, 2)));
+        self::assertSame([], $this->repository->findByCreatorPaginated(new SecurityUserDto('abc'), 2, 4));
+        self::assertSame([], $this->repository->findByCreatorPaginated(new SecurityUserDto('Abc'), 2, 0), 'nobody is Abc');
+        self::assertCount(2, $this->repository->findByCreatorPaginated(new SecurityUserDto('AbC'), 5, 0));
+        self::assertSame(3, $this->repository->countByCreatorId('abc'));
     }
 
     private function data(): ShareCreateData

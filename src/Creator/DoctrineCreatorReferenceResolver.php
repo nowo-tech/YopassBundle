@@ -115,7 +115,9 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         }
 
         $id = ($this->classes ?? new CreatorClassPolicy($class))->idOf($user);
-        if ($id === null) {
+        // 1.20.4 (REQ-SEC-006): with the id mapping the id is also an exact key (no spaces, controls or invisible
+        // characters), refused like any other unusable user instead of failing in the CreatorId constructor
+        if ($id === null || !CreatorId::isUsable((string) $id)) {
             throw new AccessDeniedException(sprintf('nowo_yopass: a %s is not a share creator (not nowo_yopass.user_class nor listed in nowo_yopass.accepted_user_classes with a usable getId()).', get_debug_type($user)));
         }
 
