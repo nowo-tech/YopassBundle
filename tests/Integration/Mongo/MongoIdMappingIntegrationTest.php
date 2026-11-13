@@ -20,6 +20,7 @@ use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Dto\ShareCreateData;
+use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
@@ -33,6 +34,7 @@ use function extension_loaded;
 use function getenv;
 use function is_dir;
 use function is_string;
+use function json_encode;
 use function mkdir;
 use function random_bytes;
 use function sys_get_temp_dir;
@@ -121,6 +123,35 @@ final class MongoIdMappingIntegrationTest extends TestCase
         self::assertSame(1, $this->repository->removeAllByCreator(new SecurityUserDto('6')));
         self::assertSame(['abc'], DoctrineMongoShareRepository::storedCreatorValues('abc'));
         self::assertSame(['7', 7], DoctrineMongoShareRepository::storedCreatorValues('7'));
+        // REQ-SEC-006 item 5 (1.20.4): `$` accepted a trailing newline; an ObjectId is matched by its own lower-case form
+        self::assertSame(["7\n"], DoctrineMongoShareRepository::storedCreatorValues("7\n"));
+        self::assertSame(['65A1B2C3D4E5F60718293A4B'], DoctrineMongoShareRepository::storedCreatorValues('65A1B2C3D4E5F60718293A4B'));
+        self::assertCount(2, DoctrineMongoShareRepository::storedCreatorValues('65a1b2c3d4e5f60718293a4b'));
+    }
+
+    /**
+     * REQ-SEC-006 (1.20.4): a host whose collection has a case-insensitive default collation still gets exact creator
+     * matches (lists, pages before `limit`, counts, deletions), and look-alikes of `abc` never reach its shares.
+     */
+    public function testCreatorMatchingIsExactUnderACaseInsensitiveCollectionCollation(): void
+    {
+        $this->client->selectDatabase($this->database)->createCollection('yopass_secure_shares', ['collation' => ['locale' => 'en', 'strength' => 2]]);
+        $collection = $this->client->selectCollection($this->database, 'yopass_secure_shares');
+        $future     = new UTCDateTime(new DateTimeImmutable('+1 day'));
+        foreach ([['own', 'abc', '-1 hour'], ['upper-1', 'AbC', '-3 minutes'], ['upper-2', 'ABC', '-2 minutes'], ['accent', 'ábc', '-1 minute']] as [$id, $creator, $at]) {
+            $collection->insertOne(['_id' => $id, 'creator' => $creator, 'ciphertext' => 'c', 'expiresAt' => $future, 'createdAt' => new UTCDateTime(new DateTimeImmutable($at)), 'maxReads' => 1, 'readsLeft' => 1, 'revokedAt' => null, 'payloadKind' => 'text']);
+        }
+        self::assertSame(3, $collection->countDocuments(['creator' => 'abc']), 'The collection folds case.');
+
+        $abc = new SecurityUserDto('abc');
+        self::assertSame(['own'], array_map(static fn (SecureShare $s): string => $s->getId(), $this->repository->findByCreatorPaginated($abc, 1, 0)));
+        self::assertSame(['own'], array_map(static fn (SecureShare $s): string => $s->getId(), $this->repository->findByCreator($abc)));
+        self::assertSame(1, $this->repository->countByCreator($abc));
+        foreach (['Abc', 'abc ', "abc\u{00A0}", "abc\u{200B}"] as $lookAlike) {
+            self::assertSame([], $this->repository->findByCreatorPaginated(CreatorId::wrap($lookAlike), 10, 0), (string) json_encode($lookAlike));
+        }
+        self::assertSame(1, $this->repository->removeAllByCreatorId('abc'));
+        self::assertSame(3, $collection->countDocuments([]), 'The look-alike creators keep their shares.');
     }
 
     private function data(): ShareCreateData

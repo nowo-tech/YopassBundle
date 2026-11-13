@@ -522,6 +522,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             ->setArgument('$userClass', $userClass)
             ->setArgument('$accessLogTableName', $accessLogEnabled ? $accessLogTable : null)
             ->setArgument('$userMapping', $config['user_mapping'])
+            // REQ-SEC-006 (1.20.4): warns when MySQL only offers the PAD SPACE utf8mb4_bin for the creator id column
+            ->setArgument('$logger', new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE))
             ->addTag('doctrine.event_listener', ['event' => 'loadClassMetadata']));
 
         if ($accessLogEnabled) {

@@ -9,6 +9,7 @@ use Doctrine\Common\EventManager;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
+use Doctrine\DBAL\Platforms\MariaDBPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Schema\Index;
 use Doctrine\DBAL\Tools\DsnParser;
@@ -34,6 +35,7 @@ use function array_values;
 use function dirname;
 use function getenv;
 use function is_string;
+use function json_encode;
 use function method_exists;
 use function sys_get_temp_dir;
 
@@ -41,7 +43,8 @@ use const PHP_VERSION_ID;
 
 /**
  * LQ-Y-L1 (1.18.0) on a database server (MySQL, MariaDB, PostgreSQL): with `user_mapping: id` the creator id column is
- * indexed and compares byte for byte (`utf8mb4_bin` on MySQL / MariaDB), so `abc` never matches `AbC`; the repository
+ * indexed and compares byte for byte (`utf8mb4_0900_bin` on MySQL, `utf8mb4_nopad_bin` on MariaDB since 1.20.4), so
+ * `abc` never matches `AbC` nor `abc `; the repository
  * post-filters keep lists, counts and deletions exact even when a host's column uses a case-insensitive collation. Set
  * YOPASS_TEST_DATABASE_URL to run (CI job "Id mapping on database servers").
  */
@@ -87,7 +90,9 @@ final class OrmIdMappingDatabaseTest extends TestCase
     {
         $connection = $this->em->getConnection();
         if ($connection->getDatabasePlatform() instanceof AbstractMySQLPlatform) {
-            self::assertSame('utf8mb4_bin', $connection->fetchOne("SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'yopass_secure_shares' AND COLUMN_NAME = 'creator_id'"));
+            // REQ-SEC-006 (1.20.4): binary NO PAD (utf8mb4_bin is PAD SPACE: `abc ` = `abc`)
+            $expected = $connection->getDatabasePlatform() instanceof MariaDBPlatform ? 'utf8mb4_nopad_bin' : 'utf8mb4_0900_bin';
+            self::assertSame($expected, $connection->fetchOne("SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'yopass_secure_shares' AND COLUMN_NAME = 'creator_id'"));
         }
         $leading = array_map(static fn (Index $index): string => array_values($index->getColumns())[0] ?? '', $connection->createSchemaManager()->listTableIndexes('yopass_secure_shares'));
         self::assertContains('creator_id', $leading);
@@ -103,6 +108,51 @@ final class OrmIdMappingDatabaseTest extends TestCase
         self::assertSame(2, (int) $this->em->getConnection()->fetchOne("SELECT COUNT(*) FROM yopass_secure_shares WHERE creator_id = 'abc'"), 'The collation folds case.');
 
         $this->assertExact();
+    }
+
+    /**
+     * REQ-SEC-006: look-alikes of `abc` (case, accent, trailing space, newline, NBSP, ZWSP) select none of its shares in
+     * SQL; a legacy share stored for `abc ` before 1.20.4 stays apart and no request can name it.
+     */
+    public function testLookAlikesNeverMatchAndALegacyPaddedCreatorStaysApart(): void
+    {
+        $connection = $this->em->getConnection();
+        $this->creator->create(new SecurityUserDto('abc'), $this->data());
+        foreach (['Abc', 'ábc', 'abc ', "abc\n", "abc\u{00A0}", "abc\u{200B}"] as $lookAlike) {
+            self::assertSame(0, (int) $connection->fetchOne('SELECT COUNT(*) FROM yopass_secure_shares WHERE creator_id = ?', [$lookAlike]), (string) json_encode($lookAlike));
+        }
+
+        $legacy = $this->creator->create(new SecurityUserDto('legacy'), $this->data());
+        $connection->executeStatement('UPDATE yopass_secure_shares SET creator_id = ? WHERE id = ?', ['abc ', $legacy->getId()]);
+        $this->em->clear();
+
+        self::assertSame(1, (int) $connection->fetchOne("SELECT COUNT(*) FROM yopass_secure_shares WHERE creator_id = 'abc'"));
+        self::assertSame(1, $this->repository->countByCreatorId('abc'));
+        self::assertCount(1, $this->repository->findByCreatorPaginated(new SecurityUserDto('abc'), 10, 0));
+        $stored = $this->repository->find($legacy->getId());
+        self::assertNotNull($stored);
+        self::assertSame('abc ', $stored->getCreatorId());
+        self::assertSame(1, $this->repository->removeAllByCreatorId('abc'));
+        self::assertNotNull($this->repository->find($legacy->getId()), 'The legacy share is not abc\'s.');
+    }
+
+    /**
+     * REQ-SEC-006 item 6: under a folding collation, newer shares of `AbC` never push `abc`'s own share off its page.
+     */
+    public function testPagesMatchExactlyBeforeTheLimitUnderACaseInsensitiveCollation(): void
+    {
+        $this->foldCase($this->em->getConnection());
+        $own        = $this->creator->create(new SecurityUserDto('abc'), $this->data());
+        $connection = $this->em->getConnection();
+        $connection->executeStatement('UPDATE yopass_secure_shares SET created_at = ? WHERE id = ?', ['2026-11-13 09:00:00', $own->getId()]);
+        foreach ([1, 2, 3] as $minute) {
+            $other = $this->creator->create(new SecurityUserDto('AbC'), $this->data());
+            $connection->executeStatement('UPDATE yopass_secure_shares SET created_at = ? WHERE id = ?', ['2026-11-13 10:0' . $minute . ':00', $other->getId()]);
+        }
+        $this->em->clear();
+
+        self::assertSame([$own->getId()], array_map(static fn (SecureShare $s): string => $s->getId(), $this->repository->findByCreatorPaginated(new SecurityUserDto('abc'), 1, 0)));
+        self::assertSame([], $this->repository->findByCreatorPaginated(new SecurityUserDto('abc'), 1, 1));
     }
 
     /**

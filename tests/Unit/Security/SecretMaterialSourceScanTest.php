@@ -55,6 +55,8 @@ final class SecretMaterialSourceScanTest extends TestCase
         'Service/ShareConsumedNotifier.php',
         // Warns with the number of discarded private-manager changes only (1.20.0): no share data.
         'Doctrine/YopassEntityManager.php',
+        // Warns that MySQL only offers the PAD SPACE utf8mb4_bin (1.20.4): server version only, no share data.
+        'Doctrine/ExactCollation.php',
         // TreeBuilder ->info() node descriptions, not a logger.
         'DependencyInjection/Configuration.php',
     ];

@@ -15,6 +15,7 @@ use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\Orm\GuardAdmin;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
@@ -50,6 +51,61 @@ final class CreatorIdTest extends TestCase
     {
         $this->expectException(InvalidArgumentException::class);
         new CreatorId(str_repeat('a', 129));
+    }
+
+    /** @return iterable<string, array{0: string}> */
+    public static function unusableIds(): iterable
+    {
+        // REQ-SEC-006 (1.20.4): look-alikes of `bob` that a collation or a trim would fold onto it
+        yield 'trailing space' => ['bob '];
+        yield 'leading space' => [' bob'];
+        yield 'newline' => ["bob\n"];
+        yield 'tab' => ["bob\t"];
+        yield 'NBSP' => ["bob\u{00A0}"];
+        yield 'ZWSP' => ["bob\u{200B}"];
+        yield 'inner ZWSP' => ["b\u{200B}ob"];
+        yield 'BOM' => ["\u{FEFF}bob"];
+        yield 'bidi mark' => ["bob\u{200E}"];
+        yield 'inner space' => ['bo b'];
+        yield 'invalid UTF-8' => ["bob\xFF"];
+        yield 'NUL' => ["bob\0"];
+    }
+
+    #[DataProvider('unusableIds')]
+    public function testRefusesIdsThatAreNotExactKeys(string $id): void
+    {
+        self::assertFalse(CreatorId::isUsable($id));
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('without spaces, control or invisible characters');
+        new CreatorId($id);
+    }
+
+    public function testCaseAndAccentVariantsAreOtherIdsNotRefusedOnes(): void
+    {
+        foreach (['Bob', 'bób', 'bob', 'b-ob_1@example.com', str_repeat('a', 128)] as $id) {
+            self::assertTrue(CreatorId::isUsable($id), $id);
+            self::assertSame($id, (new CreatorId($id))->getId());
+        }
+        self::assertFalse(CreatorId::isUsable(''));
+        self::assertFalse(CreatorId::isUsable(str_repeat('a', 129)));
+    }
+
+    public function testALegacyStoredIdStaysAsStoredButNoRequestCanNameIt(): void
+    {
+        $legacy = CreatorId::wrap('bob ');
+
+        self::assertInstanceOf(CreatorId::class, $legacy);
+        self::assertSame('bob ', $legacy->getId());
+        self::assertNotSame('bob', $legacy->getId());
+    }
+
+    public function testTheResolverRefusesAnUnusableIdOfAnAcceptedUser(): void
+    {
+        $resolver = new DoctrineCreatorReferenceResolver(SecurityUserDto::class, null, null, null, CreatorMapping::ID);
+
+        $this->expectException(AccessDeniedException::class);
+        $resolver->reference(new SecurityUserDto("bob\u{00A0}"));
     }
 
     public function testPolicyRefusesPaddedAndOverlongIds(): void
