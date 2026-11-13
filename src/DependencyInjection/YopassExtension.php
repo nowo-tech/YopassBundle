@@ -503,6 +503,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             // 1.20.0 (REQ-RUNTIME-002): dropped at the OUTERMOST request / message / command boundaries only.
             $container->setDefinition(YopassEntityManagerBoundarySubscriber::class, (new Definition(YopassEntityManagerBoundarySubscriber::class))
                 ->setArgument('$entityManager', new Reference(YopassEntityManager::class))
+                ->setArgument('$requestStack', new Reference('request_stack', ContainerInterface::IGNORE_ON_INVALID_REFERENCE))
                 ->addTag('kernel.event_subscriber'));
             // 1.20.0: replaced after a rollback on its connection (doctrine/dbal 4 only).
             if (PrivateEntityManagerPass::supportsRollbackMiddleware()) {

@@ -8,17 +8,22 @@ use Symfony\Component\Console\Event\ConsoleCommandEvent;
 use Symfony\Component\Console\Event\ConsoleErrorEvent;
 use Symfony\Component\Console\Event\ConsoleTerminateEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Event\FinishRequestEvent;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\HttpKernel\Event\TerminateEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
 use Symfony\Component\Messenger\Event\WorkerMessageHandledEvent;
 use Symfony\Component\Messenger\Event\WorkerMessageReceivedEvent;
 use Symfony\Component\Messenger\Event\WorkerMessageSkipEvent;
+use Symfony\Component\Messenger\Event\WorkerRunningEvent;
+use Symfony\Component\Messenger\Event\WorkerStartedEvent;
 use Symfony\Component\Messenger\Event\WorkerStoppedEvent;
 use Symfony\Contracts\Service\ResetInterface;
 
 use const PHP_INT_MAX;
+use const PHP_INT_MIN;
 
 /**
  * Drops the bundle's private entity manager ({@see YopassEntityManager}) at every OUTERMOST unit-of-work boundary
@@ -33,9 +38,11 @@ use const PHP_INT_MAX;
  *   unit: not inside a console command, a Messenger message or another main request (an in-process
  *   `HttpKernel::handle()` must not drop the manager of the unit that runs it). Sub-requests share their main
  *   request's unit of work;
- * - Messenger: when a message is received (PHP_INT_MAX) and after it is handled or failed (priority -2048). A skipped
- *   message (`WorkerMessageSkipEvent`, dispatched by `messenger:failed:retry` only) or a stopped worker ends the
- *   in-flight message without dropping;
+ * - Messenger: when a message is received (PHP_INT_MAX) and after it is handled or failed (priority -2048), only
+ *   outside another message (a worker run in-process by a handler keeps the outer message's manager, audit NX CR1).
+ *   A skipped message (`WorkerMessageSkipEvent`, dispatched by `messenger:failed:retry` only, or `shouldHandle(false)`
+ *   in a received listener, audit NX CR3), the worker's next `WorkerRunningEvent` or its stop ends the in-flight
+ *   message without dropping;
  * - console: when the OUTERMOST run starts (PHP_INT_MAX) and terminates (priority -2048), only outside a message and a
  *   main request. A command run in-process from another command, a message handler or a controller does not drop the
  *   outer unit's manager. A run whose `console.error` listener threw (no terminate follows) is dropped from the
@@ -53,6 +60,8 @@ final readonly class YopassEntityManagerBoundarySubscriber implements EventSubsc
     public const MESSENGER_WORKER_MESSAGE_HANDLED  = WorkerMessageHandledEvent::class;
     public const MESSENGER_WORKER_MESSAGE_FAILED   = WorkerMessageFailedEvent::class;
     public const MESSENGER_WORKER_STOPPED          = WorkerStoppedEvent::class;
+    public const MESSENGER_WORKER_STARTED          = WorkerStartedEvent::class;
+    public const MESSENGER_WORKER_RUNNING          = WorkerRunningEvent::class;
     /** Dispatched by `messenger:failed:retry` only, when a message is skipped. */
     public const MESSENGER_WORKER_MESSAGE_SKIPPED = WorkerMessageSkipEvent::class;
 
@@ -66,11 +75,13 @@ final readonly class YopassEntityManagerBoundarySubscriber implements EventSubsc
 
     /**
      * @param ResetInterface $entityManager the private manager ({@see YopassEntityManager::reset()} drops it)
+     * @param RequestStack|null $requestStack the HTTP kernel's request stack (read only, see {@see UnitOfWorkFrames})
      */
     public function __construct(
         private ResetInterface $entityManager,
+        ?RequestStack $requestStack = null,
     ) {
-        $this->units = new UnitOfWorkFrames();
+        $this->units = new UnitOfWorkFrames($requestStack);
     }
 
     /**
@@ -82,10 +93,12 @@ final readonly class YopassEntityManagerBoundarySubscriber implements EventSubsc
             KernelEvents::REQUEST                   => ['onRequest', PHP_INT_MAX],
             KernelEvents::FINISH_REQUEST            => ['onFinishRequest', PHP_INT_MAX],
             KernelEvents::TERMINATE                 => [['onRequestBoundaryEnded', PHP_INT_MAX], ['onTerminate', -2048]],
-            self::MESSENGER_WORKER_MESSAGE_RECEIVED => ['onMessageReceived', PHP_INT_MAX],
+            self::MESSENGER_WORKER_STARTED          => ['onWorkerStarted', PHP_INT_MAX],
+            self::MESSENGER_WORKER_MESSAGE_RECEIVED => [['onMessageReceived', PHP_INT_MAX], ['onMessageReceivedDecided', PHP_INT_MIN]],
             self::MESSENGER_WORKER_MESSAGE_HANDLED  => [['onMessageEnded', PHP_INT_MAX], ['onMessageFinished', -2048]],
             self::MESSENGER_WORKER_MESSAGE_FAILED   => [['onMessageEnded', PHP_INT_MAX], ['onMessageFinished', -2048]],
             self::MESSENGER_WORKER_MESSAGE_SKIPPED  => ['onMessageEnded', PHP_INT_MAX],
+            self::MESSENGER_WORKER_RUNNING          => ['onWorkerRunning', PHP_INT_MAX],
             self::MESSENGER_WORKER_STOPPED          => ['onWorkerStopped', PHP_INT_MAX],
             self::CONSOLE_COMMAND                   => ['onConsoleCommand', PHP_INT_MAX],
             self::CONSOLE_ERROR                     => ['onConsoleError', PHP_INT_MAX],
@@ -98,7 +111,7 @@ final readonly class YopassEntityManagerBoundarySubscriber implements EventSubsc
      */
     public function onRequest(RequestEvent $event): void
     {
-        if ($event->isMainRequest() && $this->units->requestStarted()) {
+        if ($event->isMainRequest() && $this->units->requestStarted($event->getRequest())) {
             $this->entityManager->reset();
         }
     }
@@ -106,7 +119,7 @@ final readonly class YopassEntityManagerBoundarySubscriber implements EventSubsc
     public function onFinishRequest(FinishRequestEvent $event): void
     {
         if ($event->isMainRequest()) {
-            $this->units->requestFinished();
+            $this->units->requestFinished($event->getRequest());
         }
     }
 
@@ -114,52 +127,80 @@ final readonly class YopassEntityManagerBoundarySubscriber implements EventSubsc
      * `kernel.terminate` (PHP_INT_MAX): a top-level request boundary resets the main-request counter, even when the
      * request's `kernel.finish_request` never came (audit NR-b M1).
      */
-    public function onRequestBoundaryEnded(): void
+    public function onRequestBoundaryEnded(TerminateEvent $event): void
     {
-        $this->units->requestBoundaryEnded();
+        $this->units->requestBoundaryEnded($event);
     }
 
     /**
      * End of a request (late): drops the manager only when nothing else runs.
      */
-    public function onTerminate(): void
+    public function onTerminate(TerminateEvent $event): void
     {
-        if ($this->units->isIdle()) {
+        if ($this->units->endsOutermostUnit($event)) {
             $this->entityManager->reset();
         }
     }
 
     /**
-     * Start of a Messenger message: nothing of the previous message or of the worker's idle time is kept.
+     * A Messenger worker starts (its own message state, audit NX CR1).
      */
-    public function onMessageReceived(): void
+    public function onWorkerStarted(object $event): void
     {
-        $this->units->messageReceived();
-        $this->entityManager->reset();
+        $this->units->workerStarted($event);
     }
 
     /**
-     * A message was handled, failed or skipped (PHP_INT_MAX): no message is in flight any more.
+     * Start of a Messenger message: nothing of the previous message or of the worker's idle time is kept. A message
+     * handled by a worker run in-process inside another message's handler keeps the outer unit (audit NX CR1).
      */
-    public function onMessageEnded(): void
+    public function onMessageReceived(object $event): void
     {
-        $this->units->messageFinished();
+        if ($this->units->messageReceived($event)) {
+            $this->entityManager->reset();
+        }
     }
 
     /**
-     * End of a Messenger message (handled or failed, late).
+     * End of the received event (PHP_INT_MIN): a message skipped with `shouldHandle(false)` ends (audit NX CR3).
      */
-    public function onMessageFinished(): void
+    public function onMessageReceivedDecided(object $event): void
     {
-        $this->entityManager->reset();
+        $this->units->messageReceivedDecided($event);
     }
 
     /**
-     * The worker stopped: no message is in flight any more.
+     * A message was handled, failed or skipped (PHP_INT_MAX): it is not in flight any more.
      */
-    public function onWorkerStopped(): void
+    public function onMessageEnded(object $event): void
     {
-        $this->units->workerStopped();
+        $this->units->messageFinished($event);
+    }
+
+    /**
+     * End of a Messenger message (handled or failed, late): drops the manager only for the outermost message.
+     */
+    public function onMessageFinished(object $event): void
+    {
+        if ($this->units->endsOutermostUnit($event)) {
+            $this->entityManager->reset();
+        }
+    }
+
+    /**
+     * The worker finished a message or is idle: its message is not in flight any more.
+     */
+    public function onWorkerRunning(object $event): void
+    {
+        $this->units->workerRunning($event);
+    }
+
+    /**
+     * The worker stopped: its message is not in flight any more.
+     */
+    public function onWorkerStopped(object $event): void
+    {
+        $this->units->workerStopped($event);
     }
 
     /**

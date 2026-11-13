@@ -72,6 +72,8 @@ A bundle that is safe under **B** is safe under **A** and under classic mode / P
 | `Twig\YopassTwigExtension` | yes | none; globals are fixed config strings | ✅ | ✅ |
 | `Command\PurgeOldSharesCommand` | yes | none; CLI only | ✅ | ✅ |
 
+Note (audit OB2): with a custom asynchronous Messenger `MessageExecutionStrategyInterface` the tracker loses its nested-worker protection (a worker run inside a handler may clear the outer message's unit); the boundary clears still happen.
+
 `Security\ShareEncryptionService` and `Service\DefaultShareFileHandler` are stateless; the first is test tooling and is removed from the container because nothing references it. Entities, the ODM document, DTOs, events and value objects are created per request/call and are never stored in a service property. `new DateTimeImmutable()` in entity constructors (`src/Entity/SecureShare.php:49`, `src/Entity/ShareAccessLog.php:37`, `src/Document/SecureShareDocument.php:44`) runs per object, not per service, so it is correct in a worker.
 
 ## Findings
