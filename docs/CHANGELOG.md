@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.20.4] - 2026-11-13](#1204---2026-11-13)
 - [[1.20.3] - 2026-11-13](#1203---2026-11-13)
 - [[1.20.2] - 2026-11-12](#1202---2026-11-12)
 - [[1.20.1] - 2026-11-12](#1201---2026-11-12)
@@ -64,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.4] - 2026-11-13
+
 ### Security
 
 - **Exact creator ids (`user_mapping: id`, REQ-SEC-006, patch 1.20.4):**
@@ -79,6 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     are matched with `\z` (before, `7\n` also deleted the shares stored for the int creator `7`) and the lower-case hex
     form only.
   - Existing tables: detection queries and `ALTER TABLE` in UPGRADING.
+
+[1.20.4]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.20.4
 
 ## [1.20.3] - 2026-11-13
 
@@ -1110,7 +1115,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.3...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.4...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
