@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\Form;
 
 use Nowo\YopassBundle\Dto\ShareCreateData;
+use Nowo\YopassBundle\Form\ClientOnlyFieldsTrait;
 use Nowo\YopassBundle\Form\CsrfActionType;
 use Nowo\YopassBundle\Form\ShareCreatedLinksType;
 use Nowo\YopassBundle\Form\ShareCreateType;
@@ -15,6 +16,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Form\Extension\Validator\ValidatorExtension;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\Forms;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\Form\PreloadedExtension;
 use Symfony\Component\Validator\Validation;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -67,6 +69,13 @@ final class ClientOnlyFieldsTest extends TestCase
             'allow_custom_password' => false,
             'default_encryption'    => 'password',
         ]);
+
+        // Absent children are skipped while detaching: the present ones still get their ids, the view builds.
+        $view = $form->createView();
+        self::assertArrayNotHasKey('file', $view->children);
+        self::assertArrayNotHasKey('customPassword', $view->children);
+        self::assertSame('yopass-secret', $view['secret']->vars['id']);
+        self::assertSame('', $view['secret']->vars['full_name']);
 
         self::assertFalse($form->has('file'));
         self::assertFalse($form->has('customPassword'));
@@ -124,6 +133,31 @@ final class ClientOnlyFieldsTest extends TestCase
 
         $key = $factory->create(ShareRevealType::class)->createView();
         self::assertSame('share-key', $key['key']->vars['id']);
+    }
+
+    /**
+     * The helper is a shared trait: renaming a choice the form does not have is a no-op, never a notice or a TypeError.
+     * (ShareCreateType always adds encryptionMode, so this contract is only reachable by calling the helper directly.).
+     */
+    public function testRenameExpandedChoiceIsANoOpForAnAbsentChild(): void
+    {
+        $helper = new class {
+            use ClientOnlyFieldsTrait;
+
+            public function rename(FormView $view): void
+            {
+                $this->renameExpandedChoice($view, 'missing', 'fixed_name', ['auto' => 'fixed-id']);
+            }
+        };
+
+        $view                                       = new FormView();
+        $view->children['other']                    = new FormView($view);
+        $view->children['other']->vars['full_name'] = 'form[other]';
+
+        $helper->rename($view);
+
+        self::assertSame(['other'], array_keys($view->children));
+        self::assertSame('form[other]', $view->children['other']->vars['full_name']);
     }
 
     public function testCsrfActionTypeIsNamelessWithoutFields(): void

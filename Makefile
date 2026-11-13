@@ -109,7 +109,7 @@ test-coverage-100: ensure-up
 	sh .scripts/php-coverage-percent.sh coverage-php.txt
 
 coverage-check: test-coverage
-	$(COMPOSE) exec -T $(SERVICE_PHP) php scripts/check-coverage.php coverage.xml --min-percent=99
+	$(COMPOSE) exec -T $(SERVICE_PHP) php scripts/check-coverage.php coverage.xml --min-percent=100
 
 # REQ-TEST-005: integration suite uses Doctrine (SQLite in container); aliases keep the standard target names.
 test-with-db: test

@@ -199,9 +199,9 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          echo "🧪 Running tests with coverage..."
+          echo "🧪 Running tests with coverage (100% statements gate)..."
           rm -rf .phpunit.cache
-          composer test-coverage
+          composer test-coverage-100
           if [ $? -ne 0 ]; then
             echo "❌ ERROR: Tests failed"
             exit 1

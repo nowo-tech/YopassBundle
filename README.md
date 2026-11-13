@@ -1,6 +1,6 @@
 # Yopass Bundle
 
-[![CI](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/yopass-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/yopass-bundle.svg)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.4%20%7C%208.0%20%7C%208.1%2B-000000?logo=symfony)](https://symfony.com) [![GitHub stars](https://img.shields.io/github/stars/nowo-tech/YopassBundle.svg?style=social&label=Star)](https://github.com/nowo-tech/YopassBundle) [![Coverage](https://img.shields.io/badge/Coverage-99%25-brightgreen)](#tests-and-coverage)
+[![CI](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml/badge.svg)](https://github.com/nowo-tech/YopassBundle/actions/workflows/ci.yml) [![Packagist Version](https://img.shields.io/packagist/v/nowo-tech/yopass-bundle.svg?style=flat)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![Packagist Downloads](https://img.shields.io/packagist/dt/nowo-tech/yopass-bundle.svg)](https://packagist.org/packages/nowo-tech/yopass-bundle) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php)](https://php.net) [![Symfony](https://img.shields.io/badge/Symfony-7.4%20%7C%208.0%20%7C%208.1%2B-000000?logo=symfony)](https://symfony.com) [![GitHub stars](https://img.shields.io/github/stars/nowo-tech/YopassBundle.svg?style=social&label=Star)](https://github.com/nowo-tech/YopassBundle) [![Coverage](https://img.shields.io/badge/Coverage-100%25-brightgreen)](#tests-and-coverage)
 
 > ⭐ **Found this useful?** Give it a **star** on [GitHub](https://github.com/nowo-tech/YopassBundle) so more developers can find it.
 
@@ -117,14 +117,14 @@ PHPUnit (unit + integration with Doctrine ORM/SQLite and MongoDB mocks) and Vite
 ```bash
 make test              # PHPUnit
 make test-coverage     # PHP coverage + percentage script
-make coverage-check    # PHP coverage + 99% statements gate
+make coverage-check    # PHP coverage + 100% statements gate
 make test-ts           # Vitest + coverage (all TS sources, 90% gate)
 make release-check     # Full pre-release chain
 ```
 
 | Language | Coverage | Gate |
 |----------|----------|------|
-| PHP | 99.20% (statements 1729/1743, Lines 99.20%) | `make coverage-check` (≥ 99%) |
+| PHP | 100.00% (statements 3343/3343) | `make coverage-check` (100%) |
 | TypeScript | 97.75% (lines 609/623; branches 92.12%) | `vitest.config.ts` thresholds (≥ 90% lines / statements / functions / branches) |
 | Python | N/A | — |
 

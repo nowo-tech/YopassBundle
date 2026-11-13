@@ -132,14 +132,27 @@ final class ShareCreateType extends AbstractType
             static fn (?string $value): string => $value ?? '',
         ));
 
-        $builder->addEventListener(FormEvents::PRE_SUBMIT, static function (FormEvent $event): void {
-            $data = $event->getData();
+        $defaultExpiration = $shareOptions['default_expiration'];
+        $defaultMaxReads   = (string) $shareOptions['default_max_reads'];
 
+        $builder->addEventListener(FormEvents::PRE_SUBMIT, static function (FormEvent $event) use ($defaultExpiration, $defaultMaxReads): void {
+            // Symfony treats a null submission as "no fields"; the defaults below must apply to it as well.
+            $data = $event->getData() ?? [];
+
+            // A scalar is rejected by the form itself (compound forms expect an array or null).
             if (!is_array($data)) {
                 return;
             }
 
             $data['ciphertext'] ??= '';
+
+            // A missing or empty choice would map null onto the non-nullable DTO properties (TypeError, HTTP 500):
+            // fall back to the configured defaults, exactly as payloadKind does through its empty_data.
+            foreach (['expiresIn' => $defaultExpiration, 'maxReads' => $defaultMaxReads] as $field => $default) {
+                if (!isset($data[$field]) || $data[$field] === '') {
+                    $data[$field] = $default;
+                }
+            }
 
             $event->setData($data);
         });
