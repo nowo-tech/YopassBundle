@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.20.5](#to-1205)
 - [To 1.20.4](#to-1204)
   - [Exact creator ids (`user_mapping: id`)](#exact-creator-ids-user_mapping-id)
   - [Exact collation of the creator id column (MySQL / MariaDB)](#exact-collation-of-the-creator-id-column-mysql--mariadb)
@@ -107,6 +108,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.20.5
+
+From **1.20.4**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ## To 1.20.4
 
