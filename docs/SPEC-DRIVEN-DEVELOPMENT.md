@@ -36,6 +36,7 @@ One-time encrypted secret sharing (Yopass-style) for Symfony apps: E2E encryptio
 - Share lifecycle: expiration options, max-read limits, revoke, list pagination, retention purge (`nowo:yopass:purge-old-shares`).
 - Authenticated manage UI, anonymous public reveal/consume routes with per-IP rate limiting, configurable routes, table prefix and templates.
 - Pluggable access control and share events for list queries and per-share access.
+- Creator mapping (`user_mapping` relation or id), share lifecycle events with metadata only, a private entity manager safe in FrankenPHP worker mode, and HTTP hardening listeners (security headers, key moved to the URL fragment, opt-in WASM CSP); see `specs/001-baseline/spec.md` (`FR-CREATOR-*`, `FR-WORKER-*`, `FR-SEC-*`).
 
 **Explicit non-goals**
 
