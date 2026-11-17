@@ -68,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Demo: the shell is UiKit's admin and guest layouts with a UiKit masthead and flashes (no Tabler or icon CDN, no `demo.css`), `demo/symfony8/composer.json` requires `nowo-tech/ui-kit-bundle` ^2.53 and the form theme is UiKit's (REQ-DEMO-014); README screenshots refreshed.
 - docs: Spec Kit baseline refreshed (REQ-SPECKIT-001 / REQ-SPECKIT-003 sweep 2026-11-16): `specs/001-baseline/code-inventory.md` maps all 149 production units under `src/` (71 added, 3 stale rows removed) and `spec.md` gains the matching `FR-*` groups; no code change
 
 ## [1.20.5] - 2026-11-13
