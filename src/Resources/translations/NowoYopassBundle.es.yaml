@@ -107,6 +107,8 @@ yopass:
         invalid_max_reads: Valor de lecturas no válido.
         max_reads_not_increased: Elige un máximo de lecturas mayor que el actual.
         expiration_not_extended: Elige una extensión de expiración más larga.
+        conflict: "Se está guardando otro cambio de este secreto. Inténtalo de nuevo en un momento."
+        conflict_committed: "Es posible que el cambio ya se haya guardado. Recarga la página antes de volver a intentarlo."
         nothing_to_extend: Selecciona al menos una opción de extensión.
     expires:
         field: Caducidad
@@ -158,3 +160,5 @@ yopass:
         key_help: Pega la clave que recibiste por separado (enlace corto sin ?decrypt_key=).
         key_from_link: Clave cargada desde el enlace.
         invalid_key: Clave o contraseña incorrecta.
+        conflict: "El secreto está ocupado en este momento; no se ha abierto. Inténtalo de nuevo en un momento."
+        conflict_committed: "Es posible que este enlace se acabe de abrir. Recarga la página para ver si sigue disponible."

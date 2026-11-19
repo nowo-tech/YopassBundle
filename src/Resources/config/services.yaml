@@ -19,6 +19,7 @@ services:
             - '../../Security/UserRef.php'              # Value object (1.19.0)
             - '../../Security/YopassAccessDecider.php'  # Wired with the configured access checker in YopassExtension
             - '../../Controller/'
+            - '../../EventListener/YopassConflictListener.php'  # 1.21.0: registered by YopassExtension (conflict_response)
 
     # Manage and public controllers must be public for Symfony routing.
     # REQ-SF-004 rule 7: controllers are registered explicitly, NOT autoconfigured (no #[AsController]). On

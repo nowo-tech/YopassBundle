@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\DependencyInjection;
 
+use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
+use Nowo\TransactionDoctrine\WriteUnit\CommitLedger;
+use Nowo\TransactionDoctrine\WriteUnit\Dbal\CommitTrackingMiddleware;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
@@ -15,9 +18,11 @@ use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Doctrine\PrivateEntityManagerMiddleware;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
+use Nowo\YopassBundle\Doctrine\ShareWriteUnit;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Doctrine\YopassEntityManagerBoundarySubscriber;
 use Nowo\YopassBundle\EventListener\WasmCspListener;
+use Nowo\YopassBundle\EventListener\YopassConflictListener;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
@@ -40,6 +45,7 @@ use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\HttpKernel\KernelEvents;
 
 use function array_column;
 use function array_filter;
@@ -61,6 +67,18 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 {
     /** 1.x default layout (removed in 1.10: it loaded CSS frameworks from CDNs); mapped to null = the UiKit layout. */
     public const LEGACY_DEFAULT_LAYOUT = '@NowoYopassBundle/layout.html.twig';
+
+    /** 1.21.0: real commits counted by {@see self::COMMIT_TRACKING_MIDDLEWARE}, read by the conflict answer. */
+    public const COMMIT_LEDGER_SERVICE = 'nowo_yopass.commit_ledger';
+
+    /** 1.21.0: transaction-doctrine's commit-tracking DBAL middleware (scoped by {@see YopassCommitTrackingPass}). */
+    public const COMMIT_TRACKING_MIDDLEWARE = 'nowo_yopass.commit_tracking_middleware';
+
+    /** 1.21.0: container parameter holding `conflict_response.commit_tracking` (bundle, all or off). */
+    public const COMMIT_TRACKING_PARAMETER = 'nowo_yopass.conflict_response.commit_tracking';
+
+    /** 1.21.0: container parameter holding `database.entity_manager` for {@see YopassCommitTrackingPass}. */
+    public const ENTITY_MANAGER_PARAMETER = 'nowo_yopass.conflict_response.entity_manager';
 
     /**
      * Loads the bundle configuration and registers the bundle services.
@@ -138,6 +156,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
         $this->registerShareRepository($container, $driver, $database, $storageName, $collection, $config);
         $this->registerHostAccessLogRepository($container, $config['access_log']);
+        $this->registerConflictAnswer($container, $config['conflict_response'], (string) $database['entity_manager']);
 
         $accessCheckerId = $config['security']['access_checker'] ?? null;
         if (!is_string($accessCheckerId) || $accessCheckerId === '') {
@@ -451,6 +470,55 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             $container->getDefinition(DoctrineCreatorReferenceResolver::class)->setArgument('$ownManager', new Reference(YopassEntityManager::class));
         }
         $container->setAlias(ShareRepositoryInterface::class, DoctrineOrmShareRepository::class);
+
+        // 1.21.0 (REQ-RUNTIME-003 rule 1): one transaction per write unit (consume + access log, extend), injected into
+        // ShareRetriever and ShareExtender by autowiring (absent with the MongoDB and custom drivers).
+        $entityManagerName = (string) $database['entity_manager'];
+        $container->setDefinition(ShareWriteUnit::class, new Definition(ShareWriteUnit::class, [
+            new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManagerName)),
+            new Reference('doctrine'),
+            $entityManagerName,
+            $container->hasDefinition(YopassEntityManager::class) ? new Reference(YopassEntityManager::class) : null,
+        ]));
+    }
+
+    /**
+     * 1.21.0 (REQ-RUNTIME-003 rule 6): 409 (or 503) + CONFLICT_001 / CONFLICT_002 instead of a 500 for lock conflicts on
+     * the bundle's routes ({@see YopassConflictListener}). Unset options follow transaction-doctrine's policy service
+     * when its bundle is registered.
+     *
+     * Commit tracking (`conflict_response.commit_tracking`), only when the bundle stores rows through Doctrine ORM:
+     * `bundle` (default) and `all` register transaction-doctrine's commit-tracking middleware;
+     * {@see YopassCommitTrackingPass} scopes it to the connection of `database.entity_manager` (`bundle`), or drops it and
+     * reuses transaction-doctrine's own ledger when that bundle's `commit_detection` is on. `off` registers neither.
+     *
+     * @param array{status: int|null, retry_after: int|null, commit_tracking: string} $conflictResponse
+     */
+    private function registerConflictAnswer(ContainerBuilder $container, array $conflictResponse, string $entityManagerName): void
+    {
+        $container->setParameter(self::COMMIT_TRACKING_PARAMETER, $conflictResponse['commit_tracking']);
+        $container->setParameter(self::ENTITY_MANAGER_PARAMETER, $entityManagerName);
+        $tracking = $conflictResponse['commit_tracking'] !== 'off' && $container->hasDefinition(DoctrineOrmShareRepository::class);
+        if ($tracking) {
+            $container->setDefinition(self::COMMIT_LEDGER_SERVICE, new Definition(CommitLedger::class));
+            $container->setDefinition(self::COMMIT_TRACKING_MIDDLEWARE, (new Definition(CommitTrackingMiddleware::class, [new Reference(self::COMMIT_LEDGER_SERVICE)]))
+                ->addTag('doctrine.middleware'));
+        }
+
+        $policy = $conflictResponse['status'] === null && $conflictResponse['retry_after'] === null
+            ? new Reference(ConflictResponsePolicy::class, ContainerInterface::NULL_ON_INVALID_REFERENCE)
+            : new Definition(ConflictResponsePolicy::class, [
+                $conflictResponse['status'] ?? ConflictResponsePolicy::STATUS_CONFLICT,
+                $conflictResponse['retry_after'] ?? ConflictResponsePolicy::DEFAULT_RETRY_AFTER,
+            ]);
+
+        $container->setDefinition(YopassConflictListener::class, (new Definition(YopassConflictListener::class, [
+            $policy,
+            $tracking ? new Reference(self::COMMIT_LEDGER_SERVICE) : null,
+            new Reference('request_stack', ContainerInterface::NULL_ON_INVALID_REFERENCE),
+        ]))
+            ->addTag('kernel.event_listener', ['event' => KernelEvents::REQUEST, 'method' => 'onRequest', 'priority' => YopassConflictListener::REQUEST_PRIORITY])
+            ->addTag('kernel.event_listener', ['event' => KernelEvents::EXCEPTION, 'method' => 'onException', 'priority' => YopassConflictListener::PRIORITY]));
     }
 
     /**

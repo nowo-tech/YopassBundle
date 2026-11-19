@@ -107,6 +107,8 @@ yopass:
         invalid_max_reads: Ungültiger Wert für max. Lesungen.
         max_reads_not_increased: Wählen Sie einen höheren Wert für max. Lesungen als das aktuelle Limit.
         expiration_not_extended: Wählen Sie eine längere Ablaufverlängerung.
+        conflict: "Gerade wird eine andere Änderung dieser Freigabe gespeichert. Versuche es gleich noch einmal."
+        conflict_committed: "Die Änderung ist möglicherweise bereits gespeichert. Lade die Seite neu, bevor du es erneut versuchst."
         nothing_to_extend: Wählen Sie mindestens eine Verlängerungsoption.
     expires:
         field: Ablauf
@@ -158,3 +160,5 @@ yopass:
         key_help: Fügen Sie den separat erhaltenen Schlüssel ein (Kurzlink ohne ?decrypt_key=).
         key_from_link: Schlüssel aus dem Link geladen.
         invalid_key: Falscher Schlüssel oder falsches Passwort.
+        conflict: "Das Geheimnis ist gerade belegt; es wurde nicht geöffnet. Versuche es gleich noch einmal."
+        conflict_committed: "Dieser Link wurde möglicherweise gerade geöffnet. Lade die Seite neu, um zu sehen, ob er noch verfügbar ist."

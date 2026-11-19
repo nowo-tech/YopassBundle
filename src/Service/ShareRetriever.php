@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Service;
 
+use Closure;
 use DateTimeImmutable;
 use JsonException;
+use Nowo\YopassBundle\Doctrine\ShareWriteUnit;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
@@ -23,12 +25,14 @@ final readonly class ShareRetriever
 
     /**
      * Creates the retriever with the repository, an optional clock and (1.17) the notifier that dispatches
-     * {@see YopassEvents::SHARE_CONSUMED} (no event without one).
+     * {@see YopassEvents::SHARE_CONSUMED} (no event without one). With the Doctrine ORM driver (1.21.0) the bundle passes
+     * its {@see ShareWriteUnit}: the read and the work given to {@see consume()} commit together.
      */
     public function __construct(
         private ShareRepositoryInterface $shareRepository,
         ?ClockInterface $clock = null,
         private ?ShareConsumedNotifier $consumedNotifier = null,
+        private ?ShareWriteUnit $writeUnit = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -38,11 +42,29 @@ final readonly class ShareRetriever
      * After a stored read, dispatches {@see YopassEvents::SHARE_CONSUMED}. The read is already spent at that point, so a
      * throwing listener is logged and ignored: the reader still receives the ciphertext.
      *
+     * The read is one conditional UPDATE (`reads_left > 0`, not revoked, not expired), so two concurrent reveals never
+     * both get the ciphertext of a one-time share: the second waits for the first's row lock and then matches no row.
+     * `$inUnit` (1.21.0; the public controller writes the access log row there) runs with the consumed share right after
+     * the read, in the same transaction when the bundle's write unit is wired (Doctrine ORM driver): if it fails, or a
+     * lock conflict happens, the read is rolled back and nobody received the ciphertext. The event is dispatched and the
+     * ciphertext returned only after the commit. Without a write unit (MongoDB, custom repository) the read is stored
+     * on its own and `$inUnit` runs after it.
+     *
+     * @param (Closure(SecureShare): void)|null $inUnit
+     *
      * @return array{status: string, ciphertext?: string, mode?: string}
      */
-    public function consume(string $shareId): array
+    public function consume(string $shareId, ?Closure $inUnit = null): array
     {
-        $share = $this->shareRepository->consumeReadIfAvailable($shareId);
+        $consume = function () use ($shareId, $inUnit): ?SecureShare {
+            $share = $this->shareRepository->consumeReadIfAvailable($shareId);
+            if ($share instanceof SecureShare && $inUnit instanceof Closure) {
+                $inUnit($share);
+            }
+
+            return $share;
+        };
+        $share = $this->writeUnit instanceof ShareWriteUnit ? $this->writeUnit->run($consume) : $consume();
 
         if ($share instanceof SecureShare) {
             $this->consumedNotifier?->notify($share, $this->now());

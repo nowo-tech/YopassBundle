@@ -16,5 +16,24 @@ services:
       # MongoDB is require-dev only; CI and local dev may resolve deps without ext-mongodb loaded.
       COMPOSER_IGNORE_PLATFORM_REQ: ext-mongodb
 
+  # REQ-RUNTIME-003: throwaway test servers for `make test-with-db` (profile "databases", started one at a time).
+  mysql:
+    image: mysql:8.4
+    profiles: [databases]
+    environment: { MYSQL_ALLOW_EMPTY_PASSWORD: 'yes', MYSQL_DATABASE: yopass_test }
+    healthcheck: { test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1'], interval: 5s, retries: 30 }
+
+  mariadb:
+    image: mariadb:11.4
+    profiles: [databases]
+    environment: { MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 'yes', MARIADB_DATABASE: yopass_test }
+    healthcheck: { test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized'], interval: 5s, retries: 30 }
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: [databases]
+    environment: { POSTGRES_HOST_AUTH_METHOD: trust, POSTGRES_DB: yopass_test }
+    healthcheck: { test: ['CMD', 'pg_isready', '-U', 'postgres'], interval: 5s, retries: 30 }
+
 volumes:
   coverage-data:

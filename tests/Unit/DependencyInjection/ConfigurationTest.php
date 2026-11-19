@@ -119,6 +119,19 @@ final class ConfigurationTest extends TestCase
         self::assertSame(['ROLE_CANONICAL'], $config['security']['roles']['create']);
     }
 
+    public function testConflictResponseDefaultsAndValidation(): void
+    {
+        $config = $this->process(['user_class' => 'App\\Entity\\User']);
+        self::assertSame(['status' => null, 'retry_after' => null, 'commit_tracking' => 'bundle'], $config['conflict_response']);
+
+        $config = $this->process(['user_class' => 'App\\Entity\\User', 'conflict_response' => ['status' => 503, 'retry_after' => 0, 'commit_tracking' => 'all']]);
+        self::assertSame(['status' => 503, 'retry_after' => 0, 'commit_tracking' => 'all'], $config['conflict_response']);
+
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('must be 409 or 503');
+        $this->process(['user_class' => 'App\\Entity\\User', 'conflict_response' => ['status' => 500]]);
+    }
+
     public function testRejectsUnknownCssFramework(): void
     {
         $this->expectException(InvalidConfigurationException::class);

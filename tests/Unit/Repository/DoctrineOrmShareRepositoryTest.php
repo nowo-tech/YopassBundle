@@ -157,16 +157,6 @@ final class DoctrineOrmShareRepositoryTest extends TestCase
         self::assertSame(2, $removed);
     }
 
-    public function testRemoveOlderThanReturnsDeletedRows(): void
-    {
-        $entityManager = $this->createMock(EntityManagerInterface::class);
-        $this->mockQueryBuilderExecution($entityManager, 5);
-
-        $removed = (new DoctrineOrmShareRepository($entityManager))->removeOlderThan(new DateTimeImmutable('-1 week'));
-
-        self::assertSame(5, $removed);
-    }
-
     public function testFindRefreshesManagedShareOnEveryCall(): void
     {
         $share = new SecureShare('00000000-0000-4000-8000-000000000010', new TestUser());

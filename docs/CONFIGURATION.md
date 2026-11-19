@@ -27,6 +27,7 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
 - [Web UI (UiKit page contract)](#web-ui-uikit-page-contract)
   - [Create mode](#create-mode)
   - [Host layout integration](#host-layout-integration)
+- [Conflict response (concurrency)](#conflict-response-concurrency)
 - [Other options](#other-options)
 - [Assets](#assets)
 - [DevKit integration (future)](#devkit-integration-future)
@@ -618,6 +619,20 @@ nowo_ui_kit:
 
 Form fields carry the `nowo-ui-input` hook (FormKit profile `yopass`, which the host may redefine); the host form
 theme (`twig.form_themes` or the FormKit `css_framework`) adds the framework classes.
+
+## Conflict response (concurrency)
+
+Since 1.21.0 a lock conflict (deadlock, lock wait timeout, serialization failure) on a route of the bundle answers
+`409` + `X-Conflict-Code` (`CONFLICT_001` with `Retry-After` when nothing was committed, `CONFLICT_002` without it when
+part of the request may be) instead of a `500`. Details, shapes and the write-path table: [CONCURRENCY.md](CONCURRENCY.md).
+
+```yaml
+nowo_yopass:
+    conflict_response:
+        status: ~                 # 409 (default) or 503; null follows nowo_transaction_doctrine.conflict_response, else 409
+        retry_after: ~            # Retry-After seconds of CONFLICT_001; null follows transaction-doctrine, else 1
+        commit_tracking: bundle   # bundle (connection of database.entity_manager) | all | off
+```
 
 ## Other options
 

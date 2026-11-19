@@ -315,9 +315,11 @@ final class ShareManageController extends AbstractController
         }
 
         $creator = $this->requireUser();
-        $share   = $this->shareCreator->create($creator, $data);
         // Retention runs on write paths and in nowo:yopass:purge-old-shares, never on a list GET (indexed created_at).
+        // 1.21.0 (REQ-RUNTIME-003): before the insert, so a failing purge (a lock conflict) never answers an error for a
+        // share that was already stored: its links would be lost and a retry would store a second one.
         $this->retentionPurger->purgeForCreator($creator);
+        $share = $this->shareCreator->create($creator, $data);
 
         if ($json) {
             // Zero-knowledge: ids and paths only (no ciphertext echo, no key, no plaintext).

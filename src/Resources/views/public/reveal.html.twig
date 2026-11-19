@@ -31,6 +31,8 @@
                  expired: 'yopass.public.unavailable'|trans,
                  revoked: 'yopass.public.unavailable'|trans,
                  consumed: 'yopass.public.unavailable'|trans,
+                 conflict: 'yopass.public.conflict'|trans,
+                 conflict_committed: 'yopass.public.conflict_committed'|trans,
              }|json_encode }}">
         {% if not share.isAvailable %}
             <div class="{{ nowo_ui_class('flash_warning', _b) }}" role="status">{{ 'yopass.public.unavailable'|trans }}</div>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\DependencyInjection;
 
 use DateTimeImmutable;
+use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
 use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\Support\RelativeInterval;
@@ -527,6 +528,30 @@ final class Configuration implements ConfigurationInterface
                         ->booleanNode('enabled')->defaultTrue()->end()
                         ->integerNode('limit')->defaultValue(60)->min(1)->end()
                         ->integerNode('interval_seconds')->defaultValue(60)->min(1)->end()
+                    ->end()
+                ->end()
+                ->arrayNode('conflict_response')
+                    ->info('1.21.0 (REQ-RUNTIME-003): answer of a lock conflict (deadlock, lock wait timeout, serialization failure) on the bundle\'s routes. Unset: nowo-tech/transaction-doctrine\'s conflict_response when that bundle is registered, else 409 with Retry-After 1.')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->integerNode('status')
+                            ->info('409 (default, CONFLICT_001 / CONFLICT_002) or 503. Null: follow transaction-doctrine, else 409.')
+                            ->defaultNull()
+                            ->validate()
+                                ->ifTrue(static fn (mixed $value): bool => $value !== null && !in_array($value, ConflictResponsePolicy::STATUSES, true))
+                                ->thenInvalid('nowo_yopass.conflict_response.status must be 409 or 503, got %s.')
+                            ->end()
+                        ->end()
+                        ->integerNode('retry_after')
+                            ->info('Retry-After seconds of a CONFLICT_001 answer. Null: follow transaction-doctrine, else 1.')
+                            ->defaultNull()
+                            ->min(0)
+                        ->end()
+                        ->enumNode('commit_tracking')
+                            ->values(['bundle', 'all', 'off'])
+                            ->defaultValue('bundle')
+                            ->info('Commits counted for CONFLICT_002 when nowo-tech/transaction-doctrine\'s commit_detection is off: bundle (default, the connection of database.entity_manager only), all (every Doctrine connection) or off (no middleware; only the failure itself and transaction-doctrine\'s request mark decide). With commit_detection on, transaction-doctrine\'s ledger is reused and the bundle adds no middleware.')
+                        ->end()
                     ->end()
                 ->end()
             ->end();

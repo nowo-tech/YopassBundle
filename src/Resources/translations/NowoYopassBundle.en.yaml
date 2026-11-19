@@ -107,6 +107,8 @@ yopass:
         invalid_max_reads: Invalid max-reads value.
         max_reads_not_increased: Choose a max-reads value higher than the current limit.
         expiration_not_extended: Choose a longer expiration extension.
+        conflict: "Another change to this share is being saved. Try again in a moment."
+        conflict_committed: "The change may already be saved. Reload the page before trying again."
         nothing_to_extend: Select at least one extension option.
     expires:
         field: Expiration
@@ -158,3 +160,5 @@ yopass:
         key_help: Paste the key you received separately (short link without ?decrypt_key=).
         key_from_link: Key loaded from the link.
         invalid_key: Incorrect key or password.
+        conflict: "The secret is busy right now; it was not opened. Try again in a moment."
+        conflict_committed: "This link may have just been opened. Reload the page to see whether it is still available."

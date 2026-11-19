@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Controller;
 
 use JsonException;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\EventListener\YopassConflictListener;
 use Nowo\YopassBundle\Form\ShareRevealType;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
@@ -92,22 +93,21 @@ final class PublicShareController extends AbstractController
     }
 
     /**
-     * Consumes one read of a share and returns its ciphertext as JSON.
+     * Consumes one read of a share and returns its ciphertext as JSON. A lock conflict answers 409 (or the configured
+     * 503) with `{status: "conflict" | "conflict_committed", code: "CONFLICT_001" | "CONFLICT_002"}`
+     * ({@see YopassConflictListener}, 1.21.0).
      */
     #[Route('/share/{id}/consume', name: 'nowo_yopass_public_consume', methods: ['POST'])]
     public function consume(string $id, Request $request): JsonResponse
     {
         $this->rateLimiter->consume($request, 'consume');
 
-        $result = $this->shareRetriever->consume($id);
-
-        if ($result['status'] === 'ok') {
-            $share = $this->shareRepository->find($id);
-
-            if ($share instanceof SecureShare) {
-                $this->accessLogger->logSuccessfulConsume($share, $request);
-            }
-        }
+        // 1.21.0 (REQ-RUNTIME-003): the access log row is written in the same transaction as the read, so a failure
+        // (or a lock conflict, answered 409 CONFLICT_001 by YopassConflictListener) never spends a read nobody got.
+        // @igor-ignore - Per-call closure, run inside consume() and never stored by the retriever.
+        $result = $this->shareRetriever->consume($id, function (SecureShare $share) use ($request): void {
+            $this->accessLogger->logSuccessfulConsume($share, $request);
+        });
 
         $statusCode = match ($result['status']) {
             'ok'    => Response::HTTP_OK,
