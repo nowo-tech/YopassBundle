@@ -312,7 +312,7 @@ jobs:
         run: |
           composer require doctrine/dbal:^${{ matrix.dbal }} --no-interaction --no-update
           composer update doctrine/* --with-all-dependencies --prefer-dist --no-progress --no-interaction
-          composer show doctrine/dbal doctrine/orm
+          composer show 'doctrine/dbal'; composer show 'doctrine/orm'
 
       - name: Wait for the database
         run: |
