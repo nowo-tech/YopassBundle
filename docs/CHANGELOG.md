@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.21.0] - 2026-11-19](#1210---2026-11-19)
 - [[1.20.5] - 2026-11-13](#1205---2026-11-13)
 - [[1.20.4] - 2026-11-13](#1204---2026-11-13)
 - [[1.20.3] - 2026-11-13](#1203---2026-11-13)
@@ -66,6 +67,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.0] - 2026-11-19
+
 ### Added
 
 - Concurrency (REQ-RUNTIME-003): lock conflicts (deadlock, lock wait timeout, serialization failure) on the bundle's routes answer `409` + `Retry-After` + `X-Conflict-Code: CONFLICT_001` when nothing was committed, or `409` + `CONFLICT_002` (no `Retry-After`) when part of the request may be (`YopassConflictListener`, transaction-doctrine ^1.6 request mark and commit ledger). The public consume answers `{status: "conflict" | "conflict_committed", code}`, the manage JSON endpoints `{error, code}`, the pages your error page. Unique violations and lost connections are not mapped.
@@ -91,6 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A failure after the read (the access log insert, a lock conflict) burnt the read with a `500`, so nobody received the secret; the read is now rolled back.
 - An extension could commit its max reads raise and then fail on the expiration (half saved), and two concurrent extensions could move the expiration back; both fixed.
 - A purge failing after a new share was stored answered an error for a share that existed (its links were lost); the purge now runs first.
+
+[1.21.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.21.0
 
 ## [1.20.5] - 2026-11-13
 
@@ -1175,7 +1180,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.20.5...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.21.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7

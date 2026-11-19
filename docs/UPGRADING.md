@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.21.0](#to-1210)
 - [To 1.20.5](#to-1205)
 - [To 1.20.4](#to-1204)
   - [Exact creator ids (`user_mapping: id`)](#exact-creator-ids-user_mapping-id)
@@ -108,6 +109,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.21.0
+
+From **1.20.5**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 Concurrency (REQ-RUNTIME-003), a minor version. See [CONCURRENCY.md](CONCURRENCY.md).
 
