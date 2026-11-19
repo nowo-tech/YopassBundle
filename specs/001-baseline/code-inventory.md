@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/yopass-bundle`  
-**Last audited**: 2026-11-16 (creator mapping, private entity manager, events, hardening listeners, UiKit pages; audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 149)
+**Last audited**: 2026-11-16 (creator mapping, private entity manager, events, hardening listeners, UiKit pages; audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 153; 2026-11-19: +4 concurrency units, REQ-RUNTIME-003)
 
 This file proves that **every production source artifact** under `src/` is referenced by the baseline specification. Test-only files under `tests/` and `*.test.ts` under `src/` are out of Packagist scope. Built assets under `Resources/public/` are documented as Vite/build outputs.
 
@@ -189,6 +189,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
 | `DependencyInjection/Compiler/PrivateEntityManagerPass.php` | Attaches the rollback middleware only to the private manager's connection | FR-WORKER-003 |
+| `DependencyInjection/Compiler/YopassCommitTrackingPass.php` | Scopes the commit-tracking middleware to the bundle's connection, or reuses transaction-doctrine's ledger | FR-DB-005 |
 | `Doctrine/PrivateEntityManagerMiddleware.php` | DBAL middleware that reports rolled-back transactions and savepoints | FR-WORKER-003 |
 | `Doctrine/PrivateEntityManagerDriver.php` | Wraps the driver connections of the private manager | FR-WORKER-003 |
 | `Doctrine/PrivateEntityManagerConnection.php` | Reports rollbacks, failed commits and savepoint rollbacks | FR-WORKER-003 |
@@ -197,6 +198,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Doctrine/YopassEntityManagerBoundarySubscriber.php` | Drops the private manager at every outermost boundary so no row stays managed in a kept-alive kernel | FR-WORKER-002 |
 | `Doctrine/PrivateManagerRepositoryFactory.php` | Repository factory owned by one manager so replaced managers are collected | FR-WORKER-002 |
 | `Doctrine/YopassSavepoint.php` | Runs bulk DQL writes inside a savepoint when the application has a transaction open | FR-DB-002 |
+| `Doctrine/ShareWriteUnit.php` | One transaction per write unit (consume + access log, extend) through transaction-doctrine's runner | FR-DB-004 |
 | `Doctrine/ExactCollation.php` | Binary NO PAD collation for exact identifier matching on MySQL / MariaDB | FR-DB-003 |
 
 ## Lifecycle and list events
@@ -220,6 +222,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | --- | --- | --- |
 | `EventListener/SecurityHeadersListener.php` | `no-store`, `no-referrer`, `noindex`, `X-Frame-Options` and `frame-ancestors` on every bundle route | FR-SEC-004 |
 | `EventListener/ShareKeyQueryRedirectListener.php` | Redirects `?decrypt_key=` / `?key=` / `?password=` to the URL fragment (303) before routing | FR-SEC-005 |
+| `EventListener/YopassConflictListener.php` | 409 / 503 + `CONFLICT_001` / `CONFLICT_002` for lock conflicts on the bundle's routes | FR-DB-005 |
 | `EventListener/WasmCspListener.php` | Opt-in `'wasm-unsafe-eval'` on existing CSP headers of the pages that load `yopass.js` | FR-SEC-006 |
 
 ## Browser-only forms
@@ -236,6 +239,7 @@ This file proves that **every production source artifact** under `src/` is refer
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
+| `Repository/ExpirationExtendingShareRepositoryInterface.php` | Optional conditional expiration update that only moves forward | FR-DB-004 |
 | `Repository/MaxReadsRaisingShareRepositoryInterface.php` | Optional atomic raise of max reads (`reads_left = reads_left + delta`) | FR-REPO-003 |
 | `Service/ShareConsumedNotifier.php` | Dispatches `SHARE_CONSUMED` after a stored read; a throwing listener is logged and ignored | FR-SHARE-009 |
 | `Service/ShareDeleter.php` | Deletes one share or all of a viewer's shares and dispatches the events | FR-SHARE-010 |

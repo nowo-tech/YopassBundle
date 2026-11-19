@@ -109,6 +109,37 @@
 
 ## Unreleased
 
+Concurrency (REQ-RUNTIME-003), a minor version. See [CONCURRENCY.md](CONCURRENCY.md).
+
+- **New dependencies:** `nowo-tech/transaction-contract` ^1.0 and `nowo-tech/transaction-doctrine` ^1.6. Run
+  `composer update nowo-tech/yopass-bundle -w`. Registering transaction-doctrine's own bundle is optional: without it the
+  bundle answers with its own defaults.
+- **Lock conflicts answer 409 instead of 500** on the bundle's routes: `409` + `Retry-After` + `X-Conflict-Code:
+  CONFLICT_001` when nothing was committed, `409` + `CONFLICT_002` (no `Retry-After`) when part of the request may be.
+  The public consume answers JSON `{status: "conflict" | "conflict_committed", code}` and the manage JSON endpoints
+  `{error: "conflict" | "conflict_committed", code}`; the pages go through your error page. A host that prefers `503`
+  sets `nowo_yopass.conflict_response.status: 503` (or `nowo_transaction_doctrine.conflict_response.status`).
+  Cross-origin clients must list `X-Conflict-Code` in `Access-Control-Expose-Headers`.
+- **One transaction for the public consume:** the read and its access log row now commit together, and the
+  `nowo_yopass.share_consumed` event runs after the commit. A failing access log insert no longer burns the read with a
+  `500`: the read is rolled back. A custom `ShareAccessLogRepositoryInterface` runs inside that transaction.
+- **One transaction for the extension:** the max reads raise and the new expiration commit together, and the expiration
+  only moves forward (one conditional UPDATE). An extension that races a later one now answers `400`
+  `expiration_not_extended` instead of overwriting it.
+- **Commit tracking:** by default transaction-doctrine's commit-tracking DBAL middleware is added to the connection of
+  `database.entity_manager` (not to your other connections). Set `conflict_response.commit_tracking: off` to add none,
+  or `all` for every connection. With transaction-doctrine's `commit_detection` on, its ledger is reused.
+- **Legacy mode (`database.private_entity_manager: false`, deprecated):** the consume and extend units run through
+  `DoctrineTransactionRunner::forHostEntityManager()`, which throws a `LogicException` when your entity manager has
+  unflushed changes before the unit (they would otherwise be committed, or discarded, with the bundle's unit). Flush or
+  clear them first, or drop the option (the private manager never touches yours).
+- **Create:** the retention purge now runs before the new share is stored (same result), so a failing purge never
+  answers an error for a share that already exists.
+- **Retention purge:** `removeOlderThan()` deletes in chunks of 500 primary keys instead of one range DELETE.
+- **New optional interface** `ExpirationExtendingShareRepositoryInterface` (implemented by the ORM repository); custom
+  repositories keep working without it.
+- No migration.
+
 ## To 1.20.5
 
 From **1.20.4**:

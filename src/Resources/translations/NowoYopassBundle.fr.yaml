@@ -107,6 +107,8 @@ yopass:
         invalid_max_reads: Valeur de lectures max invalide.
         max_reads_not_increased: Choisissez une valeur de lectures max supérieure à la limite actuelle.
         expiration_not_extended: Choisissez une prolongation d'expiration plus longue.
+        conflict: "Une autre modification de ce partage est en cours d'enregistrement. Réessayez dans un instant."
+        conflict_committed: "La modification est peut-être déjà enregistrée. Rechargez la page avant de réessayer."
         nothing_to_extend: Sélectionnez au moins une option de prolongation.
     expires:
         field: Durée de validité
@@ -158,3 +160,5 @@ yopass:
         key_help: Collez la clé reçue séparément (lien court sans ?decrypt_key=).
         key_from_link: Clé chargée depuis le lien.
         invalid_key: Clé ou mot de passe incorrect.
+        conflict: "Le secret est occupé pour le moment ; il n'a pas été ouvert. Réessayez dans un instant."
+        conflict_committed: "Ce lien vient peut-être d'être ouvert. Rechargez la page pour voir s'il est encore disponible."

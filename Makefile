@@ -1,5 +1,5 @@
 # Yopass Bundle - Development
-.PHONY: help up down down-dev build shell install typecheck test test-coverage test-coverage-100 coverage-check test-with-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan igor release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor check-open-prs strip-cursor-coauthor-from-history check-twig-extra check-no-raw-html-form
+.PHONY: help up down down-dev build shell install typecheck test test-coverage test-coverage-100 coverage-check test-with-db test-db down-db test-coverage-with-db coverage-php-percent cs-check cs-fix qa clean assets assets-build assets-watch assets-test test-ts ensure-up rector rector-dry phpstan igor release-check release-check-demos composer-sync update validate validate-translations scaffold-s3-examples setup-hooks check-no-cursor-coauthor check-open-prs strip-cursor-coauthor-from-history check-twig-extra check-no-raw-html-form
 
 COMPOSE_FILE ?= docker-compose.yml
 # Prefer Compose V2 plugin (GitHub Actions / modern Docker Desktop); fall back to docker-compose V1 (REQ-MAKE-010).
@@ -54,7 +54,7 @@ up:
 	@echo "Container ready."
 
 down:
-	$(COMPOSE) down --remove-orphans
+	$(COMPOSE) --profile databases down --remove-orphans
 
 # REQ-MAKE-007: non-destructive stop of the root dev stack (alias of down).
 down-dev: down
@@ -112,7 +112,21 @@ coverage-check: test-coverage
 	$(COMPOSE) exec -T $(SERVICE_PHP) php scripts/check-coverage.php coverage.xml --min-percent=100
 
 # REQ-TEST-005: integration suite uses Doctrine (SQLite in container); aliases keep the standard target names.
+# REQ-RUNTIME-003: then the id-mapping and two-connection concurrency tests (group "database", none skipped) on MySQL 8.4,
+# MariaDB 11.4 and PostgreSQL 16, one server at a time (profile "databases"); each server is removed afterwards.
 test-with-db: test
+	$(MAKE) test-db DB_SERVICE=mysql DB_URL='mysql://root@mysql:3306/yopass_test?serverVersion=8.4.0&charset=utf8mb4'
+	$(MAKE) test-db DB_SERVICE=mariadb DB_URL='mysql://root@mariadb:3306/yopass_test?serverVersion=11.4.0-MariaDB&charset=utf8mb4'
+	$(MAKE) test-db DB_SERVICE=postgres DB_URL='postgresql://postgres@postgres:5432/yopass_test?serverVersion=16&charset=utf8'
+
+test-db: ensure-up
+	$(COMPOSE) --profile databases up -d --wait $(DB_SERVICE)
+	$(COMPOSE) exec -T -e YOPASS_TEST_DATABASE_URL='$(DB_URL)' $(SERVICE_PHP) vendor/bin/phpunit --group database --no-coverage --fail-on-skipped; \
+		status=$$?; $(MAKE) down-db DB_SERVICE=$(DB_SERVICE); exit $$status
+
+down-db:
+	$(COMPOSE) --profile databases stop $(or $(DB_SERVICE),mysql mariadb postgres)
+	$(COMPOSE) --profile databases rm -f -v $(or $(DB_SERVICE),mysql mariadb postgres)
 
 test-coverage-with-db: test-coverage
 

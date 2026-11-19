@@ -66,10 +66,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Concurrency (REQ-RUNTIME-003): lock conflicts (deadlock, lock wait timeout, serialization failure) on the bundle's routes answer `409` + `Retry-After` + `X-Conflict-Code: CONFLICT_001` when nothing was committed, or `409` + `CONFLICT_002` (no `Retry-After`) when part of the request may be (`YopassConflictListener`, transaction-doctrine ^1.6 request mark and commit ledger). The public consume answers `{status: "conflict" | "conflict_committed", code}`, the manage JSON endpoints `{error, code}`, the pages your error page. Unique violations and lost connections are not mapped.
+- `nowo_yopass.conflict_response` options: `status` (409 or 503), `retry_after` and `commit_tracking` (`bundle`, `all`, `off`).
+- `ExpirationExtendingShareRepositoryInterface` (optional, implemented by the ORM repository): the expiration only moves forward, in one conditional UPDATE.
+- `docs/CONCURRENCY.md`: write paths, codes, host options and residual risks; two-connection race tests on MySQL 8.4, MariaDB 11.4 and PostgreSQL 16 / 17 (DBAL 3 and 4) in the required CI job "Databases on …", `make test-with-db`, and the "Dependency floor" CI job (lowest `nowo-tech/transaction-*`, demo lock check).
+- Requires `nowo-tech/transaction-contract` ^1.0 and `nowo-tech/transaction-doctrine` ^1.6.
+
 ### Changed
+
+- The public consume is one transaction: the read and its access log row commit together, the `share_consumed` event and the ciphertext come after the commit.
+- The extension is one transaction: the max reads raise and the new expiration commit together.
+- Create runs the retention purge before storing the new share.
+- The retention purge deletes in chunks of 500 primary keys instead of one range DELETE over `created_at`.
+- The reveal page and the extend dialog show a "try again" / "reload" message for the new conflict answers (7 locales).
 
 - Demo: the shell is UiKit's admin and guest layouts with a UiKit masthead and flashes (no Tabler or icon CDN, no `demo.css`), `demo/symfony8/composer.json` requires `nowo-tech/ui-kit-bundle` ^2.53 and the form theme is UiKit's (REQ-DEMO-014); README screenshots refreshed.
 - docs: Spec Kit baseline refreshed (REQ-SPECKIT-001 / REQ-SPECKIT-003 sweep 2026-11-16): `specs/001-baseline/code-inventory.md` maps all 149 production units under `src/` (71 added, 3 stale rows removed) and `spec.md` gains the matching `FR-*` groups; no code change
+
+### Fixed
+
+- A lock conflict on the public consume answered `500`; it now answers `409` `CONFLICT_001`, and the reader may simply retry (the read was not taken).
+- A failure after the read (the access log insert, a lock conflict) burnt the read with a `500`, so nobody received the secret; the read is now rolled back.
+- An extension could commit its max reads raise and then fail on the expiration (half saved), and two concurrent extensions could move the expiration back; both fixed.
+- A purge failing after a new share was stored answered an error for a share that existed (its links were lost); the purge now runs first.
 
 ## [1.20.5] - 2026-11-13
 

@@ -7,6 +7,8 @@ namespace Nowo\YopassBundle\Tests\Unit\DependencyInjection;
 use Doctrine\Bundle\DoctrineBundle\DependencyInjection\DoctrineExtension;
 use Doctrine\Bundle\MongoDBBundle\DependencyInjection\DoctrineMongoDBExtension;
 use LogicException;
+use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
+use Nowo\TransactionDoctrine\WriteUnit\CommitLedger;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
@@ -15,7 +17,10 @@ use Nowo\YopassBundle\DependencyInjection\Compiler\FileHandlerPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\ManageWebUiSecurityPass;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
+use Nowo\YopassBundle\Doctrine\ShareWriteUnit;
+use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\EventListener\WasmCspListener;
+use Nowo\YopassBundle\EventListener\YopassConflictListener;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
@@ -370,6 +375,59 @@ final class YopassExtensionTest extends TestCase
             (string) $this->container->getAlias(ShareAccessLogRepositoryInterface::class),
         );
         self::assertFalse($this->container->hasDefinition(DoctrineOrmShareAccessLogRepository::class));
+    }
+
+    public function testTheConflictAnswerFollowsTransactionDoctrineByDefaultAndTracksTheBundleConnection(): void
+    {
+        $this->extension->load([['user_class' => 'App\\Entity\\User']], $this->container);
+
+        $listener = $this->container->getDefinition(YopassConflictListener::class);
+        $policy   = $listener->getArgument(0);
+        self::assertInstanceOf(Reference::class, $policy);
+        self::assertSame(ConflictResponsePolicy::class, (string) $policy);
+        self::assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $policy->getInvalidBehavior());
+        self::assertSame(YopassExtension::COMMIT_LEDGER_SERVICE, (string) $listener->getArgument(1));
+        self::assertSame(CommitLedger::class, $this->container->getDefinition(YopassExtension::COMMIT_LEDGER_SERVICE)->getClass());
+        self::assertTrue($this->container->getDefinition(YopassExtension::COMMIT_TRACKING_MIDDLEWARE)->hasTag('doctrine.middleware'));
+        self::assertSame('bundle', $this->container->getParameter(YopassExtension::COMMIT_TRACKING_PARAMETER));
+        self::assertSame('default', $this->container->getParameter(YopassExtension::ENTITY_MANAGER_PARAMETER));
+        self::assertSame([
+            ['event' => 'kernel.request', 'method' => 'onRequest', 'priority' => YopassConflictListener::REQUEST_PRIORITY],
+            ['event' => 'kernel.exception', 'method' => 'onException', 'priority' => YopassConflictListener::PRIORITY],
+        ], $listener->getTag('kernel.event_listener'));
+
+        $unit = $this->container->getDefinition(ShareWriteUnit::class);
+        self::assertSame('doctrine.orm.default_entity_manager', (string) $unit->getArgument(0));
+        self::assertSame(YopassEntityManager::class, (string) $unit->getArgument(3));
+    }
+
+    public function testTheConflictStatusAndRetryAfterCanBeConfigured(): void
+    {
+        $this->extension->load([['user_class' => 'App\\Entity\\User', 'conflict_response' => ['status' => 503, 'commit_tracking' => 'off']]], $this->container);
+
+        $policy = $this->container->getDefinition(YopassConflictListener::class)->getArgument(0);
+        self::assertInstanceOf(Definition::class, $policy);
+        self::assertSame([503, ConflictResponsePolicy::DEFAULT_RETRY_AFTER], $policy->getArguments());
+        self::assertNull($this->container->getDefinition(YopassConflictListener::class)->getArgument(1));
+        self::assertFalse($this->container->hasDefinition(YopassExtension::COMMIT_TRACKING_MIDDLEWARE));
+
+        $container = new ContainerBuilder();
+        $this->extension->load([['user_class' => 'App\\Entity\\User', 'conflict_response' => ['retry_after' => 5]]], $container);
+        $policy = $container->getDefinition(YopassConflictListener::class)->getArgument(0);
+        self::assertInstanceOf(Definition::class, $policy);
+        self::assertSame([409, 5], $policy->getArguments());
+    }
+
+    public function testLegacyModeWriteUnitHasNoPrivateManagerAndMongoDbHasNoneAtAll(): void
+    {
+        $this->extension->load([['user_class' => 'App\\Entity\\User', 'database' => ['private_entity_manager' => false]]], $this->container);
+        self::assertNull($this->container->getDefinition(ShareWriteUnit::class)->getArgument(3));
+
+        $container = new ContainerBuilder();
+        $this->extension->load([['user_class' => 'App\\Entity\\User', 'database' => ['driver' => 'doctrine_mongodb', 'platform' => 'mongodb']]], $container);
+        self::assertFalse($container->hasDefinition(ShareWriteUnit::class));
+        self::assertFalse($container->hasDefinition(YopassExtension::COMMIT_TRACKING_MIDDLEWARE), 'no DBAL connection to track');
+        self::assertNull($container->getDefinition(YopassConflictListener::class)->getArgument(1));
     }
 
     public function testPrependDefaultsToOrmWithoutBundleConfig(): void

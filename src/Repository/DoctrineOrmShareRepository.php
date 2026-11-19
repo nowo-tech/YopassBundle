@@ -17,6 +17,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
 
 use function array_chunk;
+use function array_column;
 use function array_filter;
 use function array_slice;
 use function array_values;
@@ -27,9 +28,12 @@ use function max;
 /**
  * Doctrine ORM implementation for PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle, etc.
  */
-final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface, CreatorIdShareRepositoryInterface
+final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface, ExpirationExtendingShareRepositoryInterface, CreatorIdShareRepositoryInterface
 {
     use ResolvesEntityManagerTrait;
+
+    /** Shares deleted per statement by the retention purge (1.21.0). */
+    private const PURGE_CHUNK = 500;
 
     private ClockInterface $clock;
 
@@ -112,6 +116,29 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->setParameter('maxReads', $maxReads)
             ->setParameter('id', $share->getId())
             ->setParameter('oldMaxReads', $oldMaxReads)
+            ->getQuery());
+
+        if ($this->em()->contains($share)) {
+            $this->em()->refresh($share);
+        }
+
+        return $updated > 0;
+    }
+
+    /**
+     * One conditional UPDATE (`expires_at = :new` where not revoked and the stored expiration is earlier, 1.21.0); a
+     * managed instance is refreshed afterwards.
+     */
+    public function extendExpiration(SecureShare $share, DateTimeImmutable $expiresAt): bool
+    {
+        $updated = $this->execute($this->em()->createQueryBuilder()
+            ->update(SecureShare::class, 's')
+            ->set('s.expiresAt', ':expiresAt')
+            ->where('s.id = :id')
+            ->andWhere('s.revokedAt IS NULL')
+            ->andWhere('s.expiresAt < :expiresAt')
+            ->setParameter('expiresAt', $expiresAt)
+            ->setParameter('id', $share->getId())
             ->getQuery());
 
         if ($this->em()->contains($share)) {
@@ -211,11 +238,39 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
      */
     public function removeOlderThan(DateTimeImmutable $before): int
     {
-        return $this->execute($this->em()->createQueryBuilder()
-            ->delete(SecureShare::class, 's')
-            ->where('s.createdAt < :before')
-            ->setParameter('before', $before)
-            ->getQuery());
+        // 1.21.0 (REQ-RUNTIME-003 rule 9): small chunks by primary key, each its own statement (its own transaction
+        // outside one), instead of one DELETE over the created_at range, which on a large table holds range locks for
+        // a long time and blocks new shares and reveals.
+        $removed = 0;
+        do {
+            /** @var list<array{id: string}> $rows */
+            $rows = $this->em()->createQueryBuilder()
+                ->select('s.id AS id')
+                ->from(SecureShare::class, 's')
+                ->where('s.createdAt < :before')
+                ->setParameter('before', $before)
+                ->orderBy('s.createdAt', 'ASC')
+                ->addOrderBy('s.id', 'ASC')
+                ->setMaxResults(self::PURGE_CHUNK)
+                ->getQuery()
+                ->getArrayResult();
+            if ($rows === []) {
+                break;
+            }
+
+            // The cutoff is checked again: a share is never deleted on the strength of the read alone.
+            $deleted = $this->execute($this->em()->createQueryBuilder()
+                ->delete(SecureShare::class, 's')
+                ->where('s.id IN (:ids)')
+                ->andWhere('s.createdAt < :before')
+                ->setParameter('ids', array_column($rows, 'id'))
+                ->setParameter('before', $before)
+                ->getQuery());
+            $removed += $deleted;
+            // A chunk that deleted nothing (another purge took it) ends the run: the next purge sees the rest.
+        } while ($deleted > 0 && count($rows) === self::PURGE_CHUNK);
+
+        return $removed;
     }
 
     /**

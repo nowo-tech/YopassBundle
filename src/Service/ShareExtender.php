@@ -6,10 +6,12 @@ namespace Nowo\YopassBundle\Service;
 
 use DateTimeImmutable;
 use Nowo\YopassBundle\Doctrine\HostCreatorReference;
+use Nowo\YopassBundle\Doctrine\ShareWriteUnit;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareExtendedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Exception\ShareExtendException;
+use Nowo\YopassBundle\Repository\ExpirationExtendingShareRepositoryInterface;
 use Nowo\YopassBundle\Repository\MaxReadsRaisingShareRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Psr\Clock\ClockInterface;
@@ -42,6 +44,7 @@ final readonly class ShareExtender
         ?ClockInterface $clock = null,
         private ?EventDispatcherInterface $eventDispatcher = null,
         private ?HostCreatorReference $hostCreators = null,
+        private ?ShareWriteUnit $writeUnit = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -49,6 +52,11 @@ final readonly class ShareExtender
     /**
      * Extends the expiration and/or max reads of a share; throws ShareExtendException when nothing valid changes.
      * Dispatches {@see YopassEvents::SHARE_EXTENDED} after the flush.
+     *
+     * 1.21.0 (REQ-RUNTIME-003): with the bundle's write unit (Doctrine ORM driver) the max reads raise and the new
+     * expiration commit together, or not at all: a refused or failed expiration rolls the raise back. With a repository
+     * that implements {@see ExpirationExtendingShareRepositoryInterface} the expiration only moves forward (two
+     * concurrent extensions keep the later one; a share revoked meanwhile is refused with "revoked").
      */
     public function extend(SecureShare $share, ?string $expiresIn, ?int $maxReads, ?UserInterface $extendedBy = null): void
     {
@@ -83,24 +91,47 @@ final readonly class ShareExtender
             throw new ShareExtendException('nothing_to_extend');
         }
 
-        // JS-L1: the raise is one conditional UPDATE (reads_left + delta), so concurrent consumes are never given back;
-        // it runs first, so a share revoked meanwhile is not extended at all.
-        if ($raiser !== null && $atomicRaise !== null && !$raiser->raiseMaxReads($share, $atomicRaise)) {
-            throw new ShareExtendException($share->getRevokedAt() instanceof DateTimeImmutable ? 'revoked' : 'max_reads_not_increased');
-        }
+        $write = function () use ($share, $raiser, $atomicRaise, $newExpiresAt): void {
+            // JS-L1: the raise is one conditional UPDATE (reads_left + delta), so concurrent consumes are never given
+            // back; it runs first, so a share revoked meanwhile is not extended at all.
+            if ($raiser !== null && $atomicRaise !== null && !$raiser->raiseMaxReads($share, $atomicRaise)) {
+                throw new ShareExtendException($share->getRevokedAt() instanceof DateTimeImmutable ? 'revoked' : 'max_reads_not_increased');
+            }
 
-        if ($newExpiresAt instanceof DateTimeImmutable) {
-            $share->extendExpiration($newExpiresAt);
-        }
+            if ($newExpiresAt instanceof DateTimeImmutable) {
+                $this->applyExpiration($share, $newExpiresAt);
+            }
 
-        $this->shareRepository->persist($share);
-        $this->shareRepository->flush();
+            $this->shareRepository->persist($share);
+            $this->shareRepository->flush();
+        };
+        if ($this->writeUnit instanceof ShareWriteUnit) {
+            $this->writeUnit->run($write);
+        } else {
+            $write();
+        }
 
         // Zero-knowledge: old / new limits only, never the ciphertext.
         $this->eventDispatcher?->dispatch(
             ShareExtendedEvent::fromShare($share, $oldExpiresAt, $oldMaxReads, $extendedBy, $this->hostCreators?->forHost($share->getCreator())),
             YopassEvents::SHARE_EXTENDED,
         );
+    }
+
+    /**
+     * The new expiration: one conditional write with a repository that supports it (1.21.0), else on the entity.
+     */
+    private function applyExpiration(SecureShare $share, DateTimeImmutable $expiresAt): void
+    {
+        if (!$this->shareRepository instanceof ExpirationExtendingShareRepositoryInterface) {
+            $share->extendExpiration($expiresAt);
+
+            return;
+        }
+
+        if (!$this->shareRepository->extendExpiration($share, $expiresAt)) {
+            throw new ShareExtendException($share->getRevokedAt() instanceof DateTimeImmutable ? 'revoked' : 'expiration_not_extended');
+        }
     }
 
     private function newExpiration(SecureShare $share, string $expiresIn): DateTimeImmutable

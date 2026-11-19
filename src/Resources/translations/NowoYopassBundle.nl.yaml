@@ -107,6 +107,8 @@ yopass:
         invalid_max_reads: Ongeldige waarde voor max. lezingen.
         max_reads_not_increased: Kies een hogere waarde voor max. lezingen dan de huidige limiet.
         expiration_not_extended: Kies een langere verlenging van de vervaldatum.
+        conflict: "Er wordt een andere wijziging van deze share opgeslagen. Probeer het zo opnieuw."
+        conflict_committed: "De wijziging is mogelijk al opgeslagen. Laad de pagina opnieuw voordat je het nog eens probeert."
         nothing_to_extend: Selecteer minstens één verlengingsoptie.
     expires:
         field: Vervaldatum
@@ -158,3 +160,5 @@ yopass:
         key_help: Plak de sleutel die u apart ontving (korte link zonder ?decrypt_key=).
         key_from_link: Sleutel geladen vanuit de link.
         invalid_key: Onjuiste sleutel of onjuist wachtwoord.
+        conflict: "Het geheim is op dit moment bezet; het is niet geopend. Probeer het zo opnieuw."
+        conflict_committed: "Deze link is mogelijk net geopend. Laad de pagina opnieuw om te zien of hij nog beschikbaar is."
