@@ -67,6 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `docs/CONCURRENCY.md`: the MongoDB residual risk now describes the real races (two concurrent `maxReads` raises from the same state both apply their delta; concurrent expiration extensions are last-write-wins) instead of a read given back by an extension, which cannot happen since `readsLeft` uses `$inc` (audit UH-YP-3).
+
 ## [1.21.0] - 2026-11-19
 
 ### Added
