@@ -129,9 +129,16 @@ nowo_yopass:
 
 ## Residual risks
 
-- **MongoDB:** the consume is atomic (`findAndModify`), but revoke and extend save the changed fields of the document
-  (last write wins), and there is no access log or write unit. A concurrent extension can give back a read consumed in
-  the same instant (the owner asked for more reads anyway). Use the Doctrine ORM driver for strict accounting.
+- **MongoDB:** the consume is atomic (`findAndModify`), and `readsLeft` is mapped with `strategy: increment`, so a raise
+  is written as `$inc` and commutes with a concurrent consume: an extension never gives back a consumed read. The
+  remaining residuals are the unguarded writes of the other fields (last write wins), and there is no access log or
+  write unit:
+  - Two concurrent raises of `maxReads` from the same loaded state (a double submit, or two owners at once) both apply
+    their delta, because `maxReads` is a plain `$set` with no condition on the previous value. Two "1 to 3" raises give
+    `readsLeft` +4, i.e. two reads above the configured maximum. Only the owner or a manager can trigger it.
+  - Two concurrent expiration extensions: the last write wins, so one of them can move the expiration back.
+
+  Use the Doctrine ORM driver for strict accounting.
 - **Custom repositories** (`database.driver: custom`) get no write unit: their own storage decides atomicity.
 - **Lost commit outcome:** a connection lost during the commit of a consume leaves its outcome unknown; the answer is a
   `500` (not a conflict), and the read may be spent without a reader. The reader sees `410` on retry.
