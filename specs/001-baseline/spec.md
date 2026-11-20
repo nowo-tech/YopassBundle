@@ -49,7 +49,7 @@ Per SDD US-01–US-04: create share with `#key`, public reveal, owner revoke/ext
 
 - **FR-PUB-001 / FR-PUB-002**: Public reveal controller and Stimulus reveal flow.
 - **FR-UI-001**: Manage controller and templates (index, created, reveal).
-- **FR-UI-002**: Manage Web UI chrome (REQ-UI-001): `YopassTwigExtension` exposes the layout / CSS framework / icon set globals (`Ui\CssFramework`, `Ui\IconSet` enums), `layout_integrate_host.html.twig` bridges the host layout and `_action_icons.html.twig` renders the view / extend / revoke / delete actions; `ManageWebUiSecurityPass` fails the build when the manage UI requires authentication but SecurityBundle is missing.
+- **FR-UI-002**: Manage Web UI chrome (REQ-UI-001): the pages read the UiKit layouts and theme (the 1.x Twig globals, `layout_integrate_host.html.twig` and `_action_icons.html.twig` are removed; `Ui\CssFramework` / `Ui\IconSet` enums remain); `ManageWebUiSecurityPass` fails the build when the manage UI requires authentication but SecurityBundle is missing.
 - **FR-FORM-001**: Share create form.
 - **FR-ROUTE-001**: Configurable `YopassRouteLoader`.
 - **FR-UI-010 / FR-BUILD-001**: Bundled JS assets.
@@ -98,7 +98,7 @@ Per SDD US-01–US-04: create share with `#key`, public reveal, owner revoke/ext
 - **FR-FORM-002**: Browser-only form types (`ShareCreatedLinksType`, `SharePreviewType`, `ShareRevealType`, helpers in `ClientOnlyFieldsTrait`) have fixed ids and no name so secrets and keys are never posted; `CsrfActionType` carries only the CSRF token of the revoke, delete and delete-all actions.
 - **FR-UI-013**: `ShareListRouteResolver` carries the list page through action forms as an HMAC-SHA256 token bound to the viewer and accepts only the manage route or a route in `web_ui.list_routes` with scalar parameters.
 - **FR-UI-014**: Extra list columns come from `ShareListColumn` providers and are printed escaped.
-- **FR-UI-015**: `YopassPageFactory` and `YopassPages` build UiKit view models, resolve `web_ui.layout_template` / `public_layout_template` and per-page overrides, and wrap 1.x layouts in a deprecated bridge (`_legacy_layout.html.twig`, removed in 2.0).
+- **FR-UI-015**: `YopassPageFactory` and `YopassPages` build UiKit view models, resolve `web_ui.layout_template` / `public_layout_template` and per-page overrides, and refuse a 1.x layout without the UiKit canonical blocks with a clear error (the `_legacy_layout.html.twig` bridge was removed in 2.0).
 - **FR-UI-016**: `RetentionNotice` turns common `retention.max_age` modifiers into a translated duration (ICU plurals) and omits the duration for others.
 - **FR-UI-017**: Frontend helpers `visibility.ts`, `yopass-navigation.ts` and `yopass-toast.ts` show / hide with the `hidden` attribute (no utility classes), isolate page reload and show a UiKit toast inside an open dialog.
 - **FR-UI-018**: `css/yopass.css` is the layout layer for the `nowo-yopass-*` hooks on UiKit tokens, with no inline styles.

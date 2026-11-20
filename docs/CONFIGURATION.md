@@ -50,11 +50,11 @@ Configure which connection and persistence backend store encrypted shares.
 | `database.driver` | `doctrine_orm` | `doctrine_orm`, `doctrine_mongodb`, or `custom`. |
 | `database.platform` | `postgresql` | Documented platform: `postgresql`, `mysql`, `mariadb`, `sqlite`, `sqlserver`, `oracle`, `mongodb`, `other`. |
 | `database.connection` | `default` | Doctrine DBAL connection name from `config/packages/doctrine.yaml`. |
-| `database.entity_manager` | `default` | Doctrine ORM entity manager for relational databases: its connection, mapping and event manager are used; with `private_entity_manager` it is never flushed by the bundle. |
-| `database.private_entity_manager` | `true` | Since 1.19, `doctrine_orm` driver: shares and the access log go through the bundle's own entity manager built on `entity_manager` (same connection and tables), so your pending changes are never flushed by a share write (REQ-ARCH-001 rule 6). `false` = pre-1.19 behaviour, deprecated, removed in 2.0. Since 1.20 the private manager is dropped at the outermost request / message / command boundaries only, and (doctrine/dbal 4) replaced after a rollback on its connection; with doctrine/dbal 3 it runs without that rollback middleware. See [USAGE](USAGE.md#ddd-host-the-bundles-own-entity-manager). |
+| `database.entity_manager` | `default` | Doctrine ORM entity manager for relational databases. The bundle's own entity manager is built on its connection, mapping, event manager and SQL filters (same tables): shares and the access log go through it (with the custom driver, the access log only), so the bundle never flushes, clears, closes or resets this manager (REQ-ARCH-001 rule 6). The private manager is dropped at the outermost request / message / command boundaries and (doctrine/dbal 4) replaced after a rollback on its connection; with doctrine/dbal 3 it runs without that rollback middleware. See [USAGE](USAGE.md#ddd-host-the-bundles-own-entity-manager). |
+| `database.private_entity_manager` | `true` | No effect since 2.0: the private entity manager is the only mode. `true` is accepted and deprecated (remove it; removed in 3.0). `false` fails the container build. |
 | `database.mapping` | `attribute` | Since 1.19: `attribute` or `xml` (the bundle's XML mapping, for hosts that map by XML only). Same tables and columns. See [USAGE](USAGE.md#ddd-host-xml-mapping). |
 | `database.document_manager` | `default` | Doctrine MongoDB document manager when using MongoDB. |
-| `database.private_document_manager` | `false` | Since 1.22, `doctrine_mongodb` driver: `true` reads and writes shares through the bundle's own document manager built on `document_manager` (same client, database and collection), so your pending changes are never flushed by a share write (REQ-ARCH-001 rule 6). It is dropped at the outermost request / message / command boundaries and replaced when closed. `false` (the 1.x default) flushes `document_manager` itself and triggers a deprecation notice when the container is built: in 2.0 the private document manager is the only mode. See [UPGRADING](UPGRADING.md#to-1220). |
+| `database.private_document_manager` | `true` | No effect since 2.0: the `doctrine_mongodb` driver always reads and writes shares through the bundle's own document manager built on `document_manager` (same client, database and collection, and your manager's own BSON filter collection), so your pending changes are never flushed by a share write (REQ-ARCH-001 rule 6). It is dropped at the outermost request / message / command boundaries and replaced when closed. `true` is accepted and deprecated (remove it; removed in 3.0). `false` fails the container build. |
 | `database.collection` | `null` | MongoDB collection override (defaults to `{table_prefix}secure_shares`). |
 | `database.repository` | `null` | Custom service id implementing `ShareRepositoryInterface` when `driver: custom`. |
 
@@ -117,8 +117,6 @@ nowo_yopass:
         connection: default
         document_manager: default
         collection: yopass_secure_shares
-        # 1.22: write through the bundle's own document manager (the only mode in 2.0)
-        private_document_manager: true
 ```
 
 ### Custom backends (Redis, Couchbase, etc.)
@@ -132,6 +130,10 @@ nowo_yopass:
         platform: other
         repository: App\Yopass\RedisShareRepository
 ```
+
+With `driver: custom` on a relational platform (`postgresql`, `mysql`, ...) your repository stores the shares and the
+bundle's access log (when enabled, without `access_log.repository`) is written through the bundle's own entity manager
+on `database.entity_manager`: same connection and table, and your entity manager is never flushed (2.0).
 
 Run `doctrine:schema:update` or a migration after install (ORM). For MongoDB, ensure indexes/collection exist via your ODM setup.
 
@@ -285,7 +287,7 @@ alone and does nothing when `'wasm-unsafe-eval'` or `'unsafe-eval'` is already a
 
 ## Routes
 
-Each route has `path` and `name`. Optional `web_ui.path_prefix` (deprecated alias: `route_prefix`) is prepended to every path, manage and public (e.g. `/{_locale}`).
+Each route has `path` and `name`. Optional `web_ui.path_prefix` is prepended to every path, manage and public (e.g. `/{_locale}`).
 
 | Key | Default path | Default name |
 |-----|--------------|--------------|
@@ -330,7 +332,7 @@ Replace `ROLE_ADMIN` with the roles you configure under `security.access_roles` 
 
 ### Access checker
 
-Replace the default role-based checker with your own service implementing `YopassAccessCheckerInterface` (e.g. team-based ACL in DevKit):
+Replace the default role-based checker with your own service implementing `YopassAccessPolicyInterface` (e.g. team-based ACL). A service whose class does not implement it fails the container build:
 
 ```yaml
 nowo_yopass:
@@ -347,16 +349,16 @@ Default role configuration (REQ-UI-002 / REQ-UI-003 vocabulary):
 | `security.roles.create` | `[ROLE_ADMIN]` | Create shares |
 | `security.roles.list` | `[ROLE_ADMIN]` | List and preview own shares |
 | `security.roles.revoke` | `[ROLE_ADMIN]` | Revoke, extend and delete own shares |
-| `security.access_checker` | `null` | Service implementing `YopassAccessPolicyInterface` (1.19, `?UserRef`) or the deprecated `YopassAccessCheckerInterface` (replaces the role checker; deny by default) |
+| `security.access_checker` | `null` | Service implementing `YopassAccessPolicyInterface` (`?UserRef`; replaces the role checker; deny by default) |
 | `security.allow_unauthenticated` | `false` | DEV/DEMO only: skip SecurityBundle requirement (never enable in production) |
 
 An empty list grants that permission to nobody (only `security.roles.admin` bypasses it). With the built-in role checker
 and the Web UI on, the container refuses to compile when **every** list (`access_roles` and all `roles.*`) is empty,
 because nobody could ever open the manage UI.
 
-**Deprecated since 1.10** (mapped, removed in 2.0): `security.admin_roles` → `security.roles.admin`,
-`security.create_roles` → `security.roles.create`, `security.list_roles` → `security.roles.list`,
-`security.revoke_roles` → `security.roles.revoke`. When both are set, the canonical key wins.
+**Removed in 2.0** (deprecated since 1.10; using one fails the container build with its replacement):
+`security.admin_roles` → `security.roles.admin`, `security.create_roles` → `security.roles.create`,
+`security.list_roles` → `security.roles.list`, `security.revoke_roles` → `security.roles.revoke`.
 
 When `allow_unauthenticated` is `false` (default), the bundle requires **Symfony SecurityBundle** at compile time. Set it to `true` only in local demos without authentication.
 
@@ -484,12 +486,12 @@ Requires Symfony **`cache.app`** (FrameworkBundle cache), injected as an optiona
 ### Custom access checker interface
 
 ```php
-interface YopassAccessCheckerInterface
+interface YopassAccessPolicyInterface
 {
-    public function canAccess(?UserInterface $user = null): bool;
-    public function canCreate(?UserInterface $user = null): bool;
-    public function canList(?UserInterface $user = null): bool;
-    public function canRevoke(?UserInterface $user = null): bool;
+    public function canAccess(?UserRef $user = null): bool;
+    public function canCreate(?UserRef $user = null): bool;
+    public function canList(?UserRef $user = null): bool;
+    public function canRevoke(?UserRef $user = null): bool;
 }
 ```
 
@@ -530,19 +532,17 @@ nowo_yopass:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `web_ui.enabled` | `true` | Manage Web UI feature flag. When false, only the public routes (`/share/{id}`, `/share/{id}/consume`) are registered and the CSRF / SecurityBundle compile checks of the manage UI are skipped. When true, access is enforced by `security.*` and the host firewall. |
-| `web_ui.path_prefix` | `''` | Prefix prepended to every bundle route path (manage and public). Replaces `route_prefix`. |
+| `web_ui.path_prefix` | `''` | Prefix prepended to every bundle route path (manage and public). |
 | `web_ui.list_routes` | `[]` | Host routes allowed to show the manage list (`ShareListRouteEvent::setRoute()`); the manage route is always allowed. |
 | `web_ui.icons.create_tab_text` / `web_ui.icons.create_tab_file` | `tabler:file-text` / `tabler:file-upload` | Icons of the create form's **Text** / **File** tabs (UiKit `tabs` item `icon`): a canonical UiKit kind or a prefixed name. A prefixed name renders only with an icon set that has it (`ux_icon`, or `tabler-icons` for `tabler:` / `bootstrap-icons` for `bi:`); any other set shows the label only. The host tab style (`data-tab-style`: `text`, `icon-text`, `icon`) picks what shows. `~` or `''` = label only. Checked when the container is built: `[prefix:]name` with lowercase letters, digits and single hyphens (the kits' shared grammar, as WikiBundle `web_ui.tab_icons`); anything else is an `InvalidConfigurationException`. |
 | `web_ui.create_mode` | `page` | `page`: create card above the list, POST + redirect to the created page. `dialog`: **New share** (header + empty state) opens a `<dialog>`; the browser encrypts, posts with `fetch` and shows the links in the dialog. See [Create mode](#create-mode). |
-| `web_ui.layout_template` | `null` | Layout the manage pages extend (`page.layout`). Null = `nowo_ui_kit.layouts.admin`. **Set the project admin layout in UiKit once** (`nowo_ui_kit.layouts.admin`); use this key only for a Yopass-specific layout. A 1.x layout without the UiKit canonical blocks (e.g. a `base.html.twig` with `body`) is wrapped in the deprecated `_legacy_layout.html.twig` bridge. The 1.x default `@NowoYopassBundle/layout.html.twig` maps to null. |
+| `web_ui.layout_template` | `null` | Layout the manage pages extend (`page.layout`). Null = `nowo_ui_kit.layouts.admin`. **Set the project admin layout in UiKit once** (`nowo_ui_kit.layouts.admin`); use this key only for a Yopass-specific layout. The layout must render the UiKit canonical blocks: since 2.0 a 1.x layout (e.g. a `base.html.twig` with `body`) throws a `LogicException` naming it when a manage page renders (the 1.x bridge was removed). The 1.x default `@NowoYopassBundle/layout.html.twig` maps to null. |
 | `web_ui.public_layout_template` | `null` | Layout of the public reveal page. Null = `nowo_ui_kit.layouts.guest`. **Must not load third-party scripts** (they could read the decryption key and the decrypted secret); see [Usage — layout security](USAGE.md#public-reveal-page-layout-security). |
 | `web_ui.templates.<page>` | `null` | Per-page template override (`manage`, `created`, `public`): a host template that `{% extends '@!NowoYopassBundle/...' %}` and overrides one data block. |
-| `web_ui.css_framework` | `null` | **Deprecated since 1.10**: set `nowo_ui_kit.css_framework`. When set (and `nowo_ui_kit.css_framework` is not), it is copied to UiKit (`bootstrap` → `bootstrap5`). |
-| `web_ui.icon_set` | `null` | **Deprecated since 1.10**: set `nowo_ui_kit.icon_set`. When set (and `nowo_ui_kit.icon_set` is not), it is copied to UiKit. |
-
-**Deprecated root keys (1.10, removed in 2.0):** `route_prefix` → `web_ui.path_prefix`; `templates.layout` →
-`web_ui.layout_template`; `templates.manage` / `templates.created` / `templates.public` → `web_ui.templates.<page>`.
-The canonical key wins when both are set.
+**Removed in 2.0** (deprecated since 1.10; using one fails the container build with its replacement): `route_prefix` →
+`web_ui.path_prefix`; `templates.layout` → `web_ui.layout_template`; `templates.manage` / `templates.created` /
+`templates.public` → `web_ui.templates.<page>`; `web_ui.css_framework` / `web_ui.icon_set` →
+`nowo_ui_kit.css_framework` / `nowo_ui_kit.icon_set`.
 
 ### Create mode
 
