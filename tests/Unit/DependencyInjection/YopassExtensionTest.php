@@ -254,6 +254,8 @@ final class YopassExtensionTest extends TestCase
         self::assertSame('app.yopass.access', (string) $this->container->getAlias(YopassAccessCheckerInterface::class));
     }
 
+    /** The custom driver's access log on the application's manager triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testLoadUsesCustomRepositoryForCustomDriver(): void
     {
         $this->container->setDefinition('app.yopass.repository', new Definition(stdClass::class));

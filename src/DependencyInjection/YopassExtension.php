@@ -633,10 +633,11 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$ownManager', $ownManager);
         }
         $hostFlushProbe = null;
-        if (!(bool) ($database['private_entity_manager'] ?? true) && DatabaseDriver::resolveDriver((string) $database['driver'], (string) $database['platform']) === DatabaseDriver::DOCTRINE_ORM) {
-            // 1.22.0 (REQ-ARCH-001 rule 6 deprecation layer): host mode flushes the application's manager; the probe
-            // reports each foreign entity class with pending work once per unit of work. Read-only. Its per-unit state
-            // is emptied at the outermost request / message / command boundaries and at kernel.reset.
+        if (!$ownManager instanceof Reference) {
+            // 1.22.0 (REQ-ARCH-001 rule 6 deprecation layer): without the private manager (`private_entity_manager:
+            // false`, or the custom driver's access log, audit XC-L2) the bundle flushes the application's manager; the
+            // probe reports each foreign entity class with pending work once per unit of work. Read-only. Its per-unit
+            // state is emptied at the outermost request / message / command boundaries and at kernel.reset.
             $container->setDefinition(self::HOST_FLUSH_PROBE, (new Definition(HostFlushProbe::class))
                 ->addTag('kernel.reset', ['method' => 'reset']));
             $container->setDefinition(self::HOST_FLUSH_PROBE_BOUNDARIES, (new Definition(YopassEntityManagerBoundarySubscriber::class))
@@ -645,6 +646,12 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 ->addTag('kernel.event_subscriber'));
             $hostFlushProbe = new Reference(self::HOST_FLUSH_PROBE);
             $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$hostFlushProbe', $hostFlushProbe);
+        }
+
+        $accessLogRepository = $config['access_log']['repository'] ?? null;
+        if ($accessLogEnabled && DatabaseDriver::resolveDriver((string) $database['driver'], (string) $database['platform']) === DatabaseDriver::CUSTOM
+            && (!is_string($accessLogRepository) || $accessLogRepository === '')) {
+            trigger_deprecation('nowo-tech/yopass-bundle', '1.22.0', 'With "nowo_yopass.database.driver: custom" on a relational platform, nowo-tech/yopass-bundle writes its access log through the application\'s entity manager "%s" and flushes it, which also writes any change the application left pending on it. In 2.0 the access log is written through the bundle\'s own entity manager on the same connection. To stop the bundle flushing your manager now, set "nowo_yopass.access_log.repository" to your own ShareAccessLogRepositoryInterface service, or "nowo_yopass.access_log.enabled: false".', $entityManagerName);
         }
 
         $container->setDefinition(SecureShareMetadataListener::class, (new Definition(SecureShareMetadataListener::class))

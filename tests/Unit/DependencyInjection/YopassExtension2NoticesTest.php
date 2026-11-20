@@ -9,10 +9,12 @@ use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\DependencyInjection\YopassExtension;
 use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Doctrine\YopassDocumentManager;
+use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Doctrine\YopassEntityManagerBoundarySubscriber;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
+use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use PHPUnit\Framework\TestCase;
@@ -32,6 +34,8 @@ use const E_USER_DEPRECATED;
 final class YopassExtension2NoticesTest extends TestCase
 {
     private const ODM_NOTICE = 'Since nowo-tech/yopass-bundle 1.22.0: The MongoDB ODM driver of nowo-tech/yopass-bundle flushes the application\'s document manager "%s" when it stores shares, which also writes any change the application left pending on it. In 2.0 the bundle always writes through its own document manager (same database and collection). Opt in now: set "nowo_yopass.database.private_document_manager: true".';
+
+    private const CUSTOM_NOTICE = 'Since nowo-tech/yopass-bundle 1.22.0: With "nowo_yopass.database.driver: custom" on a relational platform, nowo-tech/yopass-bundle writes its access log through the application\'s entity manager "default" and flushes it, which also writes any change the application left pending on it. In 2.0 the access log is written through the bundle\'s own entity manager on the same connection. To stop the bundle flushing your manager now, set "nowo_yopass.access_log.repository" to your own ShareAccessLogRepositoryInterface service, or "nowo_yopass.access_log.enabled: false".';
 
     private const MONGO = ['driver' => 'doctrine_mongodb', 'platform' => 'mongodb'];
 
@@ -92,9 +96,31 @@ final class YopassExtension2NoticesTest extends TestCase
             self::assertSame(YopassExtension::HOST_FLUSH_PROBE, (string) $container->getDefinition($service)->getArgument('$hostFlushProbe'));
         }
 
-        // The custom driver keeps its access log on the application's manager as before: no probe there in 1.22.
-        [$custom] = $this->load(['database' => ['driver' => 'custom', 'repository' => 'app.shares', 'platform' => 'postgresql', 'private_entity_manager' => false]]);
-        self::assertFalse($custom->hasDefinition(YopassExtension::HOST_FLUSH_PROBE));
+    }
+
+    /**
+     * Audit XC-L2: with the custom driver on a relational platform the bundle's access log flushes the application's
+     * entity manager: the probe runs before those flushes and one notice names the path, unless the host stores the
+     * access log itself or disabled it.
+     */
+    public function testTheCustomDriversAccessLogGetsTheProbeAndANotice(): void
+    {
+        $custom                     = ['driver' => 'custom', 'repository' => 'app.shares', 'platform' => 'postgresql'];
+        [$container, $deprecations] = $this->load(['database' => $custom]);
+        self::assertSame([self::CUSTOM_NOTICE], $deprecations);
+        self::assertFalse($container->hasDefinition(YopassEntityManager::class));
+        self::assertSame(YopassExtension::HOST_FLUSH_PROBE, (string) $container->getDefinition(DoctrineOrmShareAccessLogRepository::class)->getArgument('$hostFlushProbe'));
+        self::assertTrue($container->getDefinition(YopassExtension::HOST_FLUSH_PROBE_BOUNDARIES)->hasTag('kernel.event_subscriber'));
+
+        [$hostLog, $deprecations] = $this->load(['database' => $custom, 'access_log' => ['repository' => 'app.access_log']]);
+        self::assertSame([], $deprecations, 'the host stores its access log itself');
+        self::assertSame('app.access_log', (string) $hostLog->getAlias(ShareAccessLogRepositoryInterface::class));
+
+        [, $deprecations] = $this->load(['database' => $custom, 'access_log' => ['enabled' => false]]);
+        self::assertSame([], $deprecations);
+
+        [, $deprecations] = $this->load(['database' => ['driver' => 'custom', 'repository' => 'app.shares', 'platform' => 'mongodb']]);
+        self::assertSame([], $deprecations, 'a non-relational platform has no bundle access log');
     }
 
     public function testTheLegacyAccessCheckerAliasIsDeprecatedAndThePolicyAliasIsNot(): void

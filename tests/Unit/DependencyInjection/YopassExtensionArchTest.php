@@ -20,6 +20,7 @@ use Nowo\YopassBundle\Security\UserRef;
 use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Security\YopassAccessDecider;
 use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
@@ -64,6 +65,8 @@ final class YopassExtensionArchTest extends TestCase
         self::assertSame('shares', $named->getDefinition(YopassEntityManager::class)->getArgument('$entityManagerName'));
     }
 
+    /** The custom driver's access log on the application's manager triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testThePrivateEntityManagerCanBeSwitchedOffAndIsNotUsedWithTheCustomDriver(): void
     {
         $deprecations = [];
