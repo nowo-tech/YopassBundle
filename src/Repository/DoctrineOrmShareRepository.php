@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\TransactionDoctrine\HostFlushProbe;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
@@ -48,6 +49,7 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
         private ?string $managerName = null,
         private ?CreatorReferenceResolverInterface $creators = null,
         private ?YopassEntityManager $ownManager = null,
+        private ?HostFlushProbe $hostFlushProbe = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
@@ -298,7 +300,13 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
      */
     public function flush(): void
     {
-        $this->em()->flush();
+        $entityManager = $this->em();
+        // 1.22.0 (REQ-ARCH-001 rule 6 deprecation layer): with `database.private_entity_manager: false` this flush
+        // writes the application's pending changes too; the probe reports each such class once per unit of work.
+        if (!$this->ownManager instanceof YopassEntityManager) {
+            $this->hostFlushProbe?->beforeHostFlush($entityManager, YopassEntityManager::BUNDLE_NAME, YopassEntityManager::OWN_NAMESPACES);
+        }
+        $entityManager->flush();
     }
 
     /**

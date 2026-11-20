@@ -29,7 +29,7 @@ final readonly class YopassAccessDecider
         private YopassAccessPolicyInterface|YopassAccessCheckerInterface $checker,
     ) {
         if (!$checker instanceof YopassAccessPolicyInterface) {
-            @trigger_error('Since nowo-tech/yopass-bundle 1.19.0: implementing only "YopassAccessCheckerInterface" for "nowo_yopass.security.access_checker" is deprecated, implement "YopassAccessPolicyInterface" instead.', E_USER_DEPRECATED);
+            @trigger_error('Since nowo-tech/yopass-bundle 1.19.0: implementing only "YopassAccessCheckerInterface" for "nowo_yopass.security.access_checker" is deprecated, implement "YopassAccessPolicyInterface" instead (YopassAccessCheckerInterface is removed in 2.0).', E_USER_DEPRECATED);
         }
     }
 

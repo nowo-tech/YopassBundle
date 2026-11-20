@@ -22,6 +22,8 @@
             <file>src/Security/YopassAccessCheckerInterface.php</file>
             <!-- Optional MongoDB ODM backend: final query internals make several branches impractical to unit-isolate here; keep the 99% gate on the default bundle surface. -->
             <file>src/Repository/DoctrineMongoShareRepository.php</file>
+            <!-- 1.22.0: the private document manager of the MongoDB ODM opt-in; covered on a real MongoDB server by the "MongoDB round trip" CI job (tests/Integration/Mongo). -->
+            <file>src/Doctrine/YopassDocumentManager.php</file>
         </exclude>
     </source>
     <php>

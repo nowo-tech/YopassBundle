@@ -13,6 +13,7 @@ use MongoDB\BSON\UTCDateTime;
 use MongoDB\DeleteResult;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
+use Nowo\YopassBundle\Doctrine\YopassDocumentManager;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Psr\Clock\ClockInterface;
@@ -36,7 +37,9 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
 
     /**
      * Creates the repository on the given Doctrine manager (optional registry/manager name for resets) and clock; the
-     * creator resolver turns a non-entity user into a reference before the creator queries.
+     * creator resolver turns a non-entity user into a reference before the creator queries. With `$ownManager`
+     * (`database.private_document_manager: true`, 1.22.0) every call goes through the bundle's private document
+     * manager and the application's manager is never flushed.
      */
     public function __construct(
         private DocumentManager $documentManager,
@@ -44,6 +47,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         private ?ManagerRegistry $registry = null,
         private ?string $managerName = null,
         private ?CreatorReferenceResolverInterface $creators = null,
+        private ?YopassDocumentManager $ownManager = null,
     ) {
         $this->clock = $clock ?? new Clock();
     }
