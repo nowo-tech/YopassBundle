@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.21.1] - 2026-11-20](#1211---2026-11-20)
 - [[1.21.0] - 2026-11-19](#1210---2026-11-19)
 - [[1.20.5] - 2026-11-13](#1205---2026-11-13)
 - [[1.20.4] - 2026-11-13](#1204---2026-11-13)
@@ -67,6 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.1] - 2026-11-20
+
 ### Changed
 
 - Demo: aligned with UiKit (`demo-nav-*` test ids on the shared `demo-masthead`, brand and title as in the reference demos, UiKit's own flash block).
@@ -76,6 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `docs/CONCURRENCY.md`: the MongoDB residual risk now describes the real races (two concurrent `maxReads` raises from the same state both apply their delta; concurrent expiration extensions are last-write-wins) instead of a read given back by an extension, which cannot happen since `readsLeft` uses `$inc` (audit UH-YP-3).
 - Configuration tree split so the bundle compiles on PHP 8.3+ thread stacks of 512 KiB (FrankenPHP Alpine images): `Configuration::getConfigTreeBuilder()` was one fluent chain that needed more than 512 KiB of stack to compile ("Maximum call stack size ... reached during compilation"). It is now built by one private method per section, with the same builder calls in the same order, so the tree, its defaults, validation and reference dumps are unchanged. A test compiles the sources and builds the tree under a 512 KiB stack.
+
+[1.21.1]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.21.1
 
 ## [1.21.0] - 2026-11-19
 
@@ -1190,7 +1195,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.21.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.21.1...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
