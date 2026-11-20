@@ -67,6 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `nowo-tech/transaction-doctrine` ^1.8.1 (fixes GHSA-9wh3-m3m5-jffx and GHSA-65w2-9r4h-848g).
+
 ### Fixed
 
 - `docs/CONCURRENCY.md`: the MongoDB residual risk now describes the real races (two concurrent `maxReads` raises from the same state both apply their delta; concurrent expiration extensions are last-write-wins) instead of a read given back by an extension, which cannot happen since `readsLeft` uses `$inc` (audit UH-YP-3).
