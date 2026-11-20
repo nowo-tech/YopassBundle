@@ -69,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Demo: aligned with UiKit (`demo-nav-*` test ids on the shared `demo-masthead`, brand and title as in the reference demos, UiKit's own flash block).
 - Requires `nowo-tech/transaction-doctrine` ^1.8.1 (fixes GHSA-9wh3-m3m5-jffx and GHSA-65w2-9r4h-848g).
 
 ### Fixed
