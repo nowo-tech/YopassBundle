@@ -1268,6 +1268,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         private_entity_manager?: bool|Param, // Doctrine ORM driver: read and write shares and the access log through the bundle's own entity manager built on entity_manager (same connection and tables), so the application's pending changes are never flushed by the bundle (1.19.0). False is the pre-1.19 behaviour (flushes entity_manager itself), deprecated and removed in 2.0. // Default: true
  *         mapping?: "attribute"|"xml"|Param, // Doctrine ORM mapping of the bundle entities: "attribute" (default) or "xml" (src/Resources/config/doctrine, for hosts that map by XML only) (1.19.0). Same tables and columns. // Default: "attribute"
  *         document_manager?: scalar|Param|null, // Doctrine MongoDB document manager name when platform/driver is mongodb. // Default: "default"
+ *         private_document_manager?: bool|Param, // Doctrine MongoDB ODM driver: read and write shares through the bundle's own document manager built on document_manager (same client, database and collection), so the application's pending changes are never flushed by the bundle (1.22.0). False (the 1.x default) flushes document_manager itself and is deprecated: in 2.0 the private document manager is the only mode. // Default: false
  *         collection?: scalar|Param|null, // MongoDB collection name. Defaults to {table_prefix}secure_shares. // Default: null
  *         repository?: scalar|Param|null, // Service id implementing ShareRepositoryInterface when driver is custom. // Default: null
  *     },

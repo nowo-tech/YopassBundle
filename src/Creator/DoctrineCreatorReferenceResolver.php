@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Creator;
 
 use Doctrine\Persistence\ManagerRegistry;
+use Nowo\YopassBundle\Doctrine\YopassDocumentManager;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
@@ -31,6 +32,8 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
      * @param ?ManagerRegistry $registry Doctrine ORM or MongoDB ODM registry (null = no reference)
      * @param ?string $managerName Entity / document manager name
      * @param ?CreatorClassPolicy $classes Accepted security-user classes (null = `user_class` only)
+     * @param YopassDocumentManager|YopassEntityManager|null $ownManager the bundle's private entity manager (1.19.0) or
+     *                                                                   document manager (1.22.0 opt-in)
      */
     public function __construct(
         private string $userClass,
@@ -38,7 +41,7 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         private ?string $managerName = null,
         private ?CreatorClassPolicy $classes = null,
         private string $userMapping = CreatorMapping::RELATION,
-        private ?YopassEntityManager $ownManager = null,
+        private YopassEntityManager|YopassDocumentManager|null $ownManager = null,
     ) {
     }
 
@@ -72,7 +75,7 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
             return $user;
         }
 
-        $manager = $this->ownManager instanceof YopassEntityManager ? $this->ownManager->get() : $this->registry->getManager($this->managerName);
+        $manager = $this->ownManager?->get() ?? $this->registry->getManager($this->managerName);
         if (!method_exists($manager, 'getReference')) {
             return $user;
         }
@@ -83,14 +86,19 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
     }
 
     /**
-     * With the bundle's own entity manager (1.19.0): a `user_class` entity managed by the application's manager becomes
-     * a reference in the private manager (same class and id, no query), so the share's relation never points into
-     * another unit of work. Unchanged without the private manager or when it already manages the user.
+     * With the bundle's own entity manager (1.19.0) or document manager (1.22.0): a `user_class` entity or document
+     * managed by the application's manager becomes a reference in the private manager (same class and id, no query),
+     * so the share's relation never points into another unit of work. Unchanged without the private manager or when it
+     * already manages the user.
      */
     private function ownReference(object $user, string $class): object
     {
-        if (!$this->ownManager instanceof YopassEntityManager) {
+        if ($this->ownManager === null) {
             return $user;
+        }
+
+        if ($this->ownManager instanceof YopassDocumentManager) {
+            return $this->ownManager->reference($user, $class);
         }
 
         $manager = $this->ownManager->get();

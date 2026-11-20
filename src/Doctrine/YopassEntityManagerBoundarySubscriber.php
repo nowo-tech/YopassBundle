@@ -31,7 +31,9 @@ use const PHP_INT_MIN;
  * managed in a kept-alive kernel (FrankenPHP worker without kernel reset, no services resetter), and an unflushed
  * change of an abandoned unit is never written by a later, unrelated bundle flush. Never touches an application
  * manager (rule 7: the application clears its own managers); registered only with the private manager (the default
- * of the `doctrine_orm` driver).
+ * of the `doctrine_orm` driver). Since 1.22.0 the same boundaries also drop the private document manager of the
+ * MongoDB ODM opt-in ({@see YopassDocumentManager}) and empty the host-flush probe of the ORM host mode (one instance
+ * per reset target).
  *
  * Boundaries (every unit-of-work state change at PHP_INT_MAX, through {@see UnitOfWorkFrames}):
  * - HTTP: the main `kernel.request` (PHP_INT_MAX) and `kernel.terminate` (priority -2048), only for the outermost
@@ -74,7 +76,8 @@ final readonly class YopassEntityManagerBoundarySubscriber implements EventSubsc
     private UnitOfWorkFrames $units;
 
     /**
-     * @param ResetInterface $entityManager the private manager ({@see YopassEntityManager::reset()} drops it)
+     * @param ResetInterface $entityManager the private manager ({@see YopassEntityManager::reset()} drops it), or since
+     *                                      1.22.0 the private document manager or the host-flush probe
      * @param RequestStack|null $requestStack the HTTP kernel's request stack (read only, see {@see UnitOfWorkFrames})
      */
     public function __construct(

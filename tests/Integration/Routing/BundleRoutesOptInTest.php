@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\InMemoryShareRepository;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Request;
@@ -43,6 +44,8 @@ final class BundleRoutesOptInTest extends TestCase
         $this->kernel = null;
     }
 
+    /** The custom driver's access log on the application's manager triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testRoutingControllersResourceDoesNotRegisterBundleRoutes(): void
     {
         if (!class_exists(AttributeServicesLoader::class)) {
@@ -52,6 +55,8 @@ final class BundleRoutesOptInTest extends TestCase
         self::assertSame([], $this->bundleRouteNames(false), 'Yopass routes must exist only where the host imports the nowo_yopass route loader.');
     }
 
+    /** The custom driver's access log on the application's manager triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testImportedRoutesServeThePublicSharePage(): void
     {
         $names = $this->bundleRouteNames(true);

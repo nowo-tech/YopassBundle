@@ -12,6 +12,7 @@ use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
 use Nowo\YopassBundle\Repository\NullShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -32,6 +33,8 @@ final class YopassExtensionDddTest extends TestCase
         self::assertTrue($container->getParameter(AccessLogMappingPass::ENABLED_PARAMETER));
     }
 
+    /** The 1.x MongoDB default triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testIdMappingReachesTheResolverAndTheListeners(): void
     {
         $orm = $this->load(['user_mapping' => 'id']);
@@ -43,6 +46,8 @@ final class YopassExtensionDddTest extends TestCase
         self::assertSame(CreatorMapping::ID, $mongo->getDefinition(SecureShareDocumentMetadataListener::class)->getArgument('$userMapping'));
     }
 
+    /** The 1.x MongoDB default triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testHostAccessLogRepositoryWorksWithEveryDriver(): void
     {
         foreach ([[], ['driver' => 'doctrine_mongodb', 'platform' => 'mongodb'], ['driver' => 'custom', 'platform' => 'mongodb', 'repository' => 'app.shares']] as $database) {

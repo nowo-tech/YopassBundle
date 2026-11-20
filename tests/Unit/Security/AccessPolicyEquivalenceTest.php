@@ -139,7 +139,7 @@ final class AccessPolicyEquivalenceTest extends TestCase
         } finally {
             restore_error_handler();
         }
-        self::assertSame(['Since nowo-tech/yopass-bundle 1.19.0: implementing only "YopassAccessCheckerInterface" for "nowo_yopass.security.access_checker" is deprecated, implement "YopassAccessPolicyInterface" instead.'], $deprecations);
+        self::assertSame(['Since nowo-tech/yopass-bundle 1.19.0: implementing only "YopassAccessCheckerInterface" for "nowo_yopass.security.access_checker" is deprecated, implement "YopassAccessPolicyInterface" instead (YopassAccessCheckerInterface is removed in 2.0).'], $deprecations);
         self::assertFalse($decider->usesPolicy());
 
         self::assertTrue($decider->allows('access', null, $user));

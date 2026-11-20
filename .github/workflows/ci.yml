@@ -256,8 +256,20 @@ jobs:
     # Light mode: skipped (a skipped non-matrix job reports its own name as skipped, which branch protection accepts).
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.mode != 'light' }}
+    # 1.22.0: the MongoDB ODM private document manager is covered on a real server (no coverage exclusion).
+    services:
+      mongo:
+        # MongoDB 8.x / 9.0 refuse to start on Linux 6.19+ (SERVER-121912), the hosted runner kernel.
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
-      COMPOSER_IGNORE_PLATFORM_REQ: ext-mongodb
+      YOPASS_TEST_MONGODB_URL: mongodb://127.0.0.1:27017
 
     steps:
       - name: Checkout code
@@ -267,7 +279,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: json, sodium
+          extensions: json, sodium, mongodb
           coverage: pcov
           tools: composer:v2
 

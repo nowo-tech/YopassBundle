@@ -33,6 +33,7 @@ use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareListRouteResolver;
 use Nowo\YopassBundle\Twig\YopassTwigExtension;
+use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
 use stdClass;
@@ -253,6 +254,8 @@ final class YopassExtensionTest extends TestCase
         self::assertSame('app.yopass.access', (string) $this->container->getAlias(YopassAccessCheckerInterface::class));
     }
 
+    /** The custom driver's access log on the application's manager triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testLoadUsesCustomRepositoryForCustomDriver(): void
     {
         $this->container->setDefinition('app.yopass.repository', new Definition(stdClass::class));
@@ -300,6 +303,8 @@ final class YopassExtensionTest extends TestCase
         ]], $this->container);
     }
 
+    /** The 1.x MongoDB default triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testLoadUsesCustomCollectionName(): void
     {
         $this->extension->load([[
@@ -334,6 +339,8 @@ final class YopassExtensionTest extends TestCase
         self::assertArrayHasKey('YopassBundle', $mongoConfigs[0]['document_managers']['default']['mappings']);
     }
 
+    /** The 1.x MongoDB default triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testLoadRegistersMongoRepositoryWhenPlatformIsMongo(): void
     {
         $this->extension->load([[
@@ -418,6 +425,8 @@ final class YopassExtensionTest extends TestCase
         self::assertSame([409, 5], $policy->getArguments());
     }
 
+    /** The 1.x MongoDB default triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
+    #[IgnoreDeprecations]
     public function testLegacyModeWriteUnitHasNoPrivateManagerAndMongoDbHasNoneAtAll(): void
     {
         $this->extension->load([['user_class' => 'App\\Entity\\User', 'database' => ['private_entity_manager' => false]]], $this->container);

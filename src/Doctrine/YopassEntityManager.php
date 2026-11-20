@@ -48,6 +48,12 @@ use function unserialize;
  */
 final class YopassEntityManager implements ResetInterface
 {
+    /** The bundle name the host-flush probe shows (1.22.0). */
+    public const BUNDLE_NAME = 'NowoYopassBundle';
+
+    /** The bundle's entity namespaces: never reported by the host-flush probe (1.22.0). */
+    public const OWN_NAMESPACES = ['Nowo\\YopassBundle\\Entity'];
+
     private ?EntityManagerInterface $entityManager = null;
 
     /** A rollback happened on the connection since the private manager was created (1.20.0). */

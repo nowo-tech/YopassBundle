@@ -12,6 +12,8 @@
 - [Standard Symfony host](#standard-symfony-host)
 - [Using it from a DDD / hexagonal application](#using-it-from-a-ddd--hexagonal-application)
   - [DDD host: the bundle's own entity manager](#ddd-host-the-bundles-own-entity-manager)
+  - [DDD host: the bundle's own document manager (MongoDB)](#ddd-host-the-bundles-own-document-manager-mongodb)
+  - [Preparing for 2.0](#preparing-for-20)
   - [DDD host: XML mapping](#ddd-host-xml-mapping)
 - [Twig overrides](#twig-overrides)
   - [Forms in templates (REQ-TWIG-005)](#forms-in-templates-req-twig-005)
@@ -276,12 +278,41 @@ id), so an event listener may relate it to its entities and flush. Shares return
 of work. The SQL filters enabled on `database.entity_manager` (with their parameters) are applied to the private
 manager on every call.
 
-This covers the Doctrine ORM driver only: the MongoDB driver still flushes `database.document_manager`, and with the
-custom driver your repository decides.
+This covers the Doctrine ORM driver. With the MongoDB driver, set `database.private_document_manager: true` (1.22,
+opt-in in 1.x and the only mode in 2.0) to get the same guarantees from a private document manager built on
+`database.document_manager`: see [DDD host: the bundle's own document manager](#ddd-host-the-bundles-own-document-manager-mongodb).
+With the custom driver your repository decides.
 
 `database.private_entity_manager: false` restores the pre-1.19 behaviour (the bundle flushes
-`database.entity_manager`); it is deprecated and removed in 2.0. With `database.driver: custom` your repository decides,
-and the bundle's ORM access log then keeps using `database.entity_manager` (the shares come from your repository).
+`database.entity_manager`); it is deprecated and removed in 2.0. Since 1.22 each such flush reports every entity class
+of yours it writes (the host-flush probe, see [UPGRADING](UPGRADING.md#orm-host-mode-the-host-flush-probe)). With
+`database.driver: custom` your repository decides, and the bundle's ORM access log then keeps using
+`database.entity_manager` (the shares come from your repository): deprecated in 1.22 (a notice and the probe), written
+through the bundle's own entity manager on the same connection in 2.0.
+
+### DDD host: the bundle's own document manager (MongoDB)
+
+Since **1.22**, `database.private_document_manager: true` (default `false` in 1.x) makes the `doctrine_mongodb` driver
+read and write shares through a **private** document manager built on the client, configuration and event manager of
+`database.document_manager`. The bundle then never flushes, clears, closes or resets your document manager:
+
+- your pending documents stay pending: a share write never writes them;
+- the shares stay in the same database and collection, and are never in your identity map;
+- the private manager is dropped at every outermost request, command and Messenger message boundary and at
+  `kernel.reset` (FrankenPHP worker mode without kernel reset), and replaced when closed;
+- its queries use your document manager's own BSON filter collection: the same filter instances, parameters and
+  property state as the default mode (nothing is copied).
+
+With the relation mapping, `SecureShare::getCreator()` is a reference **in the private manager**; the lifecycle events'
+`getCreator()` hands you the user of **your** document manager. Without the option, building the container triggers a
+deprecation notice; see [UPGRADING](UPGRADING.md#to-1220).
+
+### Preparing for 2.0
+
+2.0 contains only the deprecations already announced, and 1.x gets 6 months of security support after 2.0.0 (Moderate
+and higher backported). Clear the 1.22 notices first: the private document manager (MongoDB), no
+`private_entity_manager: false`, and a checker on `YopassAccessPolicyInterface`. See
+[UPGRADING](UPGRADING.md#preparing-for-20).
 
 ### DDD host: XML mapping
 

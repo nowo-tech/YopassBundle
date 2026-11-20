@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\DependencyInjection;
 
+use Nowo\TransactionDoctrine\HostFlushProbe;
 use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
 use Nowo\TransactionDoctrine\WriteUnit\CommitLedger;
 use Nowo\TransactionDoctrine\WriteUnit\Dbal\CommitTrackingMiddleware;
@@ -19,6 +20,7 @@ use Nowo\YopassBundle\Doctrine\PrivateEntityManagerMiddleware;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
 use Nowo\YopassBundle\Doctrine\ShareWriteUnit;
+use Nowo\YopassBundle\Doctrine\YopassDocumentManager;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Doctrine\YopassEntityManagerBoundarySubscriber;
 use Nowo\YopassBundle\EventListener\WasmCspListener;
@@ -79,6 +81,15 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
 
     /** 1.21.0: container parameter holding `database.entity_manager` for {@see YopassCommitTrackingPass}. */
     public const ENTITY_MANAGER_PARAMETER = 'nowo_yopass.conflict_response.entity_manager';
+
+    /** 1.22.0: transaction-doctrine's host-flush probe, registered in ORM host mode (`private_entity_manager: false`). */
+    public const HOST_FLUSH_PROBE = 'nowo_yopass.host_flush_probe';
+
+    /** 1.22.0: the boundary subscriber that empties {@see self::HOST_FLUSH_PROBE} at every outermost unit of work. */
+    public const HOST_FLUSH_PROBE_BOUNDARIES = 'nowo_yopass.host_flush_probe.boundaries';
+
+    /** 1.22.0: the boundary subscriber that drops the private document manager (MongoDB ODM opt-in). */
+    public const PRIVATE_DOCUMENT_MANAGER_BOUNDARIES = 'nowo_yopass.private_document_manager.boundaries';
 
     /**
      * Loads the bundle configuration and registers the bundle services.
@@ -170,7 +181,10 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 ->setArgument('$revokeRoles', $config['security']['roles']['revoke']));
         }
 
-        $container->setAlias(YopassAccessCheckerInterface::class, $accessCheckerId);
+        // 1.22.0: autowiring the deprecated interface reports it (it is removed in 2.0); the configured checker itself is
+        // reported by YopassAccessDecider when it implements only that interface (1.19.0).
+        $container->setAlias(YopassAccessCheckerInterface::class, $accessCheckerId)
+            ->setDeprecated('nowo-tech/yopass-bundle', '1.22.0', 'The "%alias_id%" service alias is deprecated: type-hint "Nowo\\YopassBundle\\Security\\YopassAccessPolicyInterface" instead. The interface and its alias are removed in 2.0.');
         $container->setAlias(YopassAccessPolicyInterface::class, $accessCheckerId);
 
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__ . '/../Resources/config'));
@@ -451,6 +465,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 ->setArgument('$managerName', $documentManagerName)
                 ->setArgument('$creators', new Reference(CreatorReferenceResolverInterface::class)));
             $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine_mongodb', $documentManagerName, $config['user_mapping']);
+            $this->registerPrivateDocumentManager($container, $database, $documentManagerName);
 
             $container->setDefinition(SecureShareDocumentMetadataListener::class, (new Definition(SecureShareDocumentMetadataListener::class))
                 ->setArgument('$collectionName', $collection)
@@ -480,6 +495,39 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             $entityManagerName,
             $container->hasDefinition(YopassEntityManager::class) ? new Reference(YopassEntityManager::class) : null,
         ]));
+    }
+
+    /**
+     * Rule 6 on the MongoDB ODM driver (1.22.0): with `database.private_document_manager: true` the shares are read and
+     * written through the bundle's own document manager ({@see YopassDocumentManager}), dropped at the outermost
+     * request / message / command boundaries and at `kernel.reset`, so the application's document manager is never
+     * flushed. Without it (the 1.x default) the bundle flushes `database.document_manager` itself: deprecated, the
+     * private manager is the only mode in 2.0.
+     *
+     * @param array<string, mixed> $database
+     */
+    private function registerPrivateDocumentManager(ContainerBuilder $container, array $database, string $documentManagerName): void
+    {
+        if (($database['private_document_manager'] ?? false) !== true) {
+            trigger_deprecation('nowo-tech/yopass-bundle', '1.22.0', 'The MongoDB ODM driver of nowo-tech/yopass-bundle flushes the application\'s document manager "%s" when it stores shares, which also writes any change the application left pending on it. In 2.0 the bundle always writes through its own document manager (same database and collection). Opt in now: set "nowo_yopass.database.private_document_manager: true".', $documentManagerName);
+
+            return;
+        }
+
+        $container->setDefinition(YopassDocumentManager::class, (new Definition(YopassDocumentManager::class))
+            ->setArgument('$registry', new Reference('doctrine_mongodb'))
+            ->setArgument('$documentManagerName', $documentManagerName)
+            ->setArgument('$logger', new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE))
+            ->addTag('kernel.reset', ['method' => 'reset']));
+        $container->setDefinition(self::PRIVATE_DOCUMENT_MANAGER_BOUNDARIES, (new Definition(YopassEntityManagerBoundarySubscriber::class))
+            ->setArgument('$entityManager', new Reference(YopassDocumentManager::class))
+            ->setArgument('$requestStack', new Reference('request_stack', ContainerInterface::IGNORE_ON_INVALID_REFERENCE))
+            ->addTag('kernel.event_subscriber'));
+
+        $ownManager = new Reference(YopassDocumentManager::class);
+        $container->getDefinition(DoctrineMongoShareRepository::class)->setArgument('$ownManager', $ownManager);
+        $container->getDefinition(DoctrineCreatorReferenceResolver::class)->setArgument('$ownManager', $ownManager);
+        $container->setDefinition(HostCreatorReference::class, new Definition(HostCreatorReference::class, [$ownManager]));
     }
 
     /**
@@ -584,6 +632,27 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
             $container->setDefinition(HostCreatorReference::class, new Definition(HostCreatorReference::class, [$ownManager]));
             $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$ownManager', $ownManager);
         }
+        $hostFlushProbe = null;
+        if (!$ownManager instanceof Reference) {
+            // 1.22.0 (REQ-ARCH-001 rule 6 deprecation layer): without the private manager (`private_entity_manager:
+            // false`, or the custom driver's access log, audit XC-L2) the bundle flushes the application's manager; the
+            // probe reports each foreign entity class with pending work once per unit of work. Read-only. Its per-unit
+            // state is emptied at the outermost request / message / command boundaries and at kernel.reset.
+            $container->setDefinition(self::HOST_FLUSH_PROBE, (new Definition(HostFlushProbe::class))
+                ->addTag('kernel.reset', ['method' => 'reset']));
+            $container->setDefinition(self::HOST_FLUSH_PROBE_BOUNDARIES, (new Definition(YopassEntityManagerBoundarySubscriber::class))
+                ->setArgument('$entityManager', new Reference(self::HOST_FLUSH_PROBE))
+                ->setArgument('$requestStack', new Reference('request_stack', ContainerInterface::IGNORE_ON_INVALID_REFERENCE))
+                ->addTag('kernel.event_subscriber'));
+            $hostFlushProbe = new Reference(self::HOST_FLUSH_PROBE);
+            $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$hostFlushProbe', $hostFlushProbe);
+        }
+
+        $accessLogRepository = $config['access_log']['repository'] ?? null;
+        if ($accessLogEnabled && DatabaseDriver::resolveDriver((string) $database['driver'], (string) $database['platform']) === DatabaseDriver::CUSTOM
+            && (!is_string($accessLogRepository) || $accessLogRepository === '')) {
+            trigger_deprecation('nowo-tech/yopass-bundle', '1.22.0', 'With "nowo_yopass.database.driver: custom" on a relational platform, nowo-tech/yopass-bundle writes its access log through the application\'s entity manager "%s" and flushes it, which also writes any change the application left pending on it. In 2.0 the access log is written through the bundle\'s own entity manager on the same connection. To stop the bundle flushing your manager now, set "nowo_yopass.access_log.repository" to your own ShareAccessLogRepositoryInterface service, or "nowo_yopass.access_log.enabled: false".', $entityManagerName);
+        }
 
         $container->setDefinition(SecureShareMetadataListener::class, (new Definition(SecureShareMetadataListener::class))
             ->setArgument('$tableName', $storageName)
@@ -600,7 +669,8 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
                 ->setArgument('$entityManager', new Reference(sprintf('doctrine.orm.%s_entity_manager', $entityManagerName)))
                 ->setArgument('$registry', new Reference('doctrine'))
                 ->setArgument('$managerName', $entityManagerName)
-                ->setArgument('$ownManager', $ownManager));
+                ->setArgument('$ownManager', $ownManager)
+                ->setArgument('$hostFlushProbe', $hostFlushProbe));
             $container->setAlias(ShareAccessLogRepositoryInterface::class, DoctrineOrmShareAccessLogRepository::class);
         } else {
             $this->registerNullAccessLogRepository($container);
