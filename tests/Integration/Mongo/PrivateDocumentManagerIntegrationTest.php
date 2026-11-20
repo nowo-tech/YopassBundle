@@ -11,6 +11,7 @@ use Doctrine\ODM\MongoDB\DocumentManager;
 use Doctrine\ODM\MongoDB\Events;
 use Doctrine\ODM\MongoDB\Mapping\Driver\AttributeDriver;
 use Doctrine\Persistence\ManagerRegistry;
+use LogicException;
 use MongoDB\Client;
 use MongoDB\Collection;
 use Nowo\YopassBundle\Creator\CreatorClassPolicy;
@@ -19,6 +20,7 @@ use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Doctrine\YopassDocumentManager;
 use Nowo\YopassBundle\Doctrine\YopassEntityManagerBoundarySubscriber;
+use Nowo\YopassBundle\Doctrine\YopassPrivateDocumentManager;
 use Nowo\YopassBundle\Document\SecureShareDocument;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
@@ -28,9 +30,13 @@ use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use Nowo\YopassBundle\Tests\Support\Odm\MongoUser;
+use Nowo\YopassBundle\Tests\Support\Odm\PropertyTenantBsonFilter;
 use Nowo\YopassBundle\Tests\Support\Odm\TenantBsonFilter;
+use Nowo\YopassBundle\Tests\Support\Odm\ThrowingClearListener;
 use Nowo\YopassBundle\Tests\Support\SecretCapturingLogger;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -44,6 +50,7 @@ use function bin2hex;
 use function dirname;
 use function extension_loaded;
 use function getenv;
+use function is_array;
 use function is_dir;
 use function is_string;
 use function mkdir;
@@ -207,20 +214,140 @@ final class PrivateDocumentManagerIntegrationTest extends TestCase
         self::assertTrue($this->host->isOpen());
     }
 
-    public function testTheApplicationsFiltersAreMirroredOnEveryCall(): void
+    /**
+     * @return iterable<string, array{bool, string}>
+     */
+    public static function scopedModes(): iterable
     {
-        $this->host->getConfiguration()->addFilter('yopass_test_tenant', TenantBsonFilter::class);
-        $this->host->getFilterCollection()->enable('yopass_test_tenant')->setParameter('creator', 'user-private-1');
-        $private = $this->own->get();
+        foreach (['parameter' => 'parameter', 'property' => 'property'] as $label => $filter) {
+            yield 'default mode, ' . $label . ' filter' => [false, $filter];
+            yield 'private mode, ' . $label . ' filter' => [true, $filter];
+        }
+    }
 
-        self::assertTrue($private->getFilterCollection()->isEnabled('yopass_test_tenant'));
-        self::assertSame('user-private-1', $private->getFilterCollection()->getFilter('yopass_test_tenant')->getParameter('creator'));
+    /**
+     * Audit XC-M1: a tenant filter the application enabled scopes every share query of the private manager exactly as
+     * in the default mode, for a filter that keeps its tenant in a parameter AND for one that keeps it in a property
+     * (set through a setter: ODM filters cannot use DI). Another tenant's share is never found, never consumed (its
+     * reads are untouched) and never removed; the application switching the tenant applies at once.
+     */
+    #[DataProvider('scopedModes')]
+    public function testTheApplicationsTenantFilterScopesFindConsumeAndRemove(bool $private, string $filter): void
+    {
+        foreach (['tenant-a', 'tenant-b'] as $tenant) {
+            $this->host->persist(new MongoUser($tenant));
+        }
+        $this->host->flush();
+        $unfiltered = new DoctrineMongoShareRepository($this->host);
+        $ids        = ['tenant-a' => '00000000-0000-4000-8000-0000000000a1', 'tenant-b' => '00000000-0000-4000-8000-0000000000b1'];
+        foreach ($ids as $tenant => $id) {
+            $share = new SecureShare($id, $this->host->find(MongoUser::class, $tenant) ?? throw new LogicException($tenant));
+            $unfiltered->persist($share->setCiphertext('cipher-' . $tenant)->setExpiresAt(new DateTimeImmutable('+1 day'))->setMaxReads(3));
+        }
+        $unfiltered->flush();
+        $this->host->clear();
 
-        $this->host->getFilterCollection()->getFilter('yopass_test_tenant')->setParameter('creator', 'user-private-2');
-        self::assertSame('user-private-2', $this->own->get()->getFilterCollection()->getFilter('yopass_test_tenant')->getParameter('creator'));
+        $class = $filter === 'parameter' ? TenantBsonFilter::class : PropertyTenantBsonFilter::class;
+        $this->host->getConfiguration()->addFilter('yopass_test_tenant', $class);
+        $this->tenant('tenant-a');
 
-        $this->host->getFilterCollection()->disable('yopass_test_tenant');
-        self::assertFalse($this->own->get()->getFilterCollection()->isEnabled('yopass_test_tenant'));
+        $registry = $this->createStub(ManagerRegistry::class);
+        $registry->method('getManager')->willReturnCallback(fn (): DocumentManager => $this->host);
+        $own        = $private ? new YopassDocumentManager($registry, 'default') : null;
+        $repository = new DoctrineMongoShareRepository($this->host, null, $registry, 'default', null, $own);
+
+        self::assertSame('cipher-tenant-a', $repository->find($ids['tenant-a'])?->getCiphertext());
+        self::assertNull($repository->find($ids['tenant-b']), 'another tenant\'s share is never found');
+        self::assertNull($repository->consumeReadIfAvailable($ids['tenant-b']), 'another tenant\'s share is never burned');
+        self::assertSame(3, $this->stored($ids['tenant-b'])['readsLeft']);
+        self::assertSame(2, $repository->consumeReadIfAvailable($ids['tenant-a'])?->getReadsLeft());
+
+        // The application switches the tenant (same filter instance): applied at once, no stale copy.
+        // (A share already in the identity map is served by find() in both modes, as ODM does; queries are filtered.)
+        $this->tenant('tenant-b');
+        self::assertNull($repository->consumeReadIfAvailable($ids['tenant-a']));
+        self::assertSame(2, $this->stored($ids['tenant-a'])['readsLeft'] ?? null);
+        self::assertSame('cipher-tenant-b', $repository->find($ids['tenant-b'])?->getCiphertext());
+
+        // A purge only removes the current tenant's shares.
+        $this->tenant('tenant-a');
+        self::assertSame(1, $repository->removeOlderThan(new DateTimeImmutable('+1 hour')));
+        $repository->flush();
+        self::assertNull($this->stored($ids['tenant-a']));
+        self::assertNotNull($this->stored($ids['tenant-b']), 'another tenant\'s share is never removed');
+    }
+
+    public function testReferencesPendingCountAndClearNeverTouchTheApplicationsManager(): void
+    {
+        self::assertSame(0, $this->own->pendingCount());
+        $reference = $this->own->reference($this->creator, MongoUser::class);
+        self::assertNotSame($this->creator, $reference);
+        self::assertSame($reference, $this->own->reference($reference, MongoUser::class), 'already managed by the private manager');
+        $other = new MongoUser('user-unknown');
+        self::assertSame($other, $this->own->forHost($other), 'not a private-manager creator: unchanged');
+        self::assertSame($this->creator, $this->own->forHost($reference));
+
+        $this->repository->persist($this->newShare('00000000-0000-4000-8000-0000000000e7'));
+        self::assertSame(1, $this->own->pendingCount());
+        $this->own->clear();
+        self::assertSame(0, $this->own->pendingCount());
+        self::assertSame(0, $this->collection('yopass_secure_shares')->countDocuments());
+        self::assertTrue($this->host->contains($this->creator));
+    }
+
+    public function testAFailingClearOfAReplacedOrDroppedPrivateManagerIsLoggedAndNeverEscapes(): void
+    {
+        $logger   = new SecretCapturingLogger();
+        $source   = $this->host;
+        $registry = $this->createStub(ManagerRegistry::class);
+        $registry->method('getManager')->willReturnCallback(static function () use (&$source): DocumentManager {
+            return $source;
+        });
+        $own   = new YopassDocumentManager($registry, 'default', $logger);
+        $first = $own->get();
+
+        // A listener of the shared event manager throws on clear (the application's code, not the bundle's).
+        $this->host->getEventManager()->addEventListener(Events::onClear, new ThrowingClearListener());
+        $source = $this->createDocumentManager();
+        $source->getEventManager()->addEventListener(Events::onClear, new ThrowingClearListener());
+        $second = $own->get();
+        self::assertNotSame($first, $second, 'a replaced source manager gets a new private manager');
+        $own->reset();
+        self::assertFalse($own->isCreated());
+
+        self::assertSame([
+            ['level' => 'warning', 'message' => 'Could not clear the replaced Yopass document manager.', 'context' => ['exception' => RuntimeException::class]],
+            ['level' => 'warning', 'message' => 'Could not clear the dropped Yopass document manager at a unit-of-work boundary.', 'context' => ['exception' => RuntimeException::class]],
+        ], $logger->records);
+    }
+
+    public function testThePrivateManagerHasNoFiltersOfItsOwn(): void
+    {
+        $private = YopassPrivateDocumentManager::create($this->client, $this->host->getConfiguration());
+
+        $this->expectExceptionObject(new LogicException('nowo_yopass: the private document manager has no source manager for its filters.'));
+        $private->getFilterCollection();
+    }
+
+    private function tenant(string $tenant): void
+    {
+        $filters = $this->host->getFilterCollection();
+        $filter  = $filters->isEnabled('yopass_test_tenant') ? $filters->getFilter('yopass_test_tenant') : $filters->enable('yopass_test_tenant');
+        if ($filter instanceof PropertyTenantBsonFilter) {
+            $filter->setTenant($tenant);
+        } else {
+            $filter->setParameter('tenant', $tenant);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function stored(string $id): ?array
+    {
+        $document = $this->collection('yopass_secure_shares')->findOne(['_id' => $id], ['typeMap' => ['root' => 'array', 'document' => 'array']]);
+
+        return is_array($document) ? $document : null;
     }
 
     private function resolver(ManagerRegistry $registry, ?YopassDocumentManager $own = null): DoctrineCreatorReferenceResolver

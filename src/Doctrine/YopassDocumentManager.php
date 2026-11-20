@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Doctrine;
 
-use Closure;
 use Doctrine\ODM\MongoDB\DocumentManager;
-use Doctrine\ODM\MongoDB\Query\Filter\BsonFilter;
 use Doctrine\ODM\MongoDB\Repository\DefaultRepositoryFactory;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
@@ -14,7 +12,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Service\ResetInterface;
 use Throwable;
 
-use function array_keys;
 use function count;
 use function sprintf;
 
@@ -25,18 +22,22 @@ use function sprintf;
  * The bundle then never flushes, clears, closes or resets a document manager of the application. Shares are read and
  * written through a **private** document manager created on the client (same server, same database and collection),
  * configuration (mapping, metadata cache, proxies and hydrators; its own repository factory) and event manager of
- * `nowo_yopass.database.document_manager` (`default`). Its unit of work holds only bundle documents, so a share write
+ * `nowo_yopass.database.document_manager` (`default`). Its BSON filters are the application's own filter collection
+ * ({@see YopassPrivateDocumentManager}, audit XC-M1): the same filter instances, parameters and state, never a copy. Its unit of work holds only bundle documents, so a share write
  * never writes a change the application left pending, and the application's identity map never holds a share.
  *
  * The same lifecycle as the ORM private manager ({@see YopassEntityManager}), worker-safe without `kernel.reset`
  * (REQ-RUNTIME-002 rule 4). The private manager is replaced on the next call when it was closed or the source
- * manager's client changed, and dropped by {@see reset()} at every OUTERMOST unit-of-work boundary
+ * manager changed (a registry reset), and dropped by {@see reset()} at every OUTERMOST unit-of-work boundary
  * ({@see YopassEntityManagerBoundarySubscriber}: main request, Messenger message, outermost console command) and at
  * `kernel.reset`. Unflushed bundle work is discarded and logged as a warning (a count, never a value).
  */
 final class YopassDocumentManager implements ResetInterface
 {
-    private ?DocumentManager $documentManager = null;
+    private ?YopassPrivateDocumentManager $documentManager = null;
+
+    /** The application's manager the private one was created on (a replaced source gets a new private manager). */
+    private ?DocumentManager $source = null;
 
     /**
      * @param ManagerRegistry $registry Doctrine MongoDB registry (`doctrine_mongodb`; the source manager is resolved per call)
@@ -53,24 +54,32 @@ final class YopassDocumentManager implements ResetInterface
     /**
      * The open private document manager, created (again) when needed.
      */
-    public function get(): DocumentManager
+    public function get(): YopassPrivateDocumentManager
     {
         $source  = $this->source();
         $current = $this->documentManager;
-        if (!$current instanceof DocumentManager || !$current->isOpen() || $current->getClient() !== $source->getClient()) {
+        if (!$current instanceof YopassPrivateDocumentManager || !$current->isOpen() || $this->source !== $source) {
             $this->clearQuietly($current);
 
-            // Same mapping, caches, proxies and hydrators, but a repository factory owned by this manager: the shared
-            // factories (DoctrineMongoDBBundle's ContainerRepositoryFactory, ODM's DefaultRepositoryFactory) keep one
-            // repository per manager instance for the life of the process, so every replaced private manager would
+            // Same client, mapping, caches, proxies and hydrators, but a repository factory owned by this manager: the
+            // shared factories (DoctrineMongoDBBundle's ContainerRepositoryFactory, ODM's DefaultRepositoryFactory) keep
+            // one repository per manager instance for the life of the process, so every replaced private manager would
             // stay in memory in a worker.
             $configuration = clone $source->getConfiguration();
             $configuration->setRepositoryFactory(new DefaultRepositoryFactory());
 
-            // @igor-ignore - Bundle-owned unit of work: dropped at every outermost boundary, replaced when closed or on another client.
-            $current = $this->documentManager = DocumentManager::create($source->getClient(), $configuration, $source->getEventManager());
+            // @igor-ignore - Bundle-owned unit of work: dropped at every outermost boundary, replaced when closed or when the source manager changed.
+            $current = YopassPrivateDocumentManager::create($source->getClient(), $configuration, $source->getEventManager());
+            if (!$current instanceof YopassPrivateDocumentManager) {
+                throw new LogicException('nowo_yopass: could not create the private document manager.'); // @codeCoverageIgnore
+            }
+            // The application's own filter collection (audit XC-M1): never a copy. Set before the manager is used.
+            $current->useFiltersOf($source);
+            // @igor-ignore - Bundle-owned unit of work, see above.
+            $this->documentManager = $current;
+            // @igor-ignore - Bundle-owned reference, dropped with the private manager.
+            $this->source = $source;
         }
-        $this->syncFilters($source, $current);
 
         return $current;
     }
@@ -145,60 +154,6 @@ final class YopassDocumentManager implements ResetInterface
     }
 
     /**
-     * The BSON filters enabled on the source manager, with their parameters, are enabled on the private one (and the
-     * others disabled), on every call: the private manager is not configured by DoctrineMongoDBBundle, and the
-     * application may enable or change a filter per request (tenant, soft delete).
-     */
-    private function syncFilters(DocumentManager $source, DocumentManager $target): void
-    {
-        $wanted  = $source->getFilterCollection()->getEnabledFilters();
-        $filters = $target->getFilterCollection();
-        foreach (array_keys($filters->getEnabledFilters()) as $name) {
-            if (!isset($wanted[$name])) {
-                $filters->disable($name);
-            }
-        }
-
-        $read = $this->parameterReader();
-        foreach ($wanted as $name => $filter) {
-            $parameters = $read($filter);
-            // A filter registered on the source after this manager was created (or again with another class) is
-            // registered on the copy too.
-            if ($target->getConfiguration()->getFilterClassName($name) !== $filter::class) {
-                if ($filters->isEnabled($name)) {
-                    $filters->disable($name);
-                }
-                $target->getConfiguration()->addFilter($name, $filter::class);
-            }
-            if ($filters->isEnabled($name)) {
-                $copy = $filters->getFilter($name);
-                if ($copy::class === $filter::class && $read($copy) === $parameters) {
-                    continue;
-                }
-                // A fresh instance: a parameter the source no longer has (a previous tenant) must not survive.
-                $filters->disable($name);
-            }
-            $copy = $filters->enable($name);
-            foreach ($parameters as $parameter => $value) {
-                $copy->setParameter($parameter, $value);
-            }
-        }
-    }
-
-    /**
-     * Reads a BSON filter's parameters (ODM offers getParameter() by name only).
-     *
-     * @return Closure(BsonFilter): array<string, mixed>
-     */
-    private function parameterReader(): Closure
-    {
-        /** @var Closure(BsonFilter): array<string, mixed> $reader */
-        $reader = Closure::bind(static fn (BsonFilter $filter): array => $filter->parameters, null, BsonFilter::class);
-
-        return $reader;
-    }
-
-    /**
      * Detaches every document from the private manager. Never touches an application manager and never creates the
      * private one.
      */
@@ -218,6 +173,8 @@ final class YopassDocumentManager implements ResetInterface
         $dropped = $this->documentManager;
         // @igor-ignore - Boundary drop of the bundle's own manager (no state kept).
         $this->documentManager = null;
+        // @igor-ignore - Boundary drop of the bundle's own manager (no state kept).
+        $this->source = null;
         if (!$dropped instanceof DocumentManager || !$dropped->isOpen()) {
             return;
         }
