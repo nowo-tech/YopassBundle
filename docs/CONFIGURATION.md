@@ -54,6 +54,7 @@ Configure which connection and persistence backend store encrypted shares.
 | `database.private_entity_manager` | `true` | Since 1.19, `doctrine_orm` driver: shares and the access log go through the bundle's own entity manager built on `entity_manager` (same connection and tables), so your pending changes are never flushed by a share write (REQ-ARCH-001 rule 6). `false` = pre-1.19 behaviour, deprecated, removed in 2.0. Since 1.20 the private manager is dropped at the outermost request / message / command boundaries only, and (doctrine/dbal 4) replaced after a rollback on its connection; with doctrine/dbal 3 it runs without that rollback middleware. See [USAGE](USAGE.md#ddd-host-the-bundles-own-entity-manager). |
 | `database.mapping` | `attribute` | Since 1.19: `attribute` or `xml` (the bundle's XML mapping, for hosts that map by XML only). Same tables and columns. See [USAGE](USAGE.md#ddd-host-xml-mapping). |
 | `database.document_manager` | `default` | Doctrine MongoDB document manager when using MongoDB. |
+| `database.private_document_manager` | `false` | Since 1.22, `doctrine_mongodb` driver: `true` reads and writes shares through the bundle's own document manager built on `document_manager` (same client, database and collection), so your pending changes are never flushed by a share write (REQ-ARCH-001 rule 6). It is dropped at the outermost request / message / command boundaries and replaced when closed. `false` (the 1.x default) flushes `document_manager` itself and triggers a deprecation notice when the container is built: in 2.0 the private document manager is the only mode. See [UPGRADING](UPGRADING.md#to-1220). |
 | `database.collection` | `null` | MongoDB collection override (defaults to `{table_prefix}secure_shares`). |
 | `database.repository` | `null` | Custom service id implementing `ShareRepositoryInterface` when `driver: custom`. |
 
@@ -116,6 +117,8 @@ nowo_yopass:
         connection: default
         document_manager: default
         collection: yopass_secure_shares
+        # 1.22: write through the bundle's own document manager (the only mode in 2.0)
+        private_document_manager: true
 ```
 
 ### Custom backends (Redis, Couchbase, etc.)

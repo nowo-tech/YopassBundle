@@ -3,6 +3,11 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 1.22.0](#to-1220)
+  - [MongoDB: the bundle's own document manager (opt-in)](#mongodb-the-bundles-own-document-manager-opt-in)
+  - [ORM host mode: the host-flush probe](#orm-host-mode-the-host-flush-probe)
+  - [`YopassAccessCheckerInterface` alias](#yopassaccesscheckerinterface-alias)
+  - [Preparing for 2.0](#preparing-for-20)
 - [To 1.21.1](#to-1211)
 - [To 1.21.0](#to-1210)
 - [To 1.20.5](#to-1205)
@@ -110,6 +115,87 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.22.0
+
+From **1.21.1**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
+
+Minor release, the last 1.x minor before 2.0. Nothing changes until you opt in: no schema change, no data migration,
+and nothing about how secrets are encrypted, stored, read or burned. It requires `nowo-tech/transaction-doctrine`
+`^1.9` (Composer updates it with the bundle).
+
+### MongoDB: the bundle's own document manager (opt-in)
+
+With `database.driver: doctrine_mongodb`, the bundle has so far written shares through `database.document_manager`
+and flushed it, so a share write also wrote any change your application had left pending on that manager. 2.0 always
+writes through a private document manager. 1.22.0 adds it as an opt-in, and building the container without it
+triggers this notice:
+
+> Since nowo-tech/yopass-bundle 1.22.0: The MongoDB ODM driver of nowo-tech/yopass-bundle flushes the application's
+> document manager "default" when it stores shares, which also writes any change the application left pending on it.
+> In 2.0 the bundle always writes through its own document manager (same database and collection). Opt in now: set
+> "nowo_yopass.database.private_document_manager: true".
+
+Opt in:
+
+```yaml
+nowo_yopass:
+    database:
+        driver: doctrine_mongodb
+        platform: mongodb
+        private_document_manager: true
+```
+
+What changes when you opt in:
+
+- the shares stay in the same database and collection: nothing to migrate;
+- a share write no longer writes your pending documents. If your code relied on that, flush your document manager
+  yourself. The ORM driver made the same change in 1.19.0;
+- shares are no longer in your document manager's identity map;
+- **relation mapping:** `SecureShare::getCreator()` on a share the bundle loaded returns a reference in the bundle's
+  manager. Read it, or use `getCreatorId()`, but do not relate it to your own documents. The lifecycle events'
+  `getCreator()` returns the user in **your** document manager;
+- the BSON filters enabled on your document manager, with their parameters, also apply to share reads, as before;
+- the private manager is dropped at the end of every request, Messenger message and console command, so nothing
+  survives between requests in a FrankenPHP worker with kernel reset off.
+
+### ORM host mode: the host-flush probe
+
+With `database.private_entity_manager: false` (deprecated since 1.19.0, which already triggers a notice), the bundle
+flushes your entity manager. From 1.22.0, right before each of those flushes, every entity class of yours with
+pending work triggers one notice per class per request, message or command:
+
+> Your pending changes to App\Entity\Invoice were flushed by NowoYopassBundle; 2.0 no longer does.
+
+Read your deprecation log as a migration list: each class it names is a change your code leaves pending and that a
+share write currently saves for you. Add your own `flush()` after that code, then remove
+`private_entity_manager: false`. The probe only reads the unit of work; the flush itself is unchanged. With the private
+entity manager (the default) nothing is reported, because your manager is never flushed.
+
+### `YopassAccessCheckerInterface` alias
+
+Autowiring `YopassAccessCheckerInterface` now triggers a notice. Type-hint `YopassAccessPolicyInterface` instead. A
+checker that implements only the old interface still triggers its 1.19.0 notice, which now also says the interface is
+removed in 2.0. See [To 1.19.0](#to-1190) for the method mapping.
+
+### Preparing for 2.0
+
+2.0 contains only the deprecations already announced. Clear every notice above on 1.22 first, and 2.0 is a drop-in
+update:
+
+| 1.x | 2.0 |
+|---|---|
+| `database.private_document_manager: false` (MongoDB) | removed: the private document manager is the only mode |
+| `database.private_entity_manager: false` (ORM) | removed: the private entity manager is the only mode |
+| `Security\YopassAccessCheckerInterface` and its alias | removed: implement `Security\YopassAccessPolicyInterface` |
+| other APIs marked `@deprecated ... removed in 2.0` | removed |
+
+After 2.0.0 is tagged, the 1.x line gets security fixes for 6 months: Moderate and higher are backported to the last
+1.x minor; Low ones are fixed in 2.x only.
 
 ## To 1.21.1
 

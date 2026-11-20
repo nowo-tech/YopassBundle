@@ -68,6 +68,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **MongoDB ODM: the bundle's own document manager (opt-in, REQ-ARCH-001 rule 6).**
+  `database.private_document_manager: true` reads and writes shares through a private document manager built on
+  `database.document_manager` (same client, database and collection; its mapping, metadata cache, proxies, hydrators
+  and event manager; its own repository factory; the BSON filters enabled on your manager, with their parameters,
+  mirrored on every call). A share write then never writes a change you left pending on your document manager, and
+  the bundle never flushes, clears, closes or resets it. The private manager follows the lifecycle of the ORM one: one
+  per unit of work, dropped at the outermost request, Messenger message and console command boundaries and at
+  `kernel.reset` (FrankenPHP worker mode with kernel reset off included; discarded unflushed changes are logged as a
+  count), replaced when closed. The creator is referenced in the private manager, and the lifecycle events still hand
+  you the user of **your** document manager. Default `false` in 1.x; the only mode in 2.0.
+- **Host-flush probe (ORM host mode).** With `database.private_entity_manager: false`, right before the bundle
+  flushes your entity manager, transaction-doctrine's `HostFlushProbe` reports every entity class of yours with
+  pending work: one `E_USER_DEPRECATED` per class per unit of work, "Your pending changes to App\X were flushed by
+  NowoYopassBundle; 2.0 no longer does." Read-only; reset at every outermost boundary and at `kernel.reset`. Not
+  registered with the private entity manager (the default), the MongoDB driver or the custom driver.
+- Requires `nowo-tech/transaction-doctrine` `^1.9` (was `^1.8.1`).
+
+### Deprecated
+
+- **MongoDB ODM driver without `database.private_document_manager: true`:** the bundle flushes your document manager
+  when it stores shares. A notice is triggered when the container is built; set the option to `true` now. In 2.0 the
+  option is the only mode.
+- **The `YopassAccessCheckerInterface` service alias:** autowiring it now triggers a deprecation notice; type-hint
+  `YopassAccessPolicyInterface`. The interface (deprecated since 1.19.0) and its alias are removed in 2.0. The notice of
+  a checker implementing only that interface now says so.
+
 ## [1.21.1] - 2026-11-20
 
 ### Changed
