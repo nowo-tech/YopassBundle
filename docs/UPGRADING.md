@@ -4,6 +4,7 @@
 
 - [Unreleased](#unreleased)
 - [To 1.22.0](#to-1220)
+- [To 1.22.0](#to-1220-1)
   - [MongoDB: the bundle's own document manager (opt-in)](#mongodb-the-bundles-own-document-manager-opt-in)
   - [ORM host mode: the host-flush probe](#orm-host-mode-the-host-flush-probe)
   - [`YopassAccessCheckerInterface` alias](#yopassaccesscheckerinterface-alias)
@@ -115,6 +116,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 1.22.0
+
+From **1.21.1**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ## To 1.22.0
 

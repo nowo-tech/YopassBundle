@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[1.22.0] - 2026-11-20](#1220---2026-11-20)
 - [[1.21.1] - 2026-11-20](#1211---2026-11-20)
 - [[1.21.0] - 2026-11-19](#1210---2026-11-19)
 - [[1.20.5] - 2026-11-13](#1205---2026-11-13)
@@ -68,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.22.0] - 2026-11-20
+
 ### Added
 
 - **MongoDB ODM: the bundle's own document manager (opt-in, REQ-ARCH-001 rule 6).**
@@ -100,6 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The `YopassAccessCheckerInterface` service alias:** autowiring it now triggers a deprecation notice; type-hint
   `YopassAccessPolicyInterface`. The interface (deprecated since 1.19.0) and its alias are removed in 2.0. The notice of
   a checker implementing only that interface now says so.
+
+[1.22.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v1.22.0
 
 ## [1.21.1] - 2026-11-20
 
@@ -1228,7 +1233,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.21.1...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.22.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
