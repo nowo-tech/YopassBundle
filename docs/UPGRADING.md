@@ -159,7 +159,9 @@ What changes when you opt in:
 - **relation mapping:** `SecureShare::getCreator()` on a share the bundle loaded returns a reference in the bundle's
   manager. Read it, or use `getCreatorId()`, but do not relate it to your own documents. The lifecycle events'
   `getCreator()` returns the user in **your** document manager;
-- the BSON filters enabled on your document manager, with their parameters, also apply to share reads, as before;
+- share queries (find, consume, removes) use your document manager's own filter collection: the same filter instances
+  you enabled, with their parameters and any state they keep in properties (a tenant set through a setter), exactly
+  as in the default mode;
 - the private manager is dropped at the end of every request, Messenger message and console command, so nothing
   survives between requests in a FrankenPHP worker with kernel reset off.
 
@@ -176,6 +178,20 @@ share write currently saves for you. Add your own `flush()` after that code, the
 `private_entity_manager: false`. The probe only reads the unit of work; the flush itself is unchanged. With the private
 entity manager (the default) nothing is reported, because your manager is never flushed.
 
+**Custom driver on a relational platform.** With `database.driver: custom`, your repository stores the shares, but the
+bundle's access log (`access_log.enabled`, no `access_log.repository`) is still written through `database.entity_manager`,
+which the bundle flushes. 1.22.0 runs the same probe before those flushes and triggers one notice when the container is
+built:
+
+> Since nowo-tech/yopass-bundle 1.22.0: With "nowo_yopass.database.driver: custom" on a relational platform,
+> nowo-tech/yopass-bundle writes its access log through the application's entity manager "default" and flushes it,
+> which also writes any change the application left pending on it. In 2.0 the access log is written through the
+> bundle's own entity manager on the same connection. To stop the bundle flushing your manager now, set
+> "nowo_yopass.access_log.repository" to your own ShareAccessLogRepositoryInterface service, or
+> "nowo_yopass.access_log.enabled: false".
+
+The rows stay in the same table on the same connection in 2.0; only the manager that writes them changes.
+
 ### `YopassAccessCheckerInterface` alias
 
 Autowiring `YopassAccessCheckerInterface` now triggers a notice. Type-hint `YopassAccessPolicyInterface` instead. A
@@ -191,6 +207,7 @@ update:
 |---|---|
 | `database.private_document_manager: false` (MongoDB) | removed: the private document manager is the only mode |
 | `database.private_entity_manager: false` (ORM) | removed: the private entity manager is the only mode |
+| custom driver: access log flushed through `database.entity_manager` | written through the bundle's own entity manager (same connection) |
 | `Security\YopassAccessCheckerInterface` and its alias | removed: implement `Security\YopassAccessPolicyInterface` |
 | other APIs marked `@deprecated ... removed in 2.0` | removed |
 

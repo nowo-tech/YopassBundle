@@ -287,7 +287,8 @@ With the custom driver your repository decides.
 `database.entity_manager`); it is deprecated and removed in 2.0. Since 1.22 each such flush reports every entity class
 of yours it writes (the host-flush probe, see [UPGRADING](UPGRADING.md#orm-host-mode-the-host-flush-probe)). With
 `database.driver: custom` your repository decides, and the bundle's ORM access log then keeps using
-`database.entity_manager` (the shares come from your repository).
+`database.entity_manager` (the shares come from your repository): deprecated in 1.22 (a notice and the probe), written
+through the bundle's own entity manager on the same connection in 2.0.
 
 ### DDD host: the bundle's own document manager (MongoDB)
 
@@ -299,7 +300,8 @@ read and write shares through a **private** document manager built on the client
 - the shares stay in the same database and collection, and are never in your identity map;
 - the private manager is dropped at every outermost request, command and Messenger message boundary and at
   `kernel.reset` (FrankenPHP worker mode without kernel reset), and replaced when closed;
-- the BSON filters enabled on your document manager (with their parameters) are applied to it on every call.
+- its queries use your document manager's own BSON filter collection: the same filter instances, parameters and
+  property state as the default mode (nothing is copied).
 
 With the relation mapping, `SecureShare::getCreator()` is a reference **in the private manager**; the lifecycle events'
 `getCreator()` hands you the user of **your** document manager. Without the option, building the container triggers a
