@@ -74,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `docs/CONCURRENCY.md`: the MongoDB residual risk now describes the real races (two concurrent `maxReads` raises from the same state both apply their delta; concurrent expiration extensions are last-write-wins) instead of a read given back by an extension, which cannot happen since `readsLeft` uses `$inc` (audit UH-YP-3).
+- Configuration tree split so the bundle compiles on PHP 8.3+ thread stacks of 512 KiB (FrankenPHP Alpine images): `Configuration::getConfigTreeBuilder()` was one fluent chain that needed more than 512 KiB of stack to compile ("Maximum call stack size ... reached during compilation"). It is now built by one private method per section, with the same builder calls in the same order, so the tree, its defaults, validation and reference dumps are unchanged. A test compiles the sources and builds the tree under a 512 KiB stack.
 
 ## [1.21.0] - 2026-11-19
 

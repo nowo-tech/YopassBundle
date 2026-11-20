@@ -11,6 +11,7 @@ use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\Support\RelativeInterval;
 use Nowo\YopassBundle\Ui\CssFramework;
 use Nowo\YopassBundle\Ui\IconSet;
+use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -47,7 +48,25 @@ final class Configuration implements ConfigurationInterface
             ->beforeNormalization()
                 ->ifArray()
                 ->then(static fn (array $config): array => self::mapDeprecatedRootKeys($config))
-            ->end()
+            ->end();
+        $this->addUserClassToAccessLogSections($root);
+        $this->addSecurityHeadersToDashboardRouteSections($root);
+        $this->addSharesSection($root);
+        $this->addSharingSection($root);
+        $this->addSecuritySection($root);
+        $this->addWebUiSection($root);
+        $this->addRoutesSection($root);
+        $this->addTemplatesToConflictResponseSections($root);
+
+        return $treeBuilder;
+    }
+
+    /**
+     * Adds the `user_class` to `access_log` settings.
+     */
+    private function addUserClassToAccessLogSections(ArrayNodeDefinition $rootNode): void
+    {
+        $rootNode
             ->children()
                 ->scalarNode('user_class')
                     ->info('FQCN of the application user entity (must implement UserInterface and expose getId()).')
@@ -143,6 +162,16 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
+            ->end();
+    }
+
+    /**
+     * Adds the `security_headers` to `dashboard_route` settings.
+     */
+    private function addSecurityHeadersToDashboardRouteSections(ArrayNodeDefinition $rootNode): void
+    {
+        $rootNode
+            ->children()
                 ->arrayNode('security_headers')
                     ->addDefaultsIfNotSet()
                     ->info('Hardening headers on every bundle route (Cache-Control no-store, Referrer-Policy no-referrer, X-Robots-Tag noindex, X-Frame-Options DENY, CSP frame-ancestors none).')
@@ -172,6 +201,16 @@ final class Configuration implements ConfigurationInterface
                     ->info('Optional route name for the back link in the manage UI. Null hides the button.')
                     ->defaultNull()
                 ->end()
+            ->end();
+    }
+
+    /**
+     * Adds the `shares` section.
+     */
+    private function addSharesSection(ArrayNodeDefinition $rootNode): void
+    {
+        $rootNode
+            ->children()
                 ->arrayNode('shares')
                     ->addDefaultsIfNotSet()
                     ->info('Default and allowed expiration / max-read options for new shares.')
@@ -258,6 +297,16 @@ final class Configuration implements ConfigurationInterface
                         ->thenInvalid('The "shares.default_max_reads" value must be listed in "shares.max_reads_options".')
                     ->end()
                 ->end()
+            ->end();
+    }
+
+    /**
+     * Adds the `sharing` section.
+     */
+    private function addSharingSection(ArrayNodeDefinition $rootNode): void
+    {
+        $rootNode
+            ->children()
                 ->arrayNode('sharing')
                     ->addDefaultsIfNotSet()
                     ->info('Default encryption and link-sharing options in the manage UI.')
@@ -285,6 +334,16 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
+            ->end();
+    }
+
+    /**
+     * Adds the `security` section.
+     */
+    private function addSecuritySection(ArrayNodeDefinition $rootNode): void
+    {
+        $rootNode
+            ->children()
                 ->arrayNode('security')
                     ->addDefaultsIfNotSet()
                     ->info('Access control. Replace access_checker with a custom service implementing YopassAccessPolicyInterface (or the deprecated YopassAccessCheckerInterface).')
@@ -354,6 +413,16 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
+            ->end();
+    }
+
+    /**
+     * Adds the `web_ui` section.
+     */
+    private function addWebUiSection(ArrayNodeDefinition $rootNode): void
+    {
+        $rootNode
+            ->children()
                 ->arrayNode('web_ui')
                     ->addDefaultsIfNotSet()
                     ->info('Web UI on the UiKit page contract (REQ-UI-001 / REQ-UI-003). The CSS stack, icon set and row-action display are inherited from nowo_ui_kit.')
@@ -415,81 +484,118 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
-                ->arrayNode('routes')
+            ->end();
+    }
+
+    /**
+     * Adds the `manage` to `public_show` settings.
+     */
+    private function addRoutesManageToPublicShowSections(ArrayNodeDefinition $routes): void
+    {
+        $routes
+            ->children()
+                ->arrayNode('manage')
                     ->addDefaultsIfNotSet()
                     ->children()
-                        ->arrayNode('manage')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/tools/yopass')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_index')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('create')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/tools/yopass/create')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_create')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('revoke')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/tools/yopass/{id}/revoke')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_revoke')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('delete')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/tools/yopass/{id}/delete')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_delete')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('delete_all')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/tools/yopass/delete-all')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_delete_all')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('preview')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/tools/yopass/{id}/preview')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_preview')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('extend')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/tools/yopass/{id}/extend')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_extend')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('created')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/tools/yopass/{id}/created')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_created')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('public_show')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/share/{id}')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_public_share')->end()
-                            ->end()
-                        ->end()
-                        ->arrayNode('public_consume')
-                            ->addDefaultsIfNotSet()
-                            ->children()
-                                ->scalarNode('path')->defaultValue('/share/{id}/consume')->end()
-                                ->scalarNode('name')->defaultValue('nowo_yopass_public_consume')->end()
-                            ->end()
-                        ->end()
+                        ->scalarNode('path')->defaultValue('/tools/yopass')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_index')->end()
                     ->end()
                 ->end()
+                ->arrayNode('create')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/tools/yopass/create')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_create')->end()
+                    ->end()
+                ->end()
+                ->arrayNode('revoke')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/tools/yopass/{id}/revoke')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_revoke')->end()
+                    ->end()
+                ->end()
+                ->arrayNode('delete')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/tools/yopass/{id}/delete')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_delete')->end()
+                    ->end()
+                ->end()
+                ->arrayNode('delete_all')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/tools/yopass/delete-all')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_delete_all')->end()
+                    ->end()
+                ->end()
+                ->arrayNode('preview')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/tools/yopass/{id}/preview')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_preview')->end()
+                    ->end()
+                ->end()
+                ->arrayNode('extend')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/tools/yopass/{id}/extend')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_extend')->end()
+                    ->end()
+                ->end()
+                ->arrayNode('created')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/tools/yopass/{id}/created')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_created')->end()
+                    ->end()
+                ->end()
+                ->arrayNode('public_show')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/share/{id}')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_public_share')->end()
+                    ->end()
+                ->end()
+            ->end();
+    }
+
+    /**
+     * Adds the `public_consume` section.
+     */
+    private function addRoutesPublicConsumeSection(ArrayNodeDefinition $routes): void
+    {
+        $routes
+            ->children()
+                ->arrayNode('public_consume')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('path')->defaultValue('/share/{id}/consume')->end()
+                        ->scalarNode('name')->defaultValue('nowo_yopass_public_consume')->end()
+                    ->end()
+                ->end()
+            ->end();
+    }
+
+    /**
+     * Adds the `routes` section; its large children have their own methods.
+     */
+    private function addRoutesSection(ArrayNodeDefinition $rootNode): void
+    {
+        $routes = $rootNode->children()->arrayNode('routes');
+        $routes
+            ->addDefaultsIfNotSet();
+        $this->addRoutesManageToPublicShowSections($routes);
+        $this->addRoutesPublicConsumeSection($routes);
+    }
+
+    /**
+     * Adds the `templates` to `conflict_response` settings.
+     */
+    private function addTemplatesToConflictResponseSections(ArrayNodeDefinition $rootNode): void
+    {
+        $rootNode
+            ->children()
                 ->arrayNode('templates')
                     ->addDefaultsIfNotSet()
                     ->info('Deprecated since 1.10: use web_ui.layout_template and web_ui.templates.<page>.')
@@ -555,8 +661,6 @@ final class Configuration implements ConfigurationInterface
                     ->end()
                 ->end()
             ->end();
-
-        return $treeBuilder;
     }
 
     /**
