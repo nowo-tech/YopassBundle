@@ -2,16 +2,8 @@
     asset package, no CSS framework, no CDN). The Yopass manage pages reach it through layouts/admin.html.twig. -#}
 {% extends '@NowoUiKit/layout/admin.html.twig' %}
 
-{% block nowo_ui_document_title %}{% block title %}Yopass Demo{% endblock %}{% endblock %}
+{% block nowo_ui_document_title %}{% block title %}Yopass Bundle demo{% endblock %} — Symfony 8{% endblock %}
 
 {% block nowo_ui_navigation %}{{ include('_masthead.html.twig') }}{% endblock %}
-
-{% block nowo_ui_flashes %}
-    {% for type, css in {success: 'success', error: 'error', warning: 'warning', info: 'info'} %}
-        {% for message in app.flashes(type) %}
-            <div class="nowo-ui-flash nowo-ui-flash--{{ css }}" role="{{ type == 'error' ? 'alert' : 'status' }}">{{ message }}</div>
-        {% endfor %}
-    {% endfor %}
-{% endblock %}
 
 {% block nowo_ui_content %}{% block body %}{% endblock %}{% endblock %}
