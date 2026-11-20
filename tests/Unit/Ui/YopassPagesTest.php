@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Tests\Unit\Ui;
 
+use LogicException;
 use Nowo\UiKitBundle\View\Label;
 use Nowo\YopassBundle\Ui\YopassPages;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Twig\Environment;
 use Twig\Loader\ArrayLoader;
@@ -42,7 +42,7 @@ final class YopassPagesTest extends TestCase
         self::assertNull((new YopassPages('', ''))->layout());
         self::assertNull((new YopassPages('', ''))->publicLayout());
         self::assertSame('guest.html.twig', (new YopassPages(publicLayoutTemplate: 'guest.html.twig'))->publicLayout());
-        self::assertSame(['page' => 1, 'nowo_yopass_legacy_layout' => null, 'nowo_yopass_legacy_blocks' => [], 'nowo_yopass_icons' => []], $pages->context(['page' => 1]));
+        self::assertSame(['page' => 1, 'nowo_yopass_icons' => []], $pages->context(['page' => 1]));
         $icons = ['create_tab_text' => 'tabler:file-text', 'create_tab_file' => null];
         self::assertSame($icons, (new YopassPages(icons: $icons))->context([])['nowo_yopass_icons']);
     }
@@ -53,7 +53,7 @@ final class YopassPagesTest extends TestCase
         $pages = new YopassPages('canonical.html.twig', twig: $twig);
 
         self::assertSame('canonical.html.twig', $pages->layout());
-        self::assertNull($pages->context([])['nowo_yopass_legacy_layout']);
+        self::assertArrayNotHasKey('nowo_yopass_legacy_layout', $pages->context([]));
     }
 
     public function testLayoutWithoutTwigOrUnknownTemplateIsUsedAsIs(): void
@@ -62,18 +62,20 @@ final class YopassPagesTest extends TestCase
         self::assertSame('missing.html.twig', (new YopassPages('missing.html.twig', twig: $this->twig([])))->layout());
     }
 
-    #[IgnoreDeprecations]
-    public function testLegacyLayoutIsWrappedInTheBridge(): void
+    /**
+     * 2.0: the 1.x layout bridge is removed; a layout without the UiKit canonical blocks fails clearly instead of
+     * rendering an empty page.
+     */
+    public function testLegacyLayoutFailsClearly(): void
     {
         $twig = $this->twig([
             'base.html.twig' => '{% block stylesheets %}{% block nowo_ui_styles %}{% endblock %}{% endblock %}{% block body %}{% endblock %}{% block javascripts %}{% endblock %}',
         ]);
         $pages = new YopassPages('base.html.twig', twig: $twig);
 
-        self::assertSame(YopassPages::LEGACY_BRIDGE, $pages->layout());
-        $context = $pages->context(['page' => 1]);
-        self::assertSame('base.html.twig', $context['nowo_yopass_legacy_layout']);
-        self::assertSame(['nowo_ui_styles'], $context['nowo_yopass_legacy_blocks']);
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('The layout "base.html.twig" (nowo_yopass.web_ui.layout_template) does not render the UiKit canonical blocks (nowo_ui_page_header, nowo_ui_content, ...). The 1.x layout bridge was removed in 2.0');
+        $pages->layout();
     }
 
     /**

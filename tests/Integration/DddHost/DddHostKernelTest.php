@@ -21,6 +21,7 @@ use Nowo\YopassBundle\Tests\Integration\DddHost\Domain\Ledger;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\Orm\GuardUser;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -101,11 +102,11 @@ final class DddHostKernelTest extends TestCase
         self::assertNotSame($em, $this->service($container, YopassEntityManager::class, YopassEntityManager::class)->get());
     }
 
-    public function testTheLegacySwitchKeepsTheHostManager(): void
+    public function testTheRemovedHostManagerSwitchFailsTheBuild(): void
     {
-        $container = $this->container(false, ['database' => ['platform' => 'sqlite', 'private_entity_manager' => false]]);
-
-        self::assertFalse($container->has(YopassEntityManager::class));
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('"false" is no longer supported since 2.0');
+        $this->container(false, ['database' => ['platform' => 'sqlite', 'private_entity_manager' => false]]);
     }
 
     public function testTheDddHostWritesThroughPortsWithoutTouchingItsUnitOfWork(): void
@@ -134,7 +135,6 @@ final class DddHostKernelTest extends TestCase
 
         $decider = $this->service($container, YopassAccessDecider::class, YopassAccessDecider::class);
         $policy  = $this->service($container, MemberSharePolicy::class, MemberSharePolicy::class);
-        self::assertTrue($decider->usesPolicy());
         self::assertTrue($decider->allows('create', null, $member));
         self::assertTrue($decider->allows('list', $member));
         self::assertFalse($decider->allows('revoke', $member));

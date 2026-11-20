@@ -8,7 +8,7 @@ namespace Nowo\YopassBundle\Doctrine;
  * The creator the lifecycle events expose with the bundle's own entity manager (1.19.0, audit MO-Y-L1).
  *
  * With the relation mapping, a share's creator is a reference in the bundle's private entity manager (or, with the
- * MongoDB ODM opt-in `database.private_document_manager: true` of 1.22.0, its private document manager). Events hand the
+ * MongoDB ODM driver, its private document manager, 1.22.0 opt-in and the only mode since 2.0). Events hand the
  * application the **same user in its own manager** instead: `getReference(user_class, id)` on
  * `database.entity_manager`, built lazily from the stored id (no query; the managed instance itself when the
  * application already loaded that user). A listener can therefore relate it to its own entities and flush. A creator
@@ -19,7 +19,7 @@ final readonly class HostCreatorReference
 {
     /**
      * @param YopassDocumentManager|YopassEntityManager $ownManager the private entity manager (ORM) or, since 1.22.0,
-     *                                                              the private document manager (MongoDB ODM opt-in)
+     *                                                              the private document manager (MongoDB ODM)
      */
     public function __construct(private YopassEntityManager|YopassDocumentManager $ownManager)
     {

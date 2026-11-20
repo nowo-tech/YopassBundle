@@ -13,7 +13,9 @@ use Doctrine\ORM\Events;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\ResolveTargetEntityListener;
 use Doctrine\ORM\Tools\SchemaTool;
+use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Doctrine\ShareWriteUnit;
+use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
@@ -177,7 +179,14 @@ final class OrmShareStateIntegrationTest extends TestCase
         $share->setCiphertext('cipher')->setExpiresAt(new DateTimeImmutable('+1 hour'))->setMaxReads(1);
         $this->repository->persist($share);
         $this->repository->flush();
-        $extender = new ShareExtender($this->repository, DefaultShareOptions::get(), null, null, null, new ShareWriteUnit($this->em));
+        // The bundle wiring: the repository and the write unit on the bundle's private manager (2.0: the only mode).
+        $registry = $this->createStub(ManagerRegistry::class);
+        $registry->method('getManager')->willReturn($this->em);
+        $own      = new YopassEntityManager($registry, 'default');
+        $shares   = new DoctrineOrmShareRepository($this->em, null, null, null, null, $own);
+        $extender = new ShareExtender($shares, DefaultShareOptions::get(), null, null, null, new ShareWriteUnit($own));
+        $share    = $shares->find(self::ID);
+        self::assertInstanceOf(SecureShare::class, $share);
 
         // Another worker stored a later expiration after this one loaded the share.
         $this->em->getConnection()->executeStatement('UPDATE yopass_secure_shares SET expires_at = ? WHERE id = ?', [(new DateTimeImmutable('+30 days'))->format('Y-m-d H:i:s'), self::ID]);
@@ -189,8 +198,8 @@ final class OrmShareStateIntegrationTest extends TestCase
         }
         self::assertSame(['1', '1'], array_map(strval(...), $this->em->getConnection()->fetchNumeric('SELECT max_reads, reads_left FROM yopass_secure_shares WHERE id = ?', [self::ID]) ?: []));
 
-        $this->em->clear();
-        $fresh = $this->repository->find(self::ID);
+        $own->get()->clear();
+        $fresh = $shares->find(self::ID);
         self::assertInstanceOf(SecureShare::class, $fresh);
         $extender->extend($fresh, '24h', 3);
         $this->em->clear();

@@ -12,9 +12,6 @@ use Doctrine\ORM\Events;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\Persistence\ManagerRegistry;
-use Doctrine\Persistence\ObjectManager;
-use LogicException;
-use Nowo\TransactionDoctrine\DoctrineTransactionRunner;
 use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Doctrine\SecureShareMetadataListener;
 use Nowo\YopassBundle\Doctrine\ShareWriteUnit;
@@ -55,7 +52,7 @@ final class ShareWriteUnitTest extends TestCase
     {
         $registry = $this->registry($this->host);
         $own      = new YopassEntityManager($registry, 'default');
-        $unit     = new ShareWriteUnit($this->host, $registry, 'default', $own);
+        $unit     = new ShareWriteUnit($own);
 
         // A pending change of the application stays pending: the private manager is flushed, not the host's.
         $pending = $this->share('host');
@@ -76,7 +73,7 @@ final class ShareWriteUnitTest extends TestCase
     {
         $registry = $this->registry($this->host);
         $own      = new YopassEntityManager($registry, 'default');
-        $unit     = new ShareWriteUnit($this->host, $registry, 'default', $own);
+        $unit     = new ShareWriteUnit($own);
 
         try {
             $unit->run(function () use ($own): never {
@@ -92,62 +89,6 @@ final class ShareWriteUnitTest extends TestCase
 
         self::assertSame([], $this->ids());
         self::assertSame(0, $this->host->getConnection()->getTransactionNestingLevel());
-    }
-
-    public function testLegacyModeRunsOnTheApplicationManagerAndRefusesItsPendingChanges(): void
-    {
-        $unit = new ShareWriteUnit($this->host, $this->registry($this->host), 'default');
-
-        $unit->run(function (): void {
-            $this->host->persist($this->share('legacy'));
-        });
-        self::assertSame(['legacy'], $this->ids());
-
-        $this->host->persist($this->share('pending'));
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage(DoctrineTransactionRunner::HOST_PENDING_MESSAGE);
-        $unit->run(static fn (): null => null);
-    }
-
-    public function testLegacyModeReplacesAClosedApplicationManagerOnly(): void
-    {
-        $replacement = $this->manager($this->host);
-        $current     = $this->host;
-        $registry    = $this->createMock(ManagerRegistry::class);
-        $registry->method('getManager')->willReturnCallback(static function () use (&$current): EntityManager {
-            return $current;
-        });
-        $registry->expects(self::once())->method('resetManager')->with('default')->willReturnCallback(static function () use (&$current, $replacement): EntityManager {
-            return $current = $replacement;
-        });
-        $this->host->close();
-
-        (new ShareWriteUnit($this->host, $registry, 'default'))->run(function () use ($replacement): void {
-            $replacement->persist($this->share('after-reset'));
-        });
-
-        self::assertSame(['after-reset'], $this->ids());
-    }
-
-    public function testLegacyModeWithoutARegistryUsesTheGivenManager(): void
-    {
-        (new ShareWriteUnit($this->host))->run(function (): void {
-            $this->host->persist($this->share('no-registry'));
-        });
-
-        self::assertSame(['no-registry'], $this->ids());
-    }
-
-    public function testAnotherObjectFromTheRegistryFallsBackToTheGivenManager(): void
-    {
-        $registry = $this->createStub(ManagerRegistry::class);
-        $registry->method('getManager')->willReturn($this->createStub(ObjectManager::class));
-
-        (new ShareWriteUnit($this->host, $registry, 'default'))->run(function (): void {
-            $this->host->persist($this->share('fallback'));
-        });
-
-        self::assertSame(['fallback'], $this->ids());
     }
 
     private function manager(?EntityManager $sameConnectionAs = null): EntityManager

@@ -16,10 +16,10 @@ use function count;
 use function sprintf;
 
 /**
- * The bundle's own document manager for shares on the MongoDB ODM driver (1.22.0, opt-in with
- * `nowo_yopass.database.private_document_manager: true`; the only mode in 2.0, REQ-ARCH-001 rule 6).
+ * The bundle's own document manager for shares on the MongoDB ODM driver (1.22.0 opt-in, the only mode since 2.0,
+ * REQ-ARCH-001 rule 6).
  *
- * The bundle then never flushes, clears, closes or resets a document manager of the application. Shares are read and
+ * The bundle never flushes, clears, closes or resets a document manager of the application. Shares are read and
  * written through a **private** document manager created on the client (same server, same database and collection),
  * configuration (mapping, metadata cache, proxies and hydrators; its own repository factory) and event manager of
  * `nowo_yopass.database.document_manager` (`default`). Its BSON filters are the application's own filter collection

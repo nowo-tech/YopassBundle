@@ -7,7 +7,6 @@ namespace Nowo\YopassBundle\Tests\Unit\Security;
 use InvalidArgumentException;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\UserRef;
-use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Security\YopassAccessDecider;
 use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
@@ -18,14 +17,11 @@ use Symfony\Component\Security\Core\User\InMemoryUser;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 use function in_array;
-use function restore_error_handler;
-use function set_error_handler;
-
-use const E_USER_DEPRECATED;
 
 /**
- * REQ-ARCH-001 rule 3 (1.19.0): the framework-free `YopassAccessPolicyInterface` (`?UserRef`) and the deprecated
- * `YopassAccessCheckerInterface` (`?UserInterface`) give the same decisions; deny by default is kept on every path.
+ * REQ-ARCH-001 rule 3: the framework-free `YopassAccessPolicyInterface` (`?UserRef`, the only access port since 2.0)
+ * and the decider in front of it give the same decisions whatever user the controller passes; deny by default is kept
+ * on every path.
  */
 final class AccessPolicyEquivalenceTest extends TestCase
 {
@@ -62,92 +58,27 @@ final class AccessPolicyEquivalenceTest extends TestCase
      * @param array{list<string>, list<string>, list<string>, list<string>, list<string>} $config
      */
     #[DataProvider('grants')]
-    public function testTheDefaultCheckerDecidesTheSameThroughBothPorts(array $granted, array $config): void
+    public function testTheDefaultCheckerDecidesTheSameWhateverUserIsPassed(array $granted, array $config): void
     {
         $security = $this->createStub(Security::class);
         $security->method('isGranted')->willReturnCallback(static fn (string $role): bool => in_array($role, $granted, true));
         $checker = new ConfigurableYopassAccessChecker($security, ...$config);
 
-        $user = $granted === [] ? null : new InMemoryUser('alice', null, $granted);
-        $ref  = YopassAccessDecider::userRef($user);
-        /** @var YopassAccessCheckerInterface $legacy */
-        $legacy = $checker;
-        /** @var YopassAccessPolicyInterface $policy */
-        $policy  = $checker;
+        $user    = $granted === [] ? null : new InMemoryUser('alice', null, $granted);
+        $ref     = YopassAccessDecider::userRef($user);
         $decider = new YopassAccessDecider($checker);
 
-        foreach ([[$legacy->canAccess($user), $policy->canAccess($ref), $legacy->canAccess(), $decider->allows('access', null, $user), $decider->allows('access', $user)],
-            [$legacy->canCreate($user), $policy->canCreate($ref), $legacy->canCreate(), $decider->allows('create', null, $user), $decider->allows('create', $user)],
-            [$legacy->canList($user), $policy->canList($ref), $legacy->canList(), $decider->allows('list', null, $user), $decider->allows('list', $user)],
-            [$legacy->canRevoke($user), $policy->canRevoke($ref), $legacy->canRevoke(), $decider->allows('revoke', null, $user), $decider->allows('revoke', $user)],
+        foreach ([[$checker->canAccess($ref), $checker->canAccess(), $decider->allows('access', null, $user), $decider->allows('access', $user)],
+            [$checker->canCreate($ref), $checker->canCreate(), $decider->allows('create', null, $user), $decider->allows('create', $user)],
+            [$checker->canList($ref), $checker->canList(), $decider->allows('list', null, $user), $decider->allows('list', $user)],
+            [$checker->canRevoke($ref), $checker->canRevoke(), $decider->allows('revoke', null, $user), $decider->allows('revoke', $user)],
         ] as $i => $answers) {
-            self::assertSame([$answers[0], $answers[0], $answers[0], $answers[0], $answers[0]], $answers, self::FEATURES[$i]);
+            self::assertSame([$answers[0], $answers[0], $answers[0], $answers[0]], $answers, self::FEATURES[$i]);
         }
         if ($granted === []) {
             self::assertFalse($decider->allows('access'), 'Anonymous: denied by default');
         }
         self::assertFalse($decider->allows('delete-everything', $user), 'Unknown feature: denied');
-    }
-
-    public function testALegacyCheckerIsCalledExactlyAsBefore(): void
-    {
-        $user   = new InMemoryUser('alice', null, ['ROLE_USER']);
-        $calls  = [];
-        $legacy = new class($calls) implements YopassAccessCheckerInterface {
-            /** @param list<array{string, UserInterface|null}> $calls */
-            public function __construct(private array &$calls)
-            {
-            }
-
-            public function canAccess(?UserInterface $user = null): bool
-            {
-                $this->calls[] = ['access', $user];
-
-                return true;
-            }
-
-            public function canCreate(?UserInterface $user = null): bool
-            {
-                $this->calls[] = ['create', $user];
-
-                return true;
-            }
-
-            public function canList(?UserInterface $user = null): bool
-            {
-                $this->calls[] = ['list', $user];
-
-                return false;
-            }
-
-            public function canRevoke(?UserInterface $user = null): bool
-            {
-                $this->calls[] = ['revoke', $user];
-
-                return true;
-            }
-        };
-
-        $deprecations = [];
-        set_error_handler(static function (int $level, string $message) use (&$deprecations): bool {
-            $deprecations[] = $message;
-
-            return true;
-        }, E_USER_DEPRECATED);
-        try {
-            $decider = new YopassAccessDecider($legacy);
-        } finally {
-            restore_error_handler();
-        }
-        self::assertSame(['Since nowo-tech/yopass-bundle 1.19.0: implementing only "YopassAccessCheckerInterface" for "nowo_yopass.security.access_checker" is deprecated, implement "YopassAccessPolicyInterface" instead (YopassAccessCheckerInterface is removed in 2.0).'], $deprecations);
-        self::assertFalse($decider->usesPolicy());
-
-        self::assertTrue($decider->allows('access', null, $user));
-        self::assertTrue($decider->allows('create', $user, $user));
-        self::assertFalse($decider->allows('list'));
-        self::assertTrue($decider->allows('revoke', $user));
-        self::assertFalse($decider->allows('unknown', $user));
-        self::assertSame([['access', null], ['create', $user], ['list', null], ['revoke', $user]], $calls);
     }
 
     public function testAPolicyReceivesTheUserRefOfTheSignedInUser(): void
@@ -188,7 +119,6 @@ final class AccessPolicyEquivalenceTest extends TestCase
             }
         };
         $decider = new YopassAccessDecider($policy);
-        self::assertTrue($decider->usesPolicy());
 
         $member = new SecurityUserDto(42, 'member@example.com', ['ROLE_LIST']);
         self::assertTrue($decider->allows('access', null, $member));

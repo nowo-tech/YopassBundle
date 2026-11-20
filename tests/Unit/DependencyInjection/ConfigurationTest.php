@@ -34,18 +34,20 @@ final class ConfigurationTest extends TestCase
         self::assertSame(['ROLE_ADMIN'], $config['security']['roles']['create']);
         self::assertSame(['ROLE_ADMIN'], $config['security']['roles']['list']);
         self::assertSame(['ROLE_ADMIN'], $config['security']['roles']['revoke']);
-        self::assertNull($config['security']['create_roles']);
+        self::assertArrayNotHasKey('create_roles', $config['security']);
         self::assertFalse($config['security']['allow_unauthenticated']);
         self::assertTrue($config['web_ui']['enabled']);
         self::assertSame('', $config['web_ui']['path_prefix']);
         self::assertNull($config['web_ui']['layout_template']);
         self::assertNull($config['web_ui']['public_layout_template']);
         self::assertSame(['manage' => null, 'created' => null, 'public' => null], $config['web_ui']['templates']);
-        self::assertNull($config['web_ui']['css_framework']);
-        self::assertNull($config['web_ui']['icon_set']);
+        self::assertArrayNotHasKey('css_framework', $config['web_ui']);
+        self::assertArrayNotHasKey('icon_set', $config['web_ui']);
         self::assertSame(['create_tab_text' => 'tabler:file-text', 'create_tab_file' => 'tabler:file-upload'], $config['web_ui']['icons']);
-        self::assertNull($config['route_prefix']);
-        self::assertSame(['layout' => null, 'manage' => null, 'created' => null, 'public' => null], $config['templates']);
+        self::assertArrayNotHasKey('route_prefix', $config);
+        self::assertArrayNotHasKey('templates', $config);
+        self::assertTrue($config['database']['private_entity_manager']);
+        self::assertTrue($config['database']['private_document_manager']);
         self::assertNull($config['file_handler']);
         self::assertSame(512 * 1024, $config['max_secret_chars']);
         self::assertSame('1h', $config['shares']['default_expiration']);
@@ -60,63 +62,44 @@ final class ConfigurationTest extends TestCase
         self::assertFalse($config['sharing']['default_embed_in_url']);
     }
 
-    public function testDeprecatedKeysAreMappedOntoTheCanonicalOnes(): void
+    /**
+     * @return iterable<string, array{0: array<string, mixed>, 1: string}>
+     */
+    public static function removedKeys(): iterable
     {
-        $config = $this->process([
-            'user_class'   => 'App\\Entity\\User',
-            'route_prefix' => '/{_locale}',
-            'templates'    => [
-                'layout'  => 'base.html.twig',
-                'manage'  => 'yopass/manage.html.twig',
-                'created' => 'yopass/created.html.twig',
-                'public'  => 'yopass/public.html.twig',
-            ],
-            'security' => [
-                'admin_roles'  => ['ROLE_SUPER'],
-                'create_roles' => ['ROLE_USER'],
-                'list_roles'   => ['ROLE_USER'],
-                'revoke_roles' => [],
-            ],
-        ]);
-
-        self::assertSame('/{_locale}', $config['web_ui']['path_prefix']);
-        self::assertSame('base.html.twig', $config['web_ui']['layout_template']);
-        self::assertSame([
-            'manage'  => 'yopass/manage.html.twig',
-            'created' => 'yopass/created.html.twig',
-            'public'  => 'yopass/public.html.twig',
-        ], $config['web_ui']['templates']);
-        self::assertSame(['ROLE_SUPER'], $config['security']['roles']['admin']);
-        self::assertSame(['ROLE_USER'], $config['security']['roles']['create']);
-        self::assertSame(['ROLE_USER'], $config['security']['roles']['list']);
-        self::assertSame([], $config['security']['roles']['revoke']);
+        yield 'route_prefix' => [['route_prefix' => '/{_locale}'], '"nowo_yopass.route_prefix" (use "nowo_yopass.web_ui.path_prefix")'];
+        yield 'templates' => [['templates' => ['layout' => 'base.html.twig']], '"nowo_yopass.templates" (use "nowo_yopass.web_ui.layout_template" and "nowo_yopass.web_ui.templates.<page>")'];
+        yield 'security.admin_roles' => [['security' => ['admin_roles' => ['ROLE_SUPER']]], '"nowo_yopass.security.admin_roles" (use "nowo_yopass.security.roles.admin")'];
+        yield 'security.create_roles' => [['security' => ['create_roles' => ['ROLE_USER']]], '"nowo_yopass.security.create_roles" (use "nowo_yopass.security.roles.create")'];
+        yield 'security.list_roles' => [['security' => ['list_roles' => null]], '"nowo_yopass.security.list_roles" (use "nowo_yopass.security.roles.list")'];
+        yield 'security.revoke_roles' => [['security' => ['revoke_roles' => []]], '"nowo_yopass.security.revoke_roles" (use "nowo_yopass.security.roles.revoke")'];
+        yield 'web_ui.css_framework' => [['web_ui' => ['css_framework' => 'tailwind']], '"nowo_yopass.web_ui.css_framework" (use "nowo_ui_kit.css_framework")'];
+        yield 'web_ui.icon_set' => [['web_ui' => ['icon_set' => 'svg_inline']], '"nowo_yopass.web_ui.icon_set" (use "nowo_ui_kit.icon_set")'];
     }
 
-    public function testCanonicalKeysWinOverDeprecatedOnes(): void
+    /**
+     * 2.0: the keys deprecated since 1.10 fail the build with the key that replaces them (no silent mapping any more).
+     *
+     * @param array<string, mixed> $config
+     */
+    #[DataProvider('removedKeys')]
+    public function testKeysRemovedIn2FailWithTheirReplacement(array $config, string $expected): void
     {
-        $config = $this->process([
-            'user_class'   => 'App\\Entity\\User',
-            'route_prefix' => '/legacy',
-            'templates'    => ['layout' => 'legacy.html.twig', 'manage' => 'legacy/manage.html.twig'],
-            'web_ui'       => [
-                'path_prefix'     => '/canonical',
-                'layout_template' => 'canonical.html.twig',
-                'templates'       => ['manage' => 'canonical/manage.html.twig'],
-                'css_framework'   => 'tailwind',
-                'icon_set'        => 'svg_inline',
-            ],
-            'security' => [
-                'create_roles' => ['ROLE_LEGACY'],
-                'roles'        => ['create' => ['ROLE_CANONICAL']],
-            ],
-        ]);
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('These options were deprecated since 1.10 and are removed in 2.0: ' . $expected . '. See UPGRADING "To 2.0.0".');
+        $this->process(['user_class' => 'App\\Entity\\User'] + $config);
+    }
 
-        self::assertSame('/canonical', $config['web_ui']['path_prefix']);
-        self::assertSame('canonical.html.twig', $config['web_ui']['layout_template']);
-        self::assertSame('canonical/manage.html.twig', $config['web_ui']['templates']['manage']);
-        self::assertSame('tailwind', $config['web_ui']['css_framework']);
-        self::assertSame('svg_inline', $config['web_ui']['icon_set']);
-        self::assertSame(['ROLE_CANONICAL'], $config['security']['roles']['create']);
+    public function testEveryRemovedKeyIsListedInOneMessage(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('"nowo_yopass.route_prefix" (use "nowo_yopass.web_ui.path_prefix"), "nowo_yopass.security.admin_roles" (use "nowo_yopass.security.roles.admin"), "nowo_yopass.web_ui.icon_set" (use "nowo_ui_kit.icon_set")');
+        $this->process([
+            'user_class'   => 'App\\Entity\\User',
+            'route_prefix' => '/x',
+            'security'     => ['admin_roles' => ['ROLE_SUPER'], 'roles' => ['admin' => ['ROLE_ADMIN']]],
+            'web_ui'       => ['icon_set' => 'none'],
+        ]);
     }
 
     public function testConflictResponseDefaultsAndValidation(): void
@@ -130,13 +113,6 @@ final class ConfigurationTest extends TestCase
         $this->expectException(InvalidConfigurationException::class);
         $this->expectExceptionMessage('must be 409 or 503');
         $this->process(['user_class' => 'App\\Entity\\User', 'conflict_response' => ['status' => 500]]);
-    }
-
-    public function testRejectsUnknownCssFramework(): void
-    {
-        $this->expectException(InvalidConfigurationException::class);
-
-        $this->process(['user_class' => 'App\\Entity\\User', 'web_ui' => ['css_framework' => 'bulma']]);
     }
 
     public function testCustomShareOptions(): void

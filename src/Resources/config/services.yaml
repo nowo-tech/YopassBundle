@@ -118,14 +118,6 @@ services:
         arguments:
             $routes: '%nowo_yopass.routes%'
 
-    # Deprecated since 1.10 (REQ-UI-003: pages read nowo_ui_layout / nowo_ui_kit): 1.x Twig globals kept for host
-    # template overrides written for 1.x; removed in 2.0.
-    Nowo\YopassBundle\Twig\YopassTwigExtension:
-        arguments:
-            $layoutTemplate: '%nowo_yopass.web_ui.layout_template%'
-            $cssFramework: '%nowo_yopass.web_ui.css_framework%'
-            $iconSet: '%nowo_yopass.web_ui.icon_set%'
-
     # Form Kit injects FormOptionsMerger into tagged form types (FormOptionsMergerInjectorCompilerPass).
     Nowo\YopassBundle\Form\:
         resource: '../../Form/'

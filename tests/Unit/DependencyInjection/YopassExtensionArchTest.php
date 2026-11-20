@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Tests\Unit\DependencyInjection;
 
+use LogicException;
 use Nowo\YopassBundle\Controller\ShareManageController;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\DependencyInjection\Compiler\AccessCheckerAliasPass;
@@ -17,21 +18,16 @@ use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\UserRef;
-use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Security\YopassAccessDecider;
 use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 
 use function dirname;
 use function file_get_contents;
 use function realpath;
-use function restore_error_handler;
-use function set_error_handler;
-
-use const E_USER_DEPRECATED;
 
 /**
  * Container wiring of the 1.19.0 architecture changes: the bundle's own entity manager (rule 6), the access policy
@@ -65,40 +61,11 @@ final class YopassExtensionArchTest extends TestCase
         self::assertSame('shares', $named->getDefinition(YopassEntityManager::class)->getArgument('$entityManagerName'));
     }
 
-    /** The custom driver's access log on the application's manager triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
-    #[IgnoreDeprecations]
-    public function testThePrivateEntityManagerCanBeSwitchedOffAndIsNotUsedWithTheCustomDriver(): void
-    {
-        $deprecations = [];
-        set_error_handler(static function (int $level, string $message) use (&$deprecations): bool {
-            $deprecations[] = $message;
-
-            return true;
-        }, E_USER_DEPRECATED);
-        try {
-            $legacy = $this->load(['database' => ['private_entity_manager' => false]]);
-            $this->load([]);
-        } finally {
-            restore_error_handler();
-        }
-        self::assertSame(['Since nowo-tech/yopass-bundle 1.19.0: Setting "nowo_yopass.database.private_entity_manager" to false is deprecated: the bundle then flushes the application\'s entity manager. Remove the option; it is removed in 2.0.'], $deprecations);
-        self::assertFalse($legacy->hasDefinition(HostCreatorReference::class));
-        self::assertFalse($legacy->hasDefinition(YopassEntityManager::class));
-        self::assertFalse($legacy->hasDefinition(YopassEntityManagerBoundarySubscriber::class));
-        self::assertFalse($legacy->hasDefinition(PrivateEntityManagerMiddleware::class));
-        self::assertNull($legacy->getDefinition(DoctrineOrmShareAccessLogRepository::class)->getArgument('$ownManager'));
-
-        $custom = $this->load(['database' => ['driver' => 'custom', 'repository' => 'app.shares', 'platform' => 'postgresql']]);
-        self::assertFalse($custom->hasDefinition(YopassEntityManager::class));
-        self::assertNull($custom->getDefinition(DoctrineOrmShareAccessLogRepository::class)->getArgument('$ownManager'));
-    }
-
     public function testTheAccessCheckerIsWiredById(): void
     {
         $container = $this->load(['security' => ['access_checker' => 'app.yopass_policy']]);
 
         self::assertSame('app.yopass_policy', (string) $container->getAlias(YopassAccessPolicyInterface::class));
-        self::assertSame('app.yopass_policy', (string) $container->getAlias(YopassAccessCheckerInterface::class));
         self::assertSame('app.yopass_policy', (string) $container->getDefinition(YopassAccessDecider::class)->getArgument(0));
         $controller = $container->getDefinition(ShareManageController::class);
         self::assertSame('app.yopass_policy', (string) $controller->getArgument('$accessChecker'));
@@ -108,9 +75,9 @@ final class YopassExtensionArchTest extends TestCase
         self::assertSame('nowo_yopass.access_checker.default', (string) $default->getAlias(YopassAccessPolicyInterface::class));
     }
 
-    public function testAliasesFollowTheInterfacesTheCheckerImplements(): void
+    public function testAPolicyCheckerPassesTheBuildCheck(): void
     {
-        $policyOnly = $this->compiledAliases(new class implements YopassAccessPolicyInterface {
+        $policy = new class implements YopassAccessPolicyInterface {
             public function canAccess(?UserRef $user = null): bool
             {
                 return false;
@@ -130,36 +97,62 @@ final class YopassExtensionArchTest extends TestCase
             {
                 return false;
             }
-        });
-        self::assertSame([true, false], $policyOnly);
-        self::assertSame([true, true], $this->compiledAliases(null, ConfigurableYopassAccessChecker::class));
-        self::assertSame([true, true], $this->compiledAliases(null, '%unknown.class%', ['unknown.class' => 'App\Missing\Checker']));
+        };
+        self::assertTrue($this->checked($policy::class)->hasAlias(YopassAccessPolicyInterface::class));
+        self::assertTrue($this->checked(ConfigurableYopassAccessChecker::class)->hasAlias(YopassAccessPolicyInterface::class));
+        self::assertTrue($this->checked('%checker.class%', ['checker.class' => ConfigurableYopassAccessChecker::class])->hasAlias(YopassAccessPolicyInterface::class));
 
-        // No alias, or an alias to a service defined later by the host: left alone.
+        // No alias, an alias to a service defined later by the host, a factory or a class-less id: left alone.
         $container = new ContainerBuilder();
-        $container->setAlias(YopassAccessCheckerInterface::class, 'app.not_yet_defined');
         (new AccessCheckerAliasPass())->process($container);
         self::assertFalse($container->hasAlias(YopassAccessPolicyInterface::class));
-        self::assertTrue($container->hasAlias(YopassAccessCheckerInterface::class));
+        $container->setAlias(YopassAccessPolicyInterface::class, 'app.not_yet_defined');
+        (new AccessCheckerAliasPass())->process($container);
+        self::assertTrue($container->hasAlias(YopassAccessPolicyInterface::class));
+        $container = new ContainerBuilder();
+        $container->register('app.checker', stdClass::class)->setFactory([stdClass::class, 'create']);
+        $container->setAlias(YopassAccessPolicyInterface::class, 'app.checker');
+        (new AccessCheckerAliasPass())->process($container);
+        self::assertTrue($container->hasAlias(YopassAccessPolicyInterface::class));
+        self::assertTrue($this->checked(null, [], 'app_checker')->hasAlias(YopassAccessPolicyInterface::class));
+        self::assertTrue($this->checked('%checker.class%', ['checker.class' => ['not', 'a', 'class']])->hasAlias(YopassAccessPolicyInterface::class));
     }
 
     /**
-     * @param array<string, string> $parameters
-     *
-     * @return array{bool, bool} whether the policy / legacy interfaces stay aliased
+     * 2.0: a configured checker that does not implement YopassAccessPolicyInterface fails the build.
      */
-    private function compiledAliases(?object $checker, ?string $class = null, array $parameters = []): array
+    public function testACheckerWithoutThePolicyInterfaceFailsTheBuild(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('The "nowo_yopass.security.access_checker" service "app.checker" (class "stdClass") must implement "Nowo\YopassBundle\Security\YopassAccessPolicyInterface" since 2.0 ("YopassAccessCheckerInterface" was removed); see UPGRADING "To 2.0.0".');
+        $this->checked(stdClass::class);
+    }
+
+    /**
+     * 2.0: a checker class that cannot be loaded (it still implements the removed YopassAccessCheckerInterface) fails the
+     * build with a message naming it, instead of a fatal error at the first request.
+     */
+    public function testACheckerThatCannotBeLoadedFailsTheBuild(): void
+    {
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('The class "App\Missing\Checker" of the "nowo_yopass.security.access_checker" service "app.checker" cannot be loaded. If it still implements "Nowo\YopassBundle\Security\YopassAccessCheckerInterface" (removed in 2.0), implement "Nowo\YopassBundle\Security\YopassAccessPolicyInterface" instead; see UPGRADING "To 2.0.0".');
+        $this->checked('App\Missing\Checker');
+    }
+
+    /**
+     * @param array<string, list<string>|string> $parameters
+     */
+    private function checked(?string $class, array $parameters = [], string $id = 'app.checker'): ContainerBuilder
     {
         $container = new ContainerBuilder();
         foreach ($parameters as $name => $value) {
             $container->setParameter($name, $value);
         }
-        $container->register('app.checker', $class ?? $checker::class);
-        $container->setAlias(YopassAccessPolicyInterface::class, 'app.checker');
-        $container->setAlias(YopassAccessCheckerInterface::class, 'app.checker');
+        $container->register($id, $class);
+        $container->setAlias(YopassAccessPolicyInterface::class, $id);
         (new AccessCheckerAliasPass())->process($container);
 
-        return [$container->hasAlias(YopassAccessPolicyInterface::class), $container->hasAlias(YopassAccessCheckerInterface::class)];
+        return $container;
     }
 
     public function testOrmMappingEntries(): void

@@ -9,8 +9,8 @@ namespace Nowo\YopassBundle\Security;
  * signed-in user arrives as a {@see UserRef} (null when nobody is signed in). Set your service as
  * `nowo_yopass.security.access_checker`.
  *
- * Replaces {@see YopassAccessCheckerInterface} (deprecated since 1.19.0, removed in 2.0). A service implementing both is
- * called through this interface. Deny by default: return true only for what you grant.
+ * Replaced `YopassAccessCheckerInterface` (deprecated since 1.19.0, removed in 2.0). Deny by default: return true only
+ * for what you grant.
  */
 interface YopassAccessPolicyInterface
 {
