@@ -115,6 +115,10 @@ secrets are encrypted, stored, read or burned: one-time reads stay one atomic co
 - Application code should call the new ports instead of `ShareCreator`, `ShareRevoker`, `ShareExtender` and
   `ShareDeleter` directly; their object-typed signatures leave the public API in 3.0.
 
+### Changed
+
+- Demo: runs in UiKit's demo platform shell (`nowo-tech/ui-kit-bundle` ^2.60); the demo's own masthead and layout bridges are gone and the manage and public reveal pages render inside the shell. Demo only, no bundle change.
+
 ## [2.0.1] - 2026-11-21
 
 ### Fixed

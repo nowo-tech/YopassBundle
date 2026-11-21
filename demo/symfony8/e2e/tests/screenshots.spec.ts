@@ -4,8 +4,8 @@ import { resolve } from 'node:path';
 import { createShare, revealShare, waitForToolbar } from './helpers';
 
 /**
- * REQ-DEMO-013 — README screenshots (captured as PNG, converted to WebP by scripts/to-webp.mjs): demo masthead +
- * bundle UI in a useful state + Symfony WebProfiler toolbar. Fake demo text only.
+ * REQ-DEMO-013 — README screenshots (captured as PNG, converted to WebP by scripts/to-webp.mjs): demo platform shell +
+ * bundle UI in a useful state (the Symfony WebProfiler toolbar is hidden). Fake demo text only.
  */
 const outDir = process.env.SCREENSHOT_DIR
   ? resolve(process.env.SCREENSHOT_DIR)
