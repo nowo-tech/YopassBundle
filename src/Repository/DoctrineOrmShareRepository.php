@@ -284,11 +284,21 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     }
 
     /**
-     * Schedules a share for persistence.
+     * Schedules a share for persistence. A new share whose creator entity the bundle's manager does not hold (a user the
+     * application loaded through its own manager) is related through a reference of the same class and id in the
+     * bundle's manager (2.0.1, {@see ownCreator()}), so the flush never meets that user as a new entity.
      */
     public function persist(SecureShare $share): void
     {
-        $this->em()->persist($share);
+        $entityManager = $this->em();
+        if (!$entityManager->contains($share)) {
+            $creator = $share->getCreator();
+            $own     = $this->ownCreator($creator);
+            if ($own !== $creator) {
+                $entityManager->getClassMetadata(SecureShare::class)->setFieldValue($share, 'creator', $own);
+            }
+        }
+        $entityManager->persist($share);
     }
 
     /**
@@ -462,7 +472,50 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
      */
     private function creator(object $creator): object|string
     {
-        return CreatorId::unwrap($this->creators?->reference($creator) ?? $creator);
+        $value = CreatorId::unwrap($this->creators?->reference($creator) ?? $creator);
+
+        return is_string($value) ? $value : $this->ownCreator($value);
+    }
+
+    /**
+     * The creator as the bundle's own entity manager holds it (2.0.1). With the relation mapping, a `user_class` entity
+     * that manager does not hold (one the application's manager loaded, or a detached one) becomes
+     * `getReference(user_class, id)` on the bundle's manager: no query, never merged or detached, and the application's
+     * manager and its instance are left untouched. The id comes from the application's unit of work when it manages the
+     * user (an uninitialised proxy is not loaded), otherwise from the mapped identifier fields. Any other value (no
+     * private manager, the id mapping, an object of another class, a user without an id yet) is returned unchanged.
+     *
+     * 2.0 made the private manager the only mode, also for the bundle's repository decorated by a `database.driver:
+     * custom` repository, whose creator resolver passes the user as given, and for a host alias of the creator resolver:
+     * the share then pointed at the application's instance and the flush failed with "A new entity was found through the
+     * relationship SecureShare#creator".
+     */
+    private function ownCreator(object $creator): object
+    {
+        if (!$this->ownManager instanceof YopassEntityManager) {
+            return $creator;
+        }
+
+        $entityManager = $this->ownManager->get();
+        $metadata      = $entityManager->getClassMetadata(SecureShare::class);
+        if (!$metadata->hasAssociation('creator') || $entityManager->contains($creator)) {
+            return $creator;
+        }
+
+        $class = $metadata->getAssociationTargetClass('creator');
+        if (!$creator instanceof $class) {
+            return $creator;
+        }
+
+        $source = $this->ownManager->source();
+        $id     = $source->contains($creator)
+            ? $source->getUnitOfWork()->getEntityIdentifier($creator)
+            : $entityManager->getClassMetadata($class)->getIdentifierValues($creator);
+        if ($id === []) {
+            return $creator;
+        }
+
+        return $entityManager->getReference($class, $id) ?? $creator;
     }
 
     private function now(): DateTimeImmutable

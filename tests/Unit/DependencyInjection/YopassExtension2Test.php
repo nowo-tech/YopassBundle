@@ -140,15 +140,18 @@ final class YopassExtension2Test extends TestCase
         self::assertSame(YopassEntityManager::class, (string) $container->getDefinition(DoctrineOrmShareAccessLogRepository::class)->getArgument('$ownManager'));
         self::assertSame('default', $container->getDefinition(YopassEntityManager::class)->getArgument('$entityManagerName'));
         self::assertTrue($container->getDefinition(YopassEntityManagerBoundarySubscriber::class)->hasTag('kernel.event_subscriber'));
-        // The shares come from the host repository: no bundle write unit, the creators the events expose are unchanged.
+        // The shares come from the host repository: no bundle write unit.
         self::assertFalse($container->hasDefinition(ShareWriteUnit::class));
-        self::assertFalse($container->hasDefinition(HostCreatorReference::class));
+        // 2.0.1: the host repository may decorate the bundle's one on the private manager, so the events expose the
+        // creator in the application's manager (a creator the private manager does not hold is returned unchanged).
+        self::assertSame(YopassEntityManager::class, (string) $container->getDefinition(HostCreatorReference::class)->getArgument(0));
 
         [$hostLog] = $this->load(['database' => self::CUSTOM, 'access_log' => ['repository' => 'app.access_log']]);
         self::assertSame('app.access_log', (string) $hostLog->getAlias(ShareAccessLogRepositoryInterface::class));
 
         [$nonRelational] = $this->load(['database' => ['driver' => 'custom', 'repository' => 'app.shares', 'platform' => 'mongodb']]);
         self::assertFalse($nonRelational->hasDefinition(YopassEntityManager::class), 'a non-relational platform has no bundle access log');
+        self::assertFalse($nonRelational->hasDefinition(HostCreatorReference::class), 'no private manager, no creator to hand back');
     }
 
     public function testOnlyThePolicyAliasIsRegistered(): void
