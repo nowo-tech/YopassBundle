@@ -21,8 +21,6 @@ use PHPUnit\Framework\TestCase;
 use ReflectionProperty;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Event\RequestEvent;
-use Symfony\Component\HttpKernel\HttpKernelInterface;
 
 use function dirname;
 use function extension_loaded;
@@ -89,20 +87,13 @@ final class YopassEntityManagerTest extends TestCase
         $own->clear();
         $own->reset();
 
-        $em     = $own->get();
-        $kernel = $this->createStub(HttpKernelInterface::class);
+        $em = $own->get();
 
         $share = $em->getReference(ShareAccessLog::class, 'log-1');
         self::assertIsObject($share);
-        $own->onKernelRequest(new RequestEvent($kernel, new Request(), HttpKernelInterface::SUB_REQUEST));
-        self::assertTrue($em->getUnitOfWork()->isInIdentityMap($share), 'A sub-request keeps it');
-
-        $own->onKernelRequest(new RequestEvent($kernel, new Request(), HttpKernelInterface::MAIN_REQUEST));
-        self::assertFalse($em->getUnitOfWork()->isInIdentityMap($share), 'The main request empties it');
-
-        $em->getReference(ShareAccessLog::class, 'log-2');
+        self::assertTrue($em->getUnitOfWork()->isInIdentityMap($share));
         $own->clear();
-        self::assertSame([], $em->getUnitOfWork()->getIdentityMap(), 'terminate / console / Messenger');
+        self::assertSame([], $em->getUnitOfWork()->getIdentityMap(), 'clear() empties it');
 
         $own->reset();
         self::assertNotSame($em, $own->get(), 'kernel.reset drops it');

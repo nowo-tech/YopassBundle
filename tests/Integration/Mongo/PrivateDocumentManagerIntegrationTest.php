@@ -58,8 +58,8 @@ use function random_bytes;
 use function sys_get_temp_dir;
 
 /**
- * The MongoDB ODM opt-in `database.private_document_manager: true` (1.22.0, REQ-ARCH-001 rule 6) on a real MongoDB
- * server (set YOPASS_TEST_MONGODB_URL): a share write never writes the application's pending changes, the application's
+ * The private document manager of the MongoDB ODM driver (1.22.0 opt-in, the only mode since 2.0, REQ-ARCH-001 rule 6)
+ * on a real MongoDB server (set YOPASS_TEST_MONGODB_URL): a share write never writes the application's pending changes, the application's
  * document manager is never flushed, cleared, closed or reset, and the private manager is dropped at every outermost
  * boundary of a kept-alive worker (kernel reset off) and replaced when closed.
  */
@@ -220,8 +220,8 @@ final class PrivateDocumentManagerIntegrationTest extends TestCase
     public static function scopedModes(): iterable
     {
         foreach (['parameter' => 'parameter', 'property' => 'property'] as $label => $filter) {
-            yield 'default mode, ' . $label . ' filter' => [false, $filter];
-            yield 'private mode, ' . $label . ' filter' => [true, $filter];
+            yield 'repository built on the given manager, ' . $label . ' filter' => [false, $filter];
+            yield 'private document manager (the bundle wiring), ' . $label . ' filter' => [true, $filter];
         }
     }
 

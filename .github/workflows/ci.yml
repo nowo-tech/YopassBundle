@@ -4,9 +4,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, 1.x]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, 1.x]
 
 # Superseded PR runs are cancelled. Push runs (main/master) get their own group (run_id), so a main run is never
 # cancelled, not even while pending: tag_when_green.sh needs a completed run on every release commit.
@@ -505,7 +505,7 @@ jobs:
           tools: composer:v2
 
       - run: composer install --prefer-dist --no-progress --no-interaction
-      - run: vendor/bin/phpunit tests/Integration/Mongo --fail-on-skipped
+      - run: vendor/bin/phpunit tests/Integration/Mongo --fail-on-skipped --no-coverage
 
   typescript:
     name: Vitest + tsc (TypeScript)

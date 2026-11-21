@@ -43,7 +43,11 @@ final class DoctrineMongoShareRepositoryTest extends TestCase
         self::assertNotNull($repository->find($document->getId())?->getRevokedAt());
     }
 
-    public function testClosedDocumentManagerIsResetOnNextRequestWithoutKernelReset(): void
+    /**
+     * 2.0: the registry (the removed host mode replaced a closed application manager through it) is ignored; the
+     * bundle's private document manager replaces itself when closed.
+     */
+    public function testTheRegistryIsIgnored(): void
     {
         $document = new SecureShareDocument('00000000-0000-4000-8000-000000000003', new TestUser());
         $document
@@ -51,19 +55,15 @@ final class DoctrineMongoShareRepositoryTest extends TestCase
             ->setExpiresAt(new DateTimeImmutable('+1 hour'))
             ->setMaxReads(1);
 
-        $closed = $this->createMock(DocumentManager::class);
-        $closed->method('isOpen')->willReturn(false);
-
-        $open = $this->createMock(DocumentManager::class);
-        $open->method('isOpen')->willReturn(true);
-        $open->method('find')->willReturn($document);
-        $open->expects(self::once())->method('refresh')->with($document);
+        $documentManager = $this->createMock(DocumentManager::class);
+        $documentManager->method('find')->willReturn($document);
+        $documentManager->expects(self::once())->method('refresh')->with($document);
 
         $registry = $this->createMock(ManagerRegistry::class);
-        $registry->expects(self::once())->method('getManager')->with('default')->willReturn($closed);
-        $registry->expects(self::once())->method('resetManager')->with('default')->willReturn($open);
+        $registry->expects(self::never())->method('getManager');
+        $registry->expects(self::never())->method('resetManager');
 
-        $repository = new DoctrineMongoShareRepository($closed, null, $registry, 'default');
+        $repository = new DoctrineMongoShareRepository($documentManager, null, $registry, 'default');
 
         self::assertSame('cipher', $repository->find($document->getId())?->getCiphertext());
     }

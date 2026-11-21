@@ -10,12 +10,10 @@ use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
-use Doctrine\Persistence\ObjectManager;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 final class DoctrineOrmShareRepositoryTest extends TestCase
 {
@@ -179,44 +177,25 @@ final class DoctrineOrmShareRepositoryTest extends TestCase
         self::assertNull($repository->find($share->getId()));
     }
 
-    public function testClosedEntityManagerIsResetOnNextRequestWithoutKernelReset(): void
+    /**
+     * 2.0: the registry (the removed host mode replaced a closed application manager through it) is ignored; the
+     * bundle's private manager replaces itself when closed.
+     */
+    public function testTheRegistryIsIgnored(): void
     {
         $share = new SecureShare('00000000-0000-4000-8000-000000000011', new TestUser());
 
-        $closed = $this->createMock(EntityManagerInterface::class);
-        $closed->method('isOpen')->willReturnOnConsecutiveCalls(true, false);
-        $closed->expects(self::once())->method('flush')->willThrowException(new RuntimeException('connection lost'));
-        $closed->expects(self::never())->method('persist');
-
-        $fresh = $this->createMock(EntityManagerInterface::class);
-        $fresh->method('isOpen')->willReturn(true);
-        $fresh->expects(self::once())->method('persist')->with($share);
-
-        $registry = $this->createMock(ManagerRegistry::class);
-        $registry->method('getManager')->with('yopass')->willReturn($closed);
-        $registry->expects(self::once())->method('resetManager')->with('yopass')->willReturn($fresh);
-
-        $repository = new DoctrineOrmShareRepository($closed, null, $registry, 'yopass');
-
-        try {
-            $repository->flush();
-            self::fail('Expected flush failure.');
-        } catch (RuntimeException $e) {
-            self::assertSame('connection lost', $e->getMessage());
-        }
-
-        $repository->persist($share);
-    }
-
-    public function testFallsBackToInjectedEntityManagerWhenRegistryReturnsAnotherManagerType(): void
-    {
         $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(self::once())->method('persist')->with($share);
         $entityManager->expects(self::once())->method('flush');
 
         $registry = $this->createMock(ManagerRegistry::class);
-        $registry->method('getManager')->willReturn($this->createMock(ObjectManager::class));
+        $registry->expects(self::never())->method('getManager');
+        $registry->expects(self::never())->method('resetManager');
 
-        (new DoctrineOrmShareRepository($entityManager, null, $registry, 'default'))->flush();
+        $repository = new DoctrineOrmShareRepository($entityManager, null, $registry, 'yopass');
+        $repository->persist($share);
+        $repository->flush();
     }
 
     private function createFindQueryBuilder(?SecureShare $result): QueryBuilder

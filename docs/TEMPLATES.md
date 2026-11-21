@@ -76,8 +76,6 @@ fields have no `name`; legacy `?decrypt_key=` links are redirected (`303`) to th
 | `manage/_create_dialog.html.twig` | Create dialog (`web_ui.create_mode: dialog`) through the UiKit `dialog` partial, UiKit 2.29 anatomy: id `nowo-yopass-create-dialog`, size **medium** (`md`), the controller on a wrapper `<div>` around the `<dialog>`; body = e2e notice (`muted`) + `_create_form.html.twig` (async, `footer_actions`); footer outside the scrolling body: Cancel (`btn_secondary`) + Create (`btn_primary`, `type="submit" form="nowo-yopass-create-dialog-form"`), replaced by Done (`btn_primary`) once the links are shown — one primary, last. Variables as `_create_form` minus `async` (+ `icons`). |
 | `manage/_create_panel.html.twig` | Create-share card (page mode; includes `_create_form.html.twig`): text / file tabs (only with file shares) (UiKit `tabs` partial with icons; `tab`, `tab_active`: the controller swaps the slot classes), secret + counter (`muted`, limit on `form_error`), expiration, max reads, encryption mode, custom password, error (`flash_error`), submit (`btn_primary`). Variables `create_form`, `can_share_file`, `max_file_bytes`, `max_secret_chars`, `icons`, `bundle`. |
 | `manage/_preview_dialog.html.twig` | Preview / extend dialog through the UiKit `dialog` partial (`<dialog>` with header / body / footer, size **wide**): availability badge inline next to the title (`badge_neutral`), key / password input group with the dialog's single primary **Show content** attached in the body (owner decision, Beacon UI-PATTERNS §16), output (`code_block`), public link + copy, access log table (`table_wrap`, `table`, `table_head*`), extend section ("Now: …", one row `[time] [reads] [Extend]` with Extend `btn_secondary` disabled until a select changes, live "Will be: …" preview, inline error `flash_error` / success `flash_success`), footer: Close only (`btn_secondary`). Variables `preview_form`, `can_extend`, `bundle`. |
-| `_legacy_layout.html.twig` | Deprecated 1.x layout bridge (see below). |
-| `layout_integrate_host.html.twig` | Deprecated 1.x host bridge (`body` → `nowo_ui_content`), removed in 2.0. |
 
 The bundle ships no layout, no local pagination, flash, confirm, modal, page header or empty-state partial and no inline
 script or handler: the scaffolds and the UiKit partials (`action`, `confirm`, `dialog`, `empty`, `flashes`,
@@ -96,11 +94,12 @@ button, Escape, backdrop) resets the preview state. Revoke / Delete / Delete all
 
 ## Layout bridge (1.x layouts)
 
-`web_ui.layout_template` may still point at a 1.x layout without the UiKit canonical blocks (e.g. the project
-`base.html.twig` rendering `body`, or `@NowoYopassBundle/layout_integrate_host.html.twig`): `YopassPages` then wraps it
-in `_legacy_layout.html.twig` (maps the canonical blocks into `body`, `title`, `stylesheets`, `javascripts`) and
-triggers a deprecation. `nowo_ui_styles` / `nowo_ui_scripts` the 1.x layout renders itself are not printed twice. The
-value `@NowoYopassBundle/layout.html.twig` (the removed 1.x default) is mapped to null. The bridge is removed in 2.0.
+Removed in 2.0. `web_ui.layout_template` must point at a layout that renders the UiKit canonical blocks (extend
+`@NowoUiKit/layout/admin.html.twig`, or use `@NowoUiKit/layout/_bridge.html.twig`). A 1.x layout without them (e.g. the
+project `base.html.twig` rendering `body`) throws a `LogicException` naming it when a manage page renders; 1.x wrapped
+it in `_legacy_layout.html.twig`. `@NowoYopassBundle/_legacy_layout.html.twig` and
+`@NowoYopassBundle/layout_integrate_host.html.twig` are gone. The value `@NowoYopassBundle/layout.html.twig` (the 1.x
+default removed in 1.10) is still mapped to null.
 
 ## Allowed exceptions
 

@@ -10,7 +10,6 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use LogicException;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Contracts\Service\ResetInterface;
 use Throwable;
 
@@ -48,10 +47,18 @@ use function unserialize;
  */
 final class YopassEntityManager implements ResetInterface
 {
-    /** The bundle name the host-flush probe shows (1.22.0). */
+    /**
+     * The bundle name the 1.22 host-flush probe showed. Unused since 2.0 (the host mode is removed).
+     *
+     * @deprecated since 2.0, unused; removed in 3.0
+     */
     public const BUNDLE_NAME = 'NowoYopassBundle';
 
-    /** The bundle's entity namespaces: never reported by the host-flush probe (1.22.0). */
+    /**
+     * The bundle's entity namespaces the 1.22 host-flush probe skipped. Unused since 2.0 (the host mode is removed).
+     *
+     * @deprecated since 2.0, unused; removed in 3.0
+     */
     public const OWN_NAMESPACES = ['Nowo\\YopassBundle\\Entity'];
 
     private ?EntityManagerInterface $entityManager = null;
@@ -195,18 +202,6 @@ final class YopassEntityManager implements ResetInterface
         }
 
         return $source;
-    }
-
-    /**
-     * Main request start: the previous request's shares are detached.
-     *
-     * @deprecated since 1.20.0, the boundaries are handled by {@see YopassEntityManagerBoundarySubscriber}; removed in 2.0
-     */
-    public function onKernelRequest(RequestEvent $event): void
-    {
-        if ($event->isMainRequest()) {
-            $this->clear();
-        }
     }
 
     /**

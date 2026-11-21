@@ -15,6 +15,8 @@ use Nowo\YopassBundle\Doctrine\YopassDocumentManager;
 use Nowo\YopassBundle\Repository\ResolvesDocumentManagerTrait;
 use Nowo\YopassBundle\Tests\Support\Orm\GuardUser;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use ReflectionMethod;
 
 /**
  * The creator resolver and the event creator hand MongoDB ODM work to the private document manager (1.22.0); its own
@@ -74,5 +76,26 @@ final class YopassDocumentManagerWiringTest extends TestCase
 
         $this->expectExceptionObject(new LogicException('nowo_yopass: document manager "shares" is not a Doctrine MongoDB ODM document manager.'));
         $resolver->manager();
+    }
+
+    /**
+     * Symfony's opcache preloader follows public signatures: no public signature of a class the ORM wiring preloads may
+     * name the internal YopassPrivateDocumentManager, whose parent (the ODM DocumentManager) is missing without
+     * doctrine/mongodb-odm ("Can't preload unlinked class").
+     */
+    public function testNoPublicSignatureNamesThePrivateDocumentManagerSubclass(): void
+    {
+        foreach ([YopassDocumentManager::class, HostCreatorReference::class, DoctrineCreatorReferenceResolver::class] as $class) {
+            foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+                $types = [(string) $method->getReturnType()];
+                foreach ($method->getParameters() as $parameter) {
+                    $types[] = (string) $parameter->getType();
+                }
+                foreach ($types as $type) {
+                    self::assertStringNotContainsString('YopassPrivateDocumentManager', $type, $class . '::' . $method->getName());
+                }
+            }
+        }
+        self::assertSame(DocumentManager::class, (string) (new ReflectionMethod(YopassDocumentManager::class, 'get'))->getReturnType());
     }
 }

@@ -2,7 +2,7 @@
 
 The bundle stores **who created each share** (`creator`) but does **not** implement teams, roles, or ACLs itself. Use Symfony events to adapt listing and per-share checks to your application.
 
-Route-level features (`create`, `list`, `revoke`) still go through the access checker (`YopassAccessPolicyInterface` since 1.19; `YopassAccessCheckerInterface` is deprecated). Events control **which shares appear** in the manage list and **who may open/preview/extend/revoke/delete** a given share.
+Route-level features (`create`, `list`, `revoke`) still go through the access checker (`YopassAccessPolicyInterface`). Events control **which shares appear** in the manage list and **who may open/preview/extend/revoke/delete** a given share.
 
 ## Table of contents
 
@@ -11,7 +11,7 @@ Route-level features (`create`, `list`, `revoke`) still go through the access ch
   - [ShareListResultEvent](#sharelistresultevent)
   - [ShareAccessCheckEvent](#shareaccesscheckevent)
 - [Example implementations](#example-implementations)
-- [Layering with YopassAccessCheckerInterface](#layering-with-yopassaccesscheckerinterface)
+- [Layering with YopassAccessPolicyInterface](#layering-with-yopassaccesspolicyinterface)
 - [Pagination note](#pagination-note)
 - [Related](#related)
 
@@ -163,11 +163,11 @@ Copy from [`examples/access-control/`](../../examples/access-control/):
 | `IndividualShareGrantListener.php` | Per-share collaborator grants |
 | `RoleBasedShareAccessListener.php` | Role limits (e.g. auditor = preview only) |
 
-## Layering with YopassAccessCheckerInterface
+## Layering with YopassAccessPolicyInterface
 
 | Layer | Scope | Example |
 |-------|-------|---------|
-| `YopassAccessPolicyInterface` (deprecated: `YopassAccessCheckerInterface`) | Can user open manage UI / create / list / revoke at all? | `ROLE_YOPASS_USER` |
+| `YopassAccessPolicyInterface` | Can user open manage UI / create / list / revoke at all? | `ROLE_YOPASS_USER` |
 | `ShareListQueryEvent` / `ShareListResultEvent` | Which shares appear in the list? | Team members |
 | `ShareAccessCheckEvent` | Can user act on this share? | Creator + team lead + grant table |
 

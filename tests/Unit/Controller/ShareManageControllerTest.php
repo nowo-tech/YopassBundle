@@ -25,7 +25,6 @@ use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\UserRef;
-use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
 use Nowo\YopassBundle\Service\ShareAccessLogger;
@@ -144,7 +143,7 @@ final class ShareManageControllerTest extends TestCase
         self::assertSame('nowo_yopass_index', $page->pagination->route);
         self::assertSame('/generated/demo_home', $page->header->back?->href);
         self::assertCount(1, $page->header->actions);
-        self::assertNull($twig->captured['nowo_yopass_legacy_layout']);
+        self::assertArrayNotHasKey('nowo_yopass_legacy_layout', $twig->captured);
     }
 
     public function testIndexNeverPurgesOnGet(): void
@@ -700,7 +699,7 @@ final class ShareManageControllerTest extends TestCase
 
     public function testDenyUnlessFeatureBlocksAccess(): void
     {
-        $accessChecker = $this->createMock(YopassAccessCheckerInterface::class);
+        $accessChecker = $this->createMock(YopassAccessPolicyInterface::class);
         $accessChecker->method('canAccess')->willReturn(false);
 
         $controller = $this->controller(accessChecker: $accessChecker);
@@ -712,7 +711,7 @@ final class ShareManageControllerTest extends TestCase
 
     public function testDenyUnlessFeatureBlocksListWhenNotGranted(): void
     {
-        $accessChecker = $this->createMock(YopassAccessCheckerInterface::class);
+        $accessChecker = $this->createMock(YopassAccessPolicyInterface::class);
         $accessChecker->method('canAccess')->willReturn(true);
         $accessChecker->method('canList')->willReturn(false);
 
@@ -761,7 +760,7 @@ final class ShareManageControllerTest extends TestCase
 
     public function testCreateDeniedWhenFeatureNotGranted(): void
     {
-        $accessChecker = $this->createMock(YopassAccessCheckerInterface::class);
+        $accessChecker = $this->createMock(YopassAccessPolicyInterface::class);
         $accessChecker->method('canAccess')->willReturn(true);
         $accessChecker->method('canCreate')->willReturn(false);
 
@@ -774,7 +773,7 @@ final class ShareManageControllerTest extends TestCase
 
     public function testRevokeDeniedWhenFeatureNotGranted(): void
     {
-        $accessChecker = $this->createMock(YopassAccessCheckerInterface::class);
+        $accessChecker = $this->createMock(YopassAccessPolicyInterface::class);
         $accessChecker->method('canAccess')->willReturn(true);
         $accessChecker->method('canRevoke')->willReturn(false);
 
@@ -1449,7 +1448,7 @@ final class ShareManageControllerTest extends TestCase
     }
 
     private function controller(
-        YopassAccessPolicyInterface|YopassAccessCheckerInterface|null $accessChecker = null,
+        ?YopassAccessPolicyInterface $accessChecker = null,
         ?ShareRepositoryInterface $shareRepository = null,
         ?ShareCreator $shareCreator = null,
         ?ShareRetriever $shareRetriever = null,
@@ -1515,9 +1514,9 @@ final class ShareManageControllerTest extends TestCase
         );
     }
 
-    private function accessChecker(): YopassAccessCheckerInterface
+    private function accessChecker(): YopassAccessPolicyInterface
     {
-        $checker = $this->createMock(YopassAccessCheckerInterface::class);
+        $checker = $this->createMock(YopassAccessPolicyInterface::class);
         $checker->method('canAccess')->willReturn(true);
         $checker->method('canCreate')->willReturn(true);
         $checker->method('canList')->willReturn(true);

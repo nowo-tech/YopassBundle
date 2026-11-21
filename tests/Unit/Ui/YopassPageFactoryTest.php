@@ -111,7 +111,7 @@ final class YopassPageFactoryTest extends TestCase
         self::assertSame('yopass.public.title', $header->title->key);
         self::assertSame('own', $header->breadcrumbsMode);
         self::assertSame('guest.html.twig', $factory->publicLayout());
-        self::assertSame(['a' => 1, 'nowo_yopass_legacy_layout' => null, 'nowo_yopass_legacy_blocks' => [], 'nowo_yopass_icons' => []], $factory->context(['a' => 1]));
+        self::assertSame(['a' => 1, 'nowo_yopass_icons' => []], $factory->context(['a' => 1]));
     }
 
     public function testManagePageRowAccessHidesActionsAndUnknownRowsGetNone(): void

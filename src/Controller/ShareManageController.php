@@ -19,7 +19,6 @@ use Nowo\YopassBundle\Form\ShareCreateType;
 use Nowo\YopassBundle\Form\SharePreviewType;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
-use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
 use Nowo\YopassBundle\Security\YopassAccessDecider;
 use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use Nowo\YopassBundle\Service\ShareAccessGuard;
@@ -101,7 +100,7 @@ final class ShareManageController extends AbstractController
      * } $sharingOptions
      */
     public function __construct(
-        YopassAccessPolicyInterface|YopassAccessCheckerInterface $accessChecker,
+        YopassAccessPolicyInterface $accessChecker,
         private readonly ShareRepositoryInterface $shareRepository,
         private readonly ShareLister $shareLister,
         private readonly ShareAccessGuard $shareAccessGuard,
@@ -579,8 +578,8 @@ final class ShareManageController extends AbstractController
 
     private function denyUnlessFeature(string $feature): void
     {
-        // A framework-free policy receives the signed-in user as a UserRef; a legacy checker is called with no user.
-        $current = $this->access->usesPolicy() ? $this->currentUser() : null;
+        // The framework-free policy receives the signed-in user as a UserRef.
+        $current = $this->currentUser();
         if (!$this->access->allows('access', null, $current)) {
             throw $this->createAccessDeniedException($this->translator->trans('yopass.access.denied', [], YopassBundle::TRANSLATION_DOMAIN));
         }

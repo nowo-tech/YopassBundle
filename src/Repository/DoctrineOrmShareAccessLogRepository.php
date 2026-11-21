@@ -19,14 +19,23 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
     use ResolvesEntityManagerTrait;
 
     /**
-     * Creates the repository on the given entity manager.
+     * Creates the repository. The bundle passes its own entity manager (`$ownManager`, the only mode since 2.0, also with
+     * the custom driver on a relational platform): the rows are written through it on the connection of
+     * `database.entity_manager`, and the application's manager is never flushed. Constructed by hand without it, the
+     * repository works on `$entityManager`.
+     *
+     * @param ManagerRegistry|null $registry ignored since 2.0 (it replaced a closed application manager in the removed
+     *                                       host mode); removed in 3.0
+     * @param string|null $managerName ignored since 2.0, see `$registry`; removed in 3.0
+     * @param HostFlushProbe|null $hostFlushProbe ignored since 2.0 (the 1.22 probe of the removed host mode); removed in 3.0
      */
+    // @phpstan-ignore constructor.unusedParameter, constructor.unusedParameter, constructor.unusedParameter (the 1.x host-mode arguments are ignored since 2.0, removed in 3.0)
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private ?ManagerRegistry $registry = null,
-        private ?string $managerName = null,
+        ?ManagerRegistry $registry = null,
+        ?string $managerName = null,
         private ?YopassEntityManager $ownManager = null,
-        private ?HostFlushProbe $hostFlushProbe = null,
+        ?HostFlushProbe $hostFlushProbe = null,
     ) {
     }
 
@@ -63,11 +72,19 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
     }
 
     /**
-     * Schedules an access log entry for persistence.
+     * Schedules an access log entry for persistence. A share the manager does not hold (with the custom driver the share
+     * comes from your repository) is related through a reference of the same id, so the flush never meets an unknown
+     * entity through the relation.
      */
     public function persist(ShareAccessLog $log): void
     {
-        $this->em()->persist($log);
+        $entityManager = $this->em();
+        $share         = $log->getShare();
+        if ($share instanceof SecureShare && !$entityManager->contains($share)) {
+            $entityManager->getClassMetadata(ShareAccessLog::class)
+                ->setFieldValue($log, 'share', $entityManager->getReference(SecureShare::class, $share->getId()));
+        }
+        $entityManager->persist($log);
     }
 
     /**
@@ -75,12 +92,6 @@ final readonly class DoctrineOrmShareAccessLogRepository implements ShareAccessL
      */
     public function flush(): void
     {
-        $entityManager = $this->em();
-        // 1.22.0 (REQ-ARCH-001 rule 6 deprecation layer): with `database.private_entity_manager: false` this flush
-        // writes the application's pending changes too; the probe reports each such class once per unit of work.
-        if (!$this->ownManager instanceof YopassEntityManager) {
-            $this->hostFlushProbe?->beforeHostFlush($entityManager, YopassEntityManager::BUNDLE_NAME, YopassEntityManager::OWN_NAMESPACES);
-        }
-        $entityManager->flush();
+        $this->em()->flush();
     }
 }

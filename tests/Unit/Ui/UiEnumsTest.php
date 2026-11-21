@@ -12,15 +12,11 @@ use function count;
 
 final class UiEnumsTest extends TestCase
 {
-    public function testCssFrameworkValuesAndCdnHelpers(): void
+    public function testCssFrameworkValues(): void
     {
         self::assertContains('tabler', CssFramework::values());
         self::assertContains('bootstrap5', CssFramework::values());
-        self::assertTrue(CssFramework::Tabler->loadsBootstrapCompatibleCdn());
-        self::assertTrue(CssFramework::Bootstrap5->loadsBootstrapCompatibleCdn());
-        self::assertFalse(CssFramework::Tailwind->loadsBootstrapCompatibleCdn());
-        self::assertTrue(CssFramework::Bootstrap4->loadsBootstrap4Cdn());
-        self::assertFalse(CssFramework::Bootstrap5->loadsBootstrap4Cdn());
+        self::assertSame(count(CssFramework::cases()), count(CssFramework::values()));
     }
 
     public function testIconSetValues(): void
