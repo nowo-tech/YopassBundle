@@ -33,7 +33,7 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
      * @param ?string $managerName Entity / document manager name
      * @param ?CreatorClassPolicy $classes Accepted security-user classes (null = `user_class` only)
      * @param YopassDocumentManager|YopassEntityManager|null $ownManager the bundle's private entity manager (1.19.0) or
-     *                                                                   document manager (1.22.0 opt-in)
+     *                                                                   document manager (1.22.0)
      */
     public function __construct(
         private string $userClass,

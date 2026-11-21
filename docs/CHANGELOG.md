@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[2.0.0] - 2026-11-21](#200---2026-11-21)
 - [[1.22.0] - 2026-11-20](#1220---2026-11-20)
 - [[1.21.1] - 2026-11-20](#1211---2026-11-20)
 - [[1.21.0] - 2026-11-19](#1210---2026-11-19)
@@ -72,6 +73,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Demo: runs in UiKit's demo platform shell (`nowo-tech/ui-kit-bundle` ^2.60); the demo's own masthead and layout bridges are gone and the manage and public reveal pages render inside the shell. Demo only, no bundle change.
+
+## [2.0.0] - 2026-11-21
+
+2.0.0: the major removes only what 1.x announced as deprecated (REQ-ARCH-001 rules 1, 3 and 6). An application that
+runs 1.22 without deprecation notices from this bundle upgrades without code changes. See
+[UPGRADING](UPGRADING.md#to-200).
+
+### Removed
+
+- **`database.private_entity_manager: false`** (deprecated since 1.19.0): the ORM driver always reads and writes through
+  the bundle's own entity manager, and the bundle never flushes, clears, closes or resets yours. `false` fails the
+  container build with a message; `true` is accepted as a no-op and deprecated (removed in 3.0). The host-mode code
+  paths of `ShareWriteUnit`, `DoctrineOrmShareRepository` and `DoctrineOrmShareAccessLogRepository` are gone,
+  together with the 1.19 notice.
+- **`database.private_document_manager: false`** (the 1.x default, deprecated since 1.22.0): the MongoDB ODM driver
+  always writes through the bundle's own document manager. `false` fails the build; `true` is a deprecated no-op
+  (removed in 3.0). The host document manager branch and the 1.22 notice are gone. The private manager keeps using your
+  manager's own filter collection (audit XC-M1).
+- **The 1.22 host-flush probe** (`nowo_yopass.host_flush_probe` and its boundary subscriber) and the custom-driver
+  access log notice: there is no host mode left to report.
+- **`Security\YopassAccessCheckerInterface`** and its service alias (deprecated since 1.19.0, alias notice since
+  1.22.0). `ConfigurableYopassAccessChecker` implements only `YopassAccessPolicyInterface` and its methods take
+  `?UserRef`. A configured `security.access_checker` whose class does not implement `YopassAccessPolicyInterface`, or
+  cannot be loaded because it still implements the removed interface, fails the container build with a message
+  naming the class. A service registered by autodiscovery (an `#[AsAlias]` / `#[AsDecorator]` checker) that still
+  implements the removed interface fails the build too, instead of being dropped silently.
+- **`YopassEntityManager::onKernelRequest()`** (deprecated since 1.20.0; `YopassEntityManagerBoundarySubscriber` handles
+  the boundaries).
+- **`Ui\CssFramework::loadsBootstrapCompatibleCdn()` / `loadsBootstrap4Cdn()`** (deprecated since 1.10).
+- **Configuration keys deprecated since 1.10:** root `route_prefix` and `templates.layout|manage|created|public`,
+  `security.admin_roles|create_roles|list_roles|revoke_roles`, `web_ui.css_framework` / `web_ui.icon_set`. Each now
+  fails the build with the key that replaces it (no silent mapping). The UiKit seeding from `web_ui.css_framework` /
+  `icon_set` and the `nowo_yopass.web_ui.css_framework` / `icon_set` parameters are gone.
+- **Templates and Twig globals deprecated since 1.10:** `@NowoYopassBundle/_legacy_layout.html.twig`,
+  `@NowoYopassBundle/layout_integrate_host.html.twig`, the `nowo_yopass_layout_template`, `nowo_yopass_css_framework`
+  and `nowo_yopass_icon_set` globals (`Twig\YopassTwigExtension`). A `web_ui.layout_template` that does not render the
+  UiKit canonical blocks now fails with a clear error instead of being wrapped in the 1.x bridge.
+
+### Changed
+
+- **The custom driver's access log** (`database.driver: custom` on a relational platform, `access_log.enabled`, no
+  `access_log.repository`) is written through the bundle's own entity manager on `database.entity_manager`: same
+  connection, same table. Your entity manager is no longer flushed by it. A share that your repository returns is
+  related to the log row by a reference of the same id. **Your repository must commit the consume read itself**
+  (UPGRADING, "Private manager only"): a read that was only changed in your manager is no longer saved by the access
+  log flush.
+- `database.private_document_manager` now reports `true` as its default (no effect, see above).
+- The constructor arguments `$registry`, `$managerName` (and `$hostFlushProbe`) of `DoctrineOrmShareRepository`,
+  `DoctrineOrmShareAccessLogRepository` and `DoctrineMongoShareRepository` are ignored (they served the removed host
+  mode) and will be removed in 3.0. The bundle builds the repositories with its private manager; a repository
+  constructed by hand without one works on the manager it is given.
+- `ShareWriteUnit` (`@internal`) takes only the bundle's private entity manager.
+
+### Fixed
+
+- **opcache preloading without doctrine/mongodb-odm:** Symfony's preloader followed the public signature of
+  `YopassDocumentManager::get()` into the internal `YopassPrivateDocumentManager` and logged "Can't preload unlinked
+  class Nowo\YopassBundle\Doctrine\YopassPrivateDocumentManager: Unknown parent Doctrine\ODM\MongoDB\DocumentManager"
+  at every start in applications that do not install the ODM (since 1.22.0). `get()` now declares the ODM
+  `DocumentManager` it extends (the instance is unchanged).
+
+### Security
+
+- 1.x support after 2.0.0: security fixes rated Moderate and above are backported to the last 1.x minor for 6 months;
+  Low ones are fixed in 2.x only. See `.github/SECURITY.md`.
+
+[2.0.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v2.0.0
 
 ## [1.22.0] - 2026-11-20
 
@@ -1237,7 +1305,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.22.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v2.0.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7

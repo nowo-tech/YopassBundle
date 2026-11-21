@@ -29,11 +29,9 @@ use Nowo\YopassBundle\Repository\ShareAccessLogRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
-use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Nowo\YopassBundle\Service\ShareListRouteResolver;
-use Nowo\YopassBundle\Twig\YopassTwigExtension;
-use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
 use stdClass;
@@ -93,7 +91,7 @@ final class YopassExtensionTest extends TestCase
         );
         self::assertSame(
             'nowo_yopass.access_checker.default',
-            (string) $this->container->getAlias(YopassAccessCheckerInterface::class),
+            (string) $this->container->getAlias(YopassAccessPolicyInterface::class),
         );
         self::assertTrue($this->container->hasDefinition(SecureShareMetadataListener::class));
         self::assertTrue($this->container->hasDefinition(DoctrineOrmShareRepository::class));
@@ -121,35 +119,15 @@ final class YopassExtensionTest extends TestCase
         self::assertSame(['manage' => null, 'created' => null, 'public' => null], $this->container->getParameter('nowo_yopass.web_ui.templates'));
         self::assertSame('', $this->container->getParameter('nowo_yopass.web_ui.path_prefix'));
         self::assertSame('', $this->container->getParameter('nowo_yopass.route_prefix'));
-        self::assertNull($this->container->getParameter('nowo_yopass.web_ui.css_framework'));
-        self::assertNull($this->container->getParameter('nowo_yopass.web_ui.icon_set'));
+        self::assertFalse($this->container->hasParameter('nowo_yopass.web_ui.css_framework'));
+        self::assertFalse($this->container->hasParameter('nowo_yopass.web_ui.icon_set'));
     }
 
-    public function testLoadRegistersTwigExtensionArguments(): void
+    public function testLoadRegistersNo1xTwigGlobals(): void
     {
         $this->extension->load([['user_class' => 'App\\Entity\\User']], $this->container);
 
-        self::assertTrue($this->container->hasDefinition(YopassTwigExtension::class));
-        $definition = $this->container->getDefinition(YopassTwigExtension::class);
-        self::assertSame('%nowo_yopass.web_ui.layout_template%', $definition->getArgument('$layoutTemplate'));
-        self::assertSame('%nowo_yopass.web_ui.css_framework%', $definition->getArgument('$cssFramework'));
-        self::assertSame('%nowo_yopass.web_ui.icon_set%', $definition->getArgument('$iconSet'));
-    }
-
-    public function testLoadMapsTheDeprecatedTemplatesLayout(): void
-    {
-        $this->extension->load([[
-            'user_class'   => 'App\\Entity\\User',
-            'route_prefix' => '/{_locale}',
-            'templates'    => [
-                'layout' => 'admin/base.html.twig',
-                'public' => 'yopass/public.html.twig',
-            ],
-        ]], $this->container);
-
-        self::assertSame('admin/base.html.twig', $this->container->getParameter('nowo_yopass.web_ui.layout_template'));
-        self::assertSame('yopass/public.html.twig', $this->container->getParameter('nowo_yopass.templates')['public']);
-        self::assertSame('/{_locale}', $this->container->getParameter('nowo_yopass.route_prefix'));
+        self::assertFalse($this->container->hasDefinition('Nowo\\YopassBundle\\Twig\\YopassTwigExtension'));
     }
 
     public function testLoadMapsThe1xDefaultLayoutAndEmptyValuesToNull(): void
@@ -171,16 +149,13 @@ final class YopassExtensionTest extends TestCase
         );
     }
 
-    public function testLoadUsesWebUiLayoutTemplateOverLegacyTemplatesLayout(): void
+    public function testLoadUsesTheWebUiLayouts(): void
     {
         $this->extension->load([[
             'user_class' => 'App\\Entity\\User',
             'web_ui'     => [
                 'layout_template'        => 'platform/layout.html.twig',
                 'public_layout_template' => 'platform/guest.html.twig',
-            ],
-            'templates' => [
-                'layout' => 'admin/base.html.twig',
             ],
         ]], $this->container);
 
@@ -251,11 +226,9 @@ final class YopassExtensionTest extends TestCase
         ]], $this->container);
 
         self::assertFalse($this->container->hasDefinition('nowo_yopass.access_checker.default'));
-        self::assertSame('app.yopass.access', (string) $this->container->getAlias(YopassAccessCheckerInterface::class));
+        self::assertSame('app.yopass.access', (string) $this->container->getAlias(YopassAccessPolicyInterface::class));
     }
 
-    /** The custom driver's access log on the application's manager triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
-    #[IgnoreDeprecations]
     public function testLoadUsesCustomRepositoryForCustomDriver(): void
     {
         $this->container->setDefinition('app.yopass.repository', new Definition(stdClass::class));
@@ -303,8 +276,6 @@ final class YopassExtensionTest extends TestCase
         ]], $this->container);
     }
 
-    /** The 1.x MongoDB default triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
-    #[IgnoreDeprecations]
     public function testLoadUsesCustomCollectionName(): void
     {
         $this->extension->load([[
@@ -339,8 +310,6 @@ final class YopassExtensionTest extends TestCase
         self::assertArrayHasKey('YopassBundle', $mongoConfigs[0]['document_managers']['default']['mappings']);
     }
 
-    /** The 1.x MongoDB default triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
-    #[IgnoreDeprecations]
     public function testLoadRegistersMongoRepositoryWhenPlatformIsMongo(): void
     {
         $this->extension->load([[
@@ -404,8 +373,7 @@ final class YopassExtensionTest extends TestCase
         ], $listener->getTag('kernel.event_listener'));
 
         $unit = $this->container->getDefinition(ShareWriteUnit::class);
-        self::assertSame('doctrine.orm.default_entity_manager', (string) $unit->getArgument(0));
-        self::assertSame(YopassEntityManager::class, (string) $unit->getArgument(3));
+        self::assertSame(YopassEntityManager::class, (string) $unit->getArgument(0));
     }
 
     public function testTheConflictStatusAndRetryAfterCanBeConfigured(): void
@@ -425,13 +393,8 @@ final class YopassExtensionTest extends TestCase
         self::assertSame([409, 5], $policy->getArguments());
     }
 
-    /** The 1.x MongoDB default triggers the 1.22.0 notice, asserted in YopassExtension2NoticesTest. */
-    #[IgnoreDeprecations]
-    public function testLegacyModeWriteUnitHasNoPrivateManagerAndMongoDbHasNoneAtAll(): void
+    public function testMongoDbHasNoWriteUnit(): void
     {
-        $this->extension->load([['user_class' => 'App\\Entity\\User', 'database' => ['private_entity_manager' => false]]], $this->container);
-        self::assertNull($this->container->getDefinition(ShareWriteUnit::class)->getArgument(3));
-
         $container = new ContainerBuilder();
         $this->extension->load([['user_class' => 'App\\Entity\\User', 'database' => ['driver' => 'doctrine_mongodb', 'platform' => 'mongodb']]], $container);
         self::assertFalse($container->hasDefinition(ShareWriteUnit::class));
@@ -525,60 +488,7 @@ final class YopassExtensionTest extends TestCase
         self::assertFalse($yopassReseed);
     }
 
-    public function testPrependSeedsUiKitFromWebUiWhenHostUnset(): void
-    {
-        $this->registerStubExtension($this->container, 'nowo_ui_kit');
-        $this->container->registerExtension($this->extension);
-        $this->container->prependExtensionConfig('nowo_yopass', [
-            'user_class' => 'App\\Entity\\User',
-            'web_ui'     => [
-                'css_framework' => 'bootstrap',
-                'icon_set'      => 'bootstrap-icons',
-            ],
-        ]);
-
-        $this->extension->prepend($this->container);
-
-        $found = false;
-        foreach ($this->container->getExtensionConfig('nowo_ui_kit') as $cfg) {
-            if (($cfg['css_framework'] ?? null) === 'bootstrap5'
-                && ($cfg['icon_set'] ?? null) === 'bootstrap-icons'
-            ) {
-                $found = true;
-                break;
-            }
-        }
-        self::assertTrue($found);
-    }
-
-    public function testPrependDoesNotOverrideExplicitUiKitHostConfig(): void
-    {
-        $this->registerStubExtension($this->container, 'nowo_ui_kit');
-        $this->container->prependExtensionConfig('nowo_ui_kit', [
-            'css_framework' => 'bootstrap5',
-            'icon_set'      => 'none',
-        ]);
-        $this->container->registerExtension($this->extension);
-        $this->container->prependExtensionConfig('nowo_yopass', [
-            'user_class' => 'App\\Entity\\User',
-            'web_ui'     => [
-                'css_framework' => 'tabler',
-                'icon_set'      => 'tabler-icons',
-            ],
-        ]);
-
-        $this->extension->prepend($this->container);
-
-        $reseeds = 0;
-        foreach ($this->container->getExtensionConfig('nowo_ui_kit') as $cfg) {
-            if (($cfg['css_framework'] ?? null) === 'tabler' || ($cfg['icon_set'] ?? null) === 'tabler-icons') {
-                ++$reseeds;
-            }
-        }
-        self::assertSame(0, $reseeds);
-    }
-
-    public function testPrependDoesNotSeedUiKitWhenTheDeprecatedKeysAreUnset(): void
+    public function testPrependNeverSeedsUiKit(): void
     {
         $this->registerStubExtension($this->container, 'nowo_ui_kit');
         $this->container->registerExtension($this->extension);

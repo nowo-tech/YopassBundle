@@ -9,18 +9,20 @@ use Nowo\TransactionDoctrine\Symfony\Conflict\ConflictResponsePolicy;
 use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\Support\RelativeInterval;
-use Nowo\YopassBundle\Ui\CssFramework;
-use Nowo\YopassBundle\Ui\IconSet;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\ScalarNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
+use function array_column;
 use function array_key_exists;
+use function implode;
 use function in_array;
 use function is_array;
 use function is_string;
 use function preg_match;
+use function sprintf;
 use function trim;
 
 /**
@@ -36,6 +38,29 @@ final class Configuration implements ConfigurationInterface
      */
     public const TAB_ICON_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?$/';
 
+    /** Deprecation of the `private_entity_manager` / `private_document_manager` keys (2.0, removed in 3.0). */
+    private const NO_EFFECT_MESSAGE = 'The "%node%" option at "%path%" has no effect since 2.0 (the private manager is the only mode); remove it.';
+
+    /** Root keys removed in 2.0 (deprecated since 1.10) and what replaces each one. */
+    private const REMOVED_ROOT_KEYS = [
+        'route_prefix' => '"nowo_yopass.web_ui.path_prefix"',
+        'templates'    => '"nowo_yopass.web_ui.layout_template" and "nowo_yopass.web_ui.templates.<page>"',
+    ];
+
+    /** Section keys removed in 2.0 (deprecated since 1.10) and what replaces each one. */
+    private const REMOVED_SECTION_KEYS = [
+        'security' => [
+            'admin_roles'  => '"nowo_yopass.security.roles.admin"',
+            'create_roles' => '"nowo_yopass.security.roles.create"',
+            'list_roles'   => '"nowo_yopass.security.roles.list"',
+            'revoke_roles' => '"nowo_yopass.security.roles.revoke"',
+        ],
+        'web_ui' => [
+            'css_framework' => '"nowo_ui_kit.css_framework"',
+            'icon_set'      => '"nowo_ui_kit.icon_set"',
+        ],
+    ];
+
     /**
      * Builds the "nowo_yopass" configuration tree.
      */
@@ -47,7 +72,7 @@ final class Configuration implements ConfigurationInterface
         $root
             ->beforeNormalization()
                 ->ifArray()
-                ->then(static fn (array $config): array => self::mapDeprecatedRootKeys($config))
+                ->then(static fn (array $config): array => self::refuseRemovedKeys($config))
             ->end();
         $this->addUserClassToAccessLogSections($root);
         $this->addSecurityHeadersToDashboardRouteSections($root);
@@ -109,11 +134,16 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                         ->scalarNode('entity_manager')
                             ->defaultValue('default')
-                            ->info('Doctrine ORM entity manager name for relational databases: its connection, mapping and events are used; with private_entity_manager it is never flushed.')
+                            ->info('Doctrine ORM entity manager name for relational databases: the bundle\'s own entity manager is built on its connection, mapping, events and SQL filters (same tables). It is never flushed by the bundle.')
                         ->end()
                         ->booleanNode('private_entity_manager')
                             ->defaultTrue()
-                            ->info('Doctrine ORM driver: read and write shares and the access log through the bundle\'s own entity manager built on entity_manager (same connection and tables), so the application\'s pending changes are never flushed by the bundle (1.19.0). False is the pre-1.19 behaviour (flushes entity_manager itself), deprecated and removed in 2.0.')
+                            ->info('No effect since 2.0: the bundle always reads and writes through its own entity manager built on entity_manager. True is accepted (deprecated, removed in 3.0); false is refused.')
+                            ->setDeprecated('nowo-tech/yopass-bundle', '2.0', self::NO_EFFECT_MESSAGE)
+                            ->validate()
+                                ->ifTrue(static fn (mixed $value): bool => $value === false)
+                                ->thenInvalid('"false" is no longer supported since 2.0: the bundle always writes through its own entity manager (same connection and tables) and never flushes yours. Remove the option and flush your own changes yourself; see UPGRADING "To 2.0.0".')
+                            ->end()
                         ->end()
                         ->enumNode('mapping')
                             ->values(['attribute', 'xml'])
@@ -125,8 +155,13 @@ final class Configuration implements ConfigurationInterface
                             ->info('Doctrine MongoDB document manager name when platform/driver is mongodb.')
                         ->end()
                         ->booleanNode('private_document_manager')
-                            ->defaultFalse()
-                            ->info('Doctrine MongoDB ODM driver: read and write shares through the bundle\'s own document manager built on document_manager (same client, database and collection), so the application\'s pending changes are never flushed by the bundle (1.22.0). False (the 1.x default) flushes document_manager itself and is deprecated: in 2.0 the private document manager is the only mode.')
+                            ->defaultTrue()
+                            ->info('No effect since 2.0: with the MongoDB ODM driver the bundle always reads and writes shares through its own document manager built on document_manager. True is accepted (deprecated, removed in 3.0); false is refused.')
+                            ->setDeprecated('nowo-tech/yopass-bundle', '2.0', self::NO_EFFECT_MESSAGE)
+                            ->validate()
+                                ->ifTrue(static fn (mixed $value): bool => $value === false)
+                                ->thenInvalid('"false" is no longer supported since 2.0: with the MongoDB ODM driver the bundle always writes through its own document manager (same database and collection) and never flushes yours. Remove the option and flush your own documents yourself; see UPGRADING "To 2.0.0".')
+                            ->end()
                         ->end()
                         ->scalarNode('collection')
                             ->defaultNull()
@@ -195,11 +230,6 @@ final class Configuration implements ConfigurationInterface
                             ->info('Opt-in: append \'wasm-unsafe-eval\' to script-src (or to a script-src derived from default-src) of the Content-Security-Policy / -Report-Only response headers on the yopass.js routes only. Never creates a policy and never touches other routes. Default false (the host adds it).')
                         ->end()
                     ->end()
-                ->end()
-                ->scalarNode('route_prefix')
-                    ->info('Deprecated since 1.10: use web_ui.path_prefix.')
-                    ->defaultNull()
-                    ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.path_prefix" instead (REQ-UI-003).')
                 ->end()
                 ->scalarNode('dashboard_route')
                     ->info('Optional route name for the back link in the manage UI. Null hides the button.')
@@ -350,14 +380,10 @@ final class Configuration implements ConfigurationInterface
             ->children()
                 ->arrayNode('security')
                     ->addDefaultsIfNotSet()
-                    ->info('Access control. Replace access_checker with a custom service implementing YopassAccessPolicyInterface (or the deprecated YopassAccessCheckerInterface).')
-                    ->beforeNormalization()
-                        ->ifArray()
-                        ->then(static fn (array $security): array => self::mapDeprecatedRoleKeys($security))
-                    ->end()
+                    ->info('Access control. Replace access_checker with a custom service implementing YopassAccessPolicyInterface.')
                     ->children()
                         ->scalarNode('access_checker')
-                            ->info('Service id implementing YopassAccessPolicyInterface (1.19.0) or the deprecated YopassAccessCheckerInterface. Null uses role-based defaults.')
+                            ->info('Service id implementing YopassAccessPolicyInterface. Null uses role-based defaults.')
                             ->defaultNull()
                         ->end()
                         ->arrayNode('access_roles')
@@ -390,26 +416,6 @@ final class Configuration implements ConfigurationInterface
                                     ->info('Revoke, extend and delete own shares.')
                                 ->end()
                             ->end()
-                        ->end()
-                        ->variableNode('admin_roles')
-                            ->defaultNull()
-                            ->info('Deprecated since 1.10: use security.roles.admin.')
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "security.roles.admin" instead (REQ-UI-003).')
-                        ->end()
-                        ->variableNode('create_roles')
-                            ->defaultNull()
-                            ->info('Deprecated since 1.10: use security.roles.create.')
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "security.roles.create" instead (REQ-UI-003).')
-                        ->end()
-                        ->variableNode('list_roles')
-                            ->defaultNull()
-                            ->info('Deprecated since 1.10: use security.roles.list.')
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "security.roles.list" instead (REQ-UI-003).')
-                        ->end()
-                        ->variableNode('revoke_roles')
-                            ->defaultNull()
-                            ->info('Deprecated since 1.10: use security.roles.revoke.')
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "security.roles.revoke" instead (REQ-UI-003).')
                         ->end()
                         ->booleanNode('allow_unauthenticated')
                             ->defaultFalse()
@@ -459,7 +465,7 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                         ->scalarNode('layout_template')
                             ->defaultNull()
-                            ->info('Layout the manage pages extend (page.layout). Null = nowo_ui_kit.layouts.admin. A 1.x layout without the UiKit canonical blocks is wrapped in a deprecated bridge.')
+                            ->info('Layout the manage pages extend (page.layout). Null = nowo_ui_kit.layouts.admin. The layout must render the UiKit canonical blocks.')
                         ->end()
                         ->scalarNode('public_layout_template')
                             ->defaultNull()
@@ -473,18 +479,6 @@ final class Configuration implements ConfigurationInterface
                                 ->scalarNode('created')->defaultNull()->info('Share created page (show scaffold). Default @NowoYopassBundle/manage/created.html.twig.')->end()
                                 ->scalarNode('public')->defaultNull()->info('Public reveal page (unique page on the guest layout). Default @NowoYopassBundle/public/reveal.html.twig.')->end()
                             ->end()
-                        ->end()
-                        ->enumNode('css_framework')
-                            ->values([null, ...CssFramework::values()])
-                            ->defaultNull()
-                            ->info('Deprecated since 1.10: set nowo_ui_kit.css_framework. When set (and nowo_ui_kit.css_framework is not), it is copied to nowo_ui_kit.')
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, set "nowo_ui_kit.css_framework" instead (REQ-UI-003).')
-                        ->end()
-                        ->enumNode('icon_set')
-                            ->values([null, ...IconSet::values()])
-                            ->defaultNull()
-                            ->info('Deprecated since 1.10: set nowo_ui_kit.icon_set. When set (and nowo_ui_kit.icon_set is not), it is copied to nowo_ui_kit.')
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, set "nowo_ui_kit.icon_set" instead (REQ-UI-003).')
                         ->end()
                     ->end()
                 ->end()
@@ -600,28 +594,6 @@ final class Configuration implements ConfigurationInterface
     {
         $rootNode
             ->children()
-                ->arrayNode('templates')
-                    ->addDefaultsIfNotSet()
-                    ->info('Deprecated since 1.10: use web_ui.layout_template and web_ui.templates.<page>.')
-                    ->children()
-                        ->scalarNode('layout')
-                            ->defaultNull()
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.layout_template" instead (REQ-UI-003).')
-                        ->end()
-                        ->scalarNode('manage')
-                            ->defaultNull()
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.templates.manage" instead (REQ-UI-003).')
-                        ->end()
-                        ->scalarNode('created')
-                            ->defaultNull()
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.templates.created" instead (REQ-UI-003).')
-                        ->end()
-                        ->scalarNode('public')
-                            ->defaultNull()
-                            ->setDeprecated('nowo-tech/yopass-bundle', '1.10', 'The "%node%" option at "%path%" is deprecated, use "nowo_yopass.web_ui.templates.public" instead (REQ-UI-003).')
-                        ->end()
-                    ->end()
-                ->end()
                 ->scalarNode('firewall')
                     ->info('Symfony firewall name where manage routes require authentication (documented for security.yaml).')
                     ->defaultValue('main')
@@ -668,65 +640,40 @@ final class Configuration implements ConfigurationInterface
     }
 
     /**
-     * Maps the deprecated root keys onto the canonical REQ-UI-003 keys (the canonical key wins when both are set):
-     * route_prefix → web_ui.path_prefix, templates.layout → web_ui.layout_template, templates.<page> →
-     * web_ui.templates.<page>. The deprecated nodes stay in the tree so their use still triggers a deprecation.
+     * Refuses the keys removed in 2.0 (deprecated since 1.10) with the key that replaces each one, instead of the generic
+     * "unrecognized option" error.
      *
      * @param array<string, mixed> $config
      *
      * @return array<string, mixed>
      */
-    private static function mapDeprecatedRootKeys(array $config): array
+    private static function refuseRemovedKeys(array $config): array
     {
-        $webUi = is_array($config['web_ui'] ?? null) ? $config['web_ui'] : [];
-
-        if (isset($config['route_prefix']) && !array_key_exists('path_prefix', $webUi)) {
-            $webUi['path_prefix'] = $config['route_prefix'];
-        }
-
-        $templates = is_array($config['templates'] ?? null) ? $config['templates'] : [];
-        if (isset($templates['layout']) && !array_key_exists('layout_template', $webUi)) {
-            $webUi['layout_template'] = $templates['layout'];
-        }
-
-        $pages = is_array($webUi['templates'] ?? null) ? $webUi['templates'] : [];
-        foreach (['manage', 'created', 'public'] as $page) {
-            if (isset($templates[$page]) && !array_key_exists($page, $pages)) {
-                $pages[$page] = $templates[$page];
+        $removed = [];
+        foreach (self::REMOVED_ROOT_KEYS as $key => $replacement) {
+            if (array_key_exists($key, $config)) {
+                $removed[$key] = $replacement;
             }
         }
-        if ($pages !== []) {
-            $webUi['templates'] = $pages;
+        foreach (self::REMOVED_SECTION_KEYS as $section => $keys) {
+            $values = is_array($config[$section] ?? null) ? $config[$section] : [];
+            foreach ($keys as $key => $replacement) {
+                if (array_key_exists($key, $values)) {
+                    $removed[$section . '.' . $key] = $replacement;
+                }
+            }
         }
 
-        if ($webUi !== []) {
-            $config['web_ui'] = $webUi;
+        if ($removed !== []) {
+            $lines = [];
+            foreach ($removed as $key => $replacement) {
+                $lines[] = sprintf('"%s.%s" (use %s)', self::ALIAS, $key, $replacement);
+            }
+
+            throw new InvalidConfigurationException(sprintf('These options were deprecated since 1.10 and are removed in 2.0: %s. See UPGRADING "To 2.0.0".', implode(', ', $lines)));
         }
 
         return $config;
-    }
-
-    /**
-     * Maps the deprecated security.<action>_roles keys onto security.roles.<action> (the canonical key wins).
-     *
-     * @param array<string, mixed> $security
-     *
-     * @return array<string, mixed>
-     */
-    private static function mapDeprecatedRoleKeys(array $security): array
-    {
-        $roles = is_array($security['roles'] ?? null) ? $security['roles'] : [];
-        foreach (['admin', 'create', 'list', 'revoke'] as $action) {
-            $legacy = $security[$action . '_roles'] ?? null;
-            if ($legacy !== null && !array_key_exists($action, $roles)) {
-                $roles[$action] = $legacy;
-            }
-        }
-        if ($roles !== []) {
-            $security['roles'] = $roles;
-        }
-
-        return $security;
     }
 
     /**

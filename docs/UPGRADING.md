@@ -3,8 +3,14 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 2.0.0](#to-200)
+  - [Before you upgrade](#before-you-upgrade)
+  - [What the 2.0 defaults change](#what-the-20-defaults-change)
+  - [Removed](#removed)
+  - [Composer](#composer)
+  - [Private manager only](#private-manager-only)
+  - [1.x support](#1x-support)
 - [To 1.22.0](#to-1220)
-- [To 1.22.0](#to-1220-1)
   - [MongoDB: the bundle's own document manager (opt-in)](#mongodb-the-bundles-own-document-manager-opt-in)
   - [ORM host mode: the host-flush probe](#orm-host-mode-the-host-flush-probe)
   - [`YopassAccessCheckerInterface` alias](#yopassaccesscheckerinterface-alias)
@@ -117,13 +123,158 @@
 
 ## Unreleased
 
-## To 1.22.0
+## To 2.0.0
 
-From **1.21.1**:
+From **1.22.0**:
 
 ```bash
 composer update nowo-tech/yopass-bundle
 ```
+
+```bash
+composer require nowo-tech/yopass-bundle:^2.0 -W
+```
+
+2.0 contains only changes that 1.x announced through deprecation notices: an application that runs the last 1.x minor
+without deprecation notices from this bundle upgrades without code changes. After 2.0.0 is released, the 1.x line
+receives security fixes for 6 months: fixes rated Moderate and above are backported to the last 1.x minor; Low ones
+are fixed in 2.x only.
+
+Same PHP, Symfony and database ranges as 1.22. No schema change and no data migration: shares and access log rows stay
+in the same tables and collection. Encryption, burn-after-read atomicity and links already sent (including the legacy
+`?key=`, `?password=`, `?decrypt_key=` and raw-fragment forms) are unchanged.
+
+### Before you upgrade
+
+On 1.22, clear every notice of this bundle (`bin/console debug:container --deprecations` shows the build-time ones;
+the probe lines appear in your request, message and command logs):
+
+- the MongoDB notice, by setting `nowo_yopass.database.private_document_manager: true`:
+
+  > Since nowo-tech/yopass-bundle 1.22.0: The MongoDB ODM driver of nowo-tech/yopass-bundle flushes the application's
+  > document manager "default" when it stores shares, which also writes any change the application left pending on
+  > it. In 2.0 the bundle always writes through its own document manager (same database and collection). Opt in now:
+  > set "nowo_yopass.database.private_document_manager: true".
+
+- the ORM host mode notice, by removing `private_entity_manager: false`:
+
+  > Since nowo-tech/yopass-bundle 1.19.0: Setting "nowo_yopass.database.private_entity_manager" to false is
+  > deprecated: the bundle then flushes the application's entity manager. Remove the option; it is removed in 2.0.
+
+- every probe line, by flushing your own changes where the line points (see "Private manager only" below):
+
+  > Your pending changes to App\Entity\Invoice were flushed by NowoYopassBundle; 2.0 no longer does.
+
+- the custom-driver notice ("With "nowo_yopass.database.driver: custom" on a relational platform, nowo-tech/yopass-bundle
+  writes its access log through the application's entity manager ..."): nothing to change in your configuration; the
+  2.0 access log simply stops flushing your manager, so flush your own changes yourself;
+- the access checker notices, by implementing `YopassAccessPolicyInterface` (table below):
+
+  > Since nowo-tech/yopass-bundle 1.19.0: implementing only "YopassAccessCheckerInterface" for
+  > "nowo_yopass.security.access_checker" is deprecated, implement "YopassAccessPolicyInterface" instead
+  > (YopassAccessCheckerInterface is removed in 2.0).
+
+  > The "Nowo\YopassBundle\Security\YopassAccessCheckerInterface" service alias is deprecated: type-hint
+  > "Nowo\YopassBundle\Security\YopassAccessPolicyInterface" instead. The interface and its alias are removed in 2.0.
+
+- the 1.10 configuration key and layout notices ("The "route_prefix" option at "nowo_yopass.route_prefix" is
+  deprecated, ...", "The layout "..." does not render the UiKit canonical blocks ...; it is wrapped in a deprecated
+  bridge ..."): see [To 1.10.0](#to-1100).
+
+### What the 2.0 defaults change
+
+The private managers become the only mode. 1.19 (ORM) and 1.22 (MongoDB) already offered them; with the notices above
+cleared you already run this behaviour.
+
+| Option | 1.22 | 2.0 |
+|---|---|---|
+| `database.private_entity_manager` | `true` (default) or `false` (deprecated host mode) | always on. `true` is accepted and deprecated (remove it, it goes in 3.0); `false` fails the container build |
+| `database.private_document_manager` (MongoDB) | `false` (default, deprecated) or `true` | always on. `true` is accepted and deprecated (remove it, it goes in 3.0); `false` fails the container build |
+| Custom driver on a relational platform: access log | written and flushed through `database.entity_manager` | written through the bundle's own entity manager on the same connection and table; your manager is not flushed |
+
+There is no option to keep the 1.x behaviour: the bundle never flushes your managers any more.
+
+### Removed
+
+| Removed | Deprecated since | Replacement |
+|---|---|---|
+| `database.private_entity_manager: false` | 1.19.0 ([To 1.19.0](#to-1190)) | remove the option; flush your own changes |
+| `database.private_document_manager: false` (the 1.x default) | 1.22.0 ([To 1.22.0](#to-1220)) | remove the option; flush your own documents |
+| `Security\YopassAccessCheckerInterface` and its service alias | 1.19.0, alias 1.22.0 | `Security\YopassAccessPolicyInterface` (`canX(?UserRef)`): `$user->getId()` becomes `$user->id`, `getUserIdentifier()` becomes `$user->identifier`, `in_array('ROLE_X', $user->getRoles())` becomes `$user->hasRole('ROLE_X')` |
+| `ConfigurableYopassAccessChecker::canX(UserInterface)` | 1.19.0 (with the interface) | `canX(?UserRef)`; the result never depended on the argument |
+| `YopassEntityManager::onKernelRequest()` | 1.20.0 | nothing: `YopassEntityManagerBoundarySubscriber` drops the manager at every boundary |
+| `Ui\CssFramework::loadsBootstrapCompatibleCdn()`, `loadsBootstrap4Cdn()` | 1.10 | load your CSS framework in your layout |
+| `route_prefix` | 1.10 ([To 1.10.0](#configuration-keys)) | `web_ui.path_prefix` |
+| `templates.layout` | 1.10 | `web_ui.layout_template` (null = `nowo_ui_kit.layouts.admin`) |
+| `templates.manage` / `.created` / `.public` | 1.10 | `web_ui.templates.manage` / `.created` / `.public` |
+| `security.admin_roles` / `create_roles` / `list_roles` / `revoke_roles` | 1.10 | `security.roles.admin` / `.create` / `.list` / `.revoke` |
+| `web_ui.css_framework` / `web_ui.icon_set` | 1.10 | `nowo_ui_kit.css_framework` / `nowo_ui_kit.icon_set` |
+| Twig globals `nowo_yopass_layout_template`, `nowo_yopass_css_framework`, `nowo_yopass_icon_set` | 1.10 | `nowo_ui_layout`, `nowo_ui_kit_css_framework`, `nowo_ui_kit_icon_set` |
+| `@NowoYopassBundle/_legacy_layout.html.twig`, `@NowoYopassBundle/layout_integrate_host.html.twig` | 1.10 | a layout that renders the UiKit canonical blocks (extend `@NowoUiKit/layout/admin.html.twig` or use `@NowoUiKit/layout/_bridge.html.twig`) |
+
+How each removal fails, so nothing breaks silently:
+
+- a removed configuration key fails the container build with the key that replaces it, for example: "These options
+  were deprecated since 1.10 and are removed in 2.0: "nowo_yopass.route_prefix" (use "nowo_yopass.web_ui.path_prefix").
+  See UPGRADING "To 2.0.0".";
+- `private_entity_manager: false` / `private_document_manager: false` fail the build: ""false" is no longer supported
+  since 2.0: ...";
+- a `security.access_checker` service whose class does not implement `YopassAccessPolicyInterface` fails the build
+  with a message naming the service and the class. A class that still implements the removed interface cannot be
+  loaded at all; the build names it too. So does any other service of yours that still implements the removed
+  interface, for example one registered by autodiscovery with `#[AsAlias]` or `#[AsDecorator]` (Symfony would
+  otherwise drop it silently). A checker built by a factory is not checked at build time;
+- a `web_ui.layout_template` that does not render the UiKit canonical blocks throws a `LogicException` naming the
+  layout when a manage page is rendered (1.x wrapped it in the removed bridge).
+
+Ignored constructor arguments (removed in 3.0): `$registry`, `$managerName` and `$hostFlushProbe` of
+`DoctrineOrmShareRepository`, `DoctrineOrmShareAccessLogRepository` and `DoctrineMongoShareRepository` served the host
+mode. They are still accepted, so code that builds the repositories itself keeps compiling. A repository built by hand
+without the bundle's private manager works on the manager you pass it.
+
+### Composer
+
+No package moves. The requirements are the same as 1.22.
+
+### Private manager only
+
+The bundle reads and writes shares (and, with the ORM, the access log) only through its own manager, built on
+`database.entity_manager` / `database.document_manager`: same connection or client, same mapping, tables and
+collection, same SQL / BSON filters. These code patterns break:
+
+- **Your pending changes are no longer flushed by the bundle.** Code that changed an entity or document and relied on
+  a share create, consume, revoke, extend or delete to save it loses that change silently. Flush your manager
+  yourself. On 1.22 the probe lines (ORM) name the classes concerned; for MongoDB, run 1.22 with
+  `private_document_manager: true` and your tests first.
+- **Shares are no longer in your identity map.** A share the bundle loaded is managed by the bundle's manager. Load
+  it again from your own manager if you need it there.
+- **Relation mapping:** `SecureShare::getCreator()` on a share the bundle loaded is a reference in the bundle's
+  manager. Read it, or use `getCreatorId()`, but do not relate it to your own entities. The lifecycle events'
+  `getCreator()` returns the user in **your** manager.
+- **Entities of yours that point at a share** (ManyToOne / OneToOne to `SecureShare`): take
+  `$entityManager->getReference(SecureShare::class, $id)` from **your** manager, never the instance a bundle service
+  returned. Otherwise your flush fails with "A new entity was found through the relationship".
+- **Custom driver:** the access log rows are written by the bundle's manager on the connection of
+  `database.entity_manager`. If your repository stores shares on another connection, nothing changes from 1.22 (the
+  log was already on that connection). The custom driver still gets no bundle write unit: your repository stores the
+  read on its own, then the access log row is written (see [Concurrency](CONCURRENCY.md)).
+- **Custom driver: your repository must commit the consume read itself.** `consumeReadIfAvailable()` has to store the
+  spent read (an UPDATE it executes, or its own `flush()`) before it returns. In 1.x the access log flushed
+  `database.entity_manager`, so a repository on that manager that only changed the share in memory had its read saved
+  by that flush. In 2.0 the access log no longer flushes your manager: such a read is never stored, and a one-time
+  secret could be read again. Check your repository on 1.22 with `access_log.enabled: false`: a share with one read
+  must answer "consumed" on its second open.
+
+Unchanged (pre-existing, documented in 1.22): with MongoDB, a `refresh()` and identity-map hits of the private manager,
+and the raw `deleteMany` of `removeAllByCreatorId()` with the id mapping, do not apply BSON filters.
+
+The private managers are dropped at the end of every request, Messenger message and console command, and at
+`kernel.reset`, so FrankenPHP worker mode with kernel reset off keeps no share between requests.
+
+### 1.x support
+
+1.x receives security fixes for 6 months after 2.0.0: Moderate and higher are backported to the last 1.x minor (a
+1.x patch release); Low ones are fixed in 2.x only, with the advice to upgrade. Advisories name both lines.
 
 ## To 1.22.0
 

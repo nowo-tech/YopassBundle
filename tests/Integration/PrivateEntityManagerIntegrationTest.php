@@ -150,21 +150,6 @@ final class PrivateEntityManagerIntegrationTest extends TestCase
         self::assertSame(2, (int) $this->db('SELECT COUNT(*) FROM yopass_secure_shares'));
     }
 
-    public function testWithoutThePrivateManagerTheApplicationsPendingChangesWereFlushed(): void
-    {
-        // The pre-1.19 behaviour (`database.private_entity_manager: false`), kept for comparison.
-        $registry = $this->createStub(ManagerRegistry::class);
-        $registry->method('getManager')->willReturn($this->host);
-        $creators = new DoctrineCreatorReferenceResolver(GuardUser::class, $registry, 'default', new CreatorClassPolicy(GuardUser::class));
-        $shares   = new DoctrineOrmShareRepository($this->host, null, $registry, 'default', $creators);
-        $this->host->persist(new GuardUser(8, 'bob'));
-
-        (new ShareCreator($shares, DefaultShareOptions::get()['expiration_options'], null, null, $creators))
-            ->create($this->host->getReference(GuardUser::class, 7), $this->data(1));
-
-        self::assertSame(1, (int) $this->db('SELECT COUNT(*) FROM guard_users WHERE id = 8'));
-    }
-
     public function testOneTimeViewAndExpiryAreUnchanged(): void
     {
         $once = $this->creator()->create(new SecurityUserDto(7, 'alice'), $this->data(1));

@@ -96,14 +96,10 @@ nowo_yopass:
 
 ## Entity managers and worker mode
 
-- The bundle reads and writes through its **private entity manager** (`YopassEntityManager`, the default since 1.19.0)
-  on the application's connection. The write unit is `DoctrineTransactionRunner::forEntityManager()` on that private
+- The bundle reads and writes through its **private entity manager** (`YopassEntityManager`, the default since 1.19.0
+  and the only mode since 2.0) on the application's connection. The write unit is `DoctrineTransactionRunner::forEntityManager()` on that private
   manager: after a storage failure only the private manager is cleared (or replaced when closed). The application's
   entity manager is never flushed, cleared, closed or reset.
-- With the deprecated `database.private_entity_manager: false` the unit is
-  `DoctrineTransactionRunner::forHostEntityManager()`: it never clears or resets an open application manager, replaces
-  a closed one through the registry, and throws a `LogicException` when the application left changes pending on its
-  manager before the unit.
 - A unit started inside a transaction of the application runs in a savepoint and rolls back to it on failure
   (`YopassSavepoint`, the runner's nesting repair), so the application's transaction is never left aborted on
   PostgreSQL.

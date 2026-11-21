@@ -92,7 +92,6 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Security/ConfigurableYopassAccessChecker.php` | Configurable access checker | FR-SEC-001 |
 | `Security/PublicEndpointRateLimiter.php` | Rate limiting | FR-SEC-002 |
 | `Security/ShareEncryptionService.php` | Payload encryption | FR-CRYPT-001 |
-| `Security/YopassAccessCheckerInterface.php` | Access checker contract (deprecated since 1.19.0) | FR-SEC-001 |
 | `Security/YopassAccessPolicyInterface.php`, `Security/UserRef.php` | Framework-free access policy port and user VO (1.19.0) | FR-SEC-001 |
 | `Security/YopassAccessDecider.php` | Calls the policy (UserRef) or the legacy checker (1.19.0) | FR-SEC-001 |
 | `Service/ShareAccessGuard.php` | Share access guard | FR-SEC-001 |
@@ -160,8 +159,6 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Resources/views/manage/created.html.twig` | Manage UI template | FR-VIEW-005 |
 | `Resources/views/manage/index.html.twig` | Manage UI template | FR-VIEW-005 |
 | `Resources/views/public/reveal.html.twig` | Public reveal template | FR-VIEW-006 |
-| `Twig/YopassTwigExtension.php` | Manage UI Twig globals | FR-UI-002 |
-| `Resources/views/layout_integrate_host.html.twig` | Host layout bridge | FR-UI-002 |
 
 ## Creator mapping
 
@@ -281,7 +278,6 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Resources/translations/NowoYopassBundle+intl-icu.it.yaml` | ICU retention duration plurals (it) | FR-I18N-005 |
 | `Resources/translations/NowoYopassBundle+intl-icu.nl.yaml` | ICU retention duration plurals (nl) | FR-I18N-005 |
 | `Resources/translations/NowoYopassBundle+intl-icu.pt.yaml` | ICU retention duration plurals (pt) | FR-I18N-005 |
-| `Resources/views/_legacy_layout.html.twig` | Deprecated bridge wrapping a 1.x host layout (removed in 2.0) | FR-VIEW-001 |
 | `Resources/views/manage/_create_controller_attrs.html.twig` | Attributes of the `nowo-yopass-create` controller root | FR-VIEW-007 |
 | `Resources/views/manage/_create_dialog.html.twig` | Create dialog (`web_ui.create_mode: dialog`) | FR-VIEW-007 |
 | `Resources/views/manage/_create_form.html.twig` | Create form shared by page and dialog modes | FR-VIEW-007 |
@@ -299,7 +295,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | Forms | 1 |
 | Domain models | 3 |
 | Application services | 17 |
-| Security | 8 |
+| Security | 7 |
 | Routing | 1 |
 | Persistence integration | 3 |
 | Support utilities | 2 |
@@ -307,7 +303,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | Frontend TypeScript | 6 |
 | Symfony config | 1 |
 | Translations | 7 |
-| Twig views | 5 |
+| Twig views | 3 |
 | Creator mapping | 8 |
 | Compiler passes (security and mapping) | 3 |
 | Private entity manager and worker safety | 10 |

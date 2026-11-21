@@ -42,6 +42,8 @@ final class DoctrineOrmShareAccessLogRepositoryTest extends TestCase
         $log   = new ShareAccessLog('00000000-0000-4000-8000-000000000072', $share, 2);
 
         $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->method('contains')->with($share)->willReturn(true);
+        $entityManager->expects(self::never())->method('getReference');
         $entityManager->expects(self::once())->method('persist')->with($log);
         $entityManager->expects(self::once())->method('flush');
 
@@ -50,24 +52,24 @@ final class DoctrineOrmShareAccessLogRepositoryTest extends TestCase
         $repository->flush();
     }
 
-    public function testFlushUsesReopenedManagerAfterPreviousFailureWithoutKernelReset(): void
+    /**
+     * 2.0: the registry (the removed host mode replaced a closed application manager through it) is ignored.
+     */
+    public function testTheRegistryIsIgnored(): void
     {
-        $log = new ShareAccessLog('00000000-0000-4000-8000-000000000073', $this->createShare(), 1);
+        $share = $this->createShare();
+        $log   = new ShareAccessLog('00000000-0000-4000-8000-000000000073', $share, 1);
 
-        $closed = $this->createMock(EntityManagerInterface::class);
-        $closed->method('isOpen')->willReturn(false);
-        $closed->expects(self::never())->method('persist');
-
-        $fresh = $this->createMock(EntityManagerInterface::class);
-        $fresh->method('isOpen')->willReturn(true);
-        $fresh->expects(self::once())->method('persist')->with($log);
-        $fresh->expects(self::once())->method('flush');
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->method('contains')->willReturn(true);
+        $entityManager->expects(self::once())->method('persist')->with($log);
+        $entityManager->expects(self::once())->method('flush');
 
         $registry = $this->createMock(ManagerRegistry::class);
-        $registry->method('getManager')->willReturnOnConsecutiveCalls($closed, $fresh);
-        $registry->expects(self::once())->method('resetManager')->with('default')->willReturn($fresh);
+        $registry->expects(self::never())->method('getManager');
+        $registry->expects(self::never())->method('resetManager');
 
-        $repository = new DoctrineOrmShareAccessLogRepository($closed, $registry, 'default');
+        $repository = new DoctrineOrmShareAccessLogRepository($entityManager, $registry, 'default');
         $repository->persist($log);
         $repository->flush();
     }

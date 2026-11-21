@@ -13,7 +13,7 @@
 - [Using it from a DDD / hexagonal application](#using-it-from-a-ddd--hexagonal-application)
   - [DDD host: the bundle's own entity manager](#ddd-host-the-bundles-own-entity-manager)
   - [DDD host: the bundle's own document manager (MongoDB)](#ddd-host-the-bundles-own-document-manager-mongodb)
-  - [Preparing for 2.0](#preparing-for-20)
+  - [Done in 2.0](#done-in-20)
   - [DDD host: XML mapping](#ddd-host-xml-mapping)
 - [Twig overrides](#twig-overrides)
   - [Forms in templates (REQ-TWIG-005)](#forms-in-templates-req-twig-005)
@@ -95,7 +95,7 @@ Three layers — use only what you need:
 
 | Layer | Interface / event | Question |
 |-------|-------------------|----------|
-| Route features | `YopassAccessPolicyInterface` (1.19; `YopassAccessCheckerInterface` deprecated) | Can the user open manage, create, list, or revoke at all? |
+| Route features | `YopassAccessPolicyInterface` | Can the user open manage, create, list, or revoke at all? |
 | List query | `ShareListQueryEvent` | Which shares should the repository load? |
 | List filter | `ShareListResultEvent` | Which loaded shares should appear? |
 | Per share | `ShareAccessCheckEvent` | Can the user view/preview/extend/revoke/delete this share? (also decides which row actions are rendered) |
@@ -113,7 +113,7 @@ nowo_yopass:
         access_checker: App\Security\TeamYopassAccessPolicy
 ```
 
-Since 1.19 implement the framework-free `YopassAccessPolicyInterface`: the signed-in user arrives as a `UserRef`
+Implement the framework-free `YopassAccessPolicyInterface` (the service must implement it, or the container build fails): the signed-in user arrives as a `UserRef`
 (`id`: `getId()` as a string, else the identifier with `idIsIdentifier: true`, which an id-keyed policy must
 check and deny; `identifier`; `roles` as the security user reports them, without
 the role hierarchy), or `null` when nobody is signed in. Deny by default: return `true` only for what you grant.
@@ -133,9 +133,8 @@ final readonly class TeamYopassAccessPolicy implements YopassAccessPolicyInterfa
 }
 ```
 
-`YopassAccessCheckerInterface` (`?UserInterface`) still works and is **deprecated since 1.19** (removed in 2.0); a
-checker implementing only it is called exactly as before. The default role checker implements both and gives the same
-answers.
+`YopassAccessCheckerInterface` (`?UserInterface`, deprecated since 1.19) was removed in 2.0; see
+[UPGRADING](UPGRADING.md#removed) for the method mapping.
 
 ### Share events (teams, grants, roles)
 
@@ -163,7 +162,7 @@ final class MyShareAccessListener
 ## Standard Symfony host
 
 Nothing to configure beyond `user_class`: the entities are mapped by attributes, the creator is a Doctrine relation to
-your `User` entity, the default role checker guards the manage routes (`security.*_roles`), and since 1.19 the shares
+your `User` entity, the default role checker guards the manage routes (`security.roles.*`), and the shares
 and the access log are written through the bundle's own entity manager, built on `database.entity_manager` (same
 connection, same tables): a share write never flushes the changes your controller has pending. See
 [the bundle's own entity manager](#ddd-host-the-bundles-own-entity-manager) for the details; they apply to both hosts.
@@ -255,8 +254,8 @@ own entity manager in both mappings (next section).
 
 ### DDD host: the bundle's own entity manager
 
-Since **1.19** (`database.private_entity_manager: true`, the default with the `doctrine_orm` driver) the shares and the
-access log are read and written through a **private** entity manager built on the connection, mapping configuration
+With the `doctrine_orm` driver (since 1.19; the only mode since 2.0) the shares and the access log are read and written
+through a **private** entity manager built on the connection, mapping configuration
 and event manager of `database.entity_manager` (default `default`). The bundle never flushes, clears or closes your
 entity manager:
 
@@ -278,41 +277,37 @@ id), so an event listener may relate it to its entities and flush. Shares return
 of work. The SQL filters enabled on `database.entity_manager` (with their parameters) are applied to the private
 manager on every call.
 
-This covers the Doctrine ORM driver. With the MongoDB driver, set `database.private_document_manager: true` (1.22,
-opt-in in 1.x and the only mode in 2.0) to get the same guarantees from a private document manager built on
-`database.document_manager`: see [DDD host: the bundle's own document manager](#ddd-host-the-bundles-own-document-manager-mongodb).
-With the custom driver your repository decides.
+This covers the Doctrine ORM driver. The MongoDB driver gives the same guarantees from a private document manager built
+on `database.document_manager`: see [DDD host: the bundle's own document manager](#ddd-host-the-bundles-own-document-manager-mongodb).
+With `database.driver: custom` your repository stores the shares; on a relational platform the bundle's access log is
+written through the bundle's own entity manager on `database.entity_manager` (same connection and table), never
+through yours.
 
-`database.private_entity_manager: false` restores the pre-1.19 behaviour (the bundle flushes
-`database.entity_manager`); it is deprecated and removed in 2.0. Since 1.22 each such flush reports every entity class
-of yours it writes (the host-flush probe, see [UPGRADING](UPGRADING.md#orm-host-mode-the-host-flush-probe)). With
-`database.driver: custom` your repository decides, and the bundle's ORM access log then keeps using
-`database.entity_manager` (the shares come from your repository): deprecated in 1.22 (a notice and the probe), written
-through the bundle's own entity manager on the same connection in 2.0.
+There is no host-manager mode any more: `database.private_entity_manager: false` (deprecated since 1.19) fails the
+container build since 2.0, and `true` is a deprecated no-op.
 
 ### DDD host: the bundle's own document manager (MongoDB)
 
-Since **1.22**, `database.private_document_manager: true` (default `false` in 1.x) makes the `doctrine_mongodb` driver
-read and write shares through a **private** document manager built on the client, configuration and event manager of
-`database.document_manager`. The bundle then never flushes, clears, closes or resets your document manager:
+The `doctrine_mongodb` driver (1.22 opt-in, the only mode since 2.0) reads and writes shares through a **private** document manager built on the client, configuration and event manager of
+`database.document_manager`. The bundle never flushes, clears, closes or resets your document manager:
 
 - your pending documents stay pending: a share write never writes them;
 - the shares stay in the same database and collection, and are never in your identity map;
 - the private manager is dropped at every outermost request, command and Messenger message boundary and at
   `kernel.reset` (FrankenPHP worker mode without kernel reset), and replaced when closed;
 - its queries use your document manager's own BSON filter collection: the same filter instances, parameters and
-  property state as the default mode (nothing is copied).
+  property state (nothing is copied).
 
 With the relation mapping, `SecureShare::getCreator()` is a reference **in the private manager**; the lifecycle events'
-`getCreator()` hands you the user of **your** document manager. Without the option, building the container triggers a
-deprecation notice; see [UPGRADING](UPGRADING.md#to-1220).
+`getCreator()` hands you the user of **your** document manager. `database.private_document_manager: false` fails the
+container build since 2.0; `true` is a deprecated no-op.
 
-### Preparing for 2.0
+### Done in 2.0
 
-2.0 contains only the deprecations already announced, and 1.x gets 6 months of security support after 2.0.0 (Moderate
-and higher backported). Clear the 1.22 notices first: the private document manager (MongoDB), no
-`private_entity_manager: false`, and a checker on `YopassAccessPolicyInterface`. See
-[UPGRADING](UPGRADING.md#preparing-for-20).
+2.0 removed only the deprecations 1.x announced: the host-manager modes (ORM and MongoDB), the custom driver's access
+log on your entity manager, `YopassAccessCheckerInterface`, and the 1.10 configuration keys, templates and Twig
+globals. 1.x gets 6 months of security support after 2.0.0 (Moderate and higher backported). See
+[UPGRADING](UPGRADING.md#to-200).
 
 ### DDD host: XML mapping
 
@@ -447,11 +442,11 @@ The bundle registers the Twig namespace **`NowoYopassBundle`** with `TwigPathsPa
 | `manage/_preview_dialog.html.twig` | Preview / extend native `<dialog>` (UiKit `dialog` partial). |
 | `manage/created.html.twig` | Page shown after creating a share (UiKit show scaffold; short link, decryption key, one-click link). |
 | `public/reveal.html.twig` | Public reveal page (unique page on the UiKit guest layout; key or password input, client-side decryption). |
-| `_legacy_layout.html.twig` | Deprecated 1.x layout bridge (selected automatically for a 1.x `web_ui.layout_template`; removed in 2.0). |
-| `layout_integrate_host.html.twig` | Deprecated 1.x host bridge (`body` → `nowo_ui_content`); removed in 2.0. Use UiKit layouts instead. |
 
 Removed in 1.10: `layout.html.twig` (default shell loading CSS frameworks from CDNs; the 1.x value maps to the UiKit
-layout) and `_action_icons.html.twig` (row actions are UiKit `Action`s). Full page list, view models and data blocks:
+layout) and `_action_icons.html.twig` (row actions are UiKit `Action`s). Removed in 2.0: the 1.x layout bridges
+`_legacy_layout.html.twig` and `layout_integrate_host.html.twig` (use a layout that renders the UiKit canonical
+blocks). Full page list, view models and data blocks:
 [Templates](TEMPLATES.md).
 
 Alternatively point `nowo_yopass.web_ui.templates.*` (`manage`, `created`, `public`) at your own application templates instead of using the override path.

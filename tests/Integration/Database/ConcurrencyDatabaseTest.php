@@ -310,7 +310,7 @@ final class ConcurrencyDatabaseTest extends TestCase
         $own      = new YopassEntityManager($registry, 'default');
         $resolver = new DoctrineCreatorReferenceResolver(SecurityUserDto::class, null, null, new CreatorClassPolicy(SecurityUserDto::class), CreatorMapping::ID);
         $shares   = new DoctrineOrmShareRepository($host, null, $registry, 'default', $resolver, $own);
-        $unit     = new ShareWriteUnit($host, $registry, 'default', $own);
+        $unit     = new ShareWriteUnit($own);
 
         return [
             'host'      => $host,

@@ -8,7 +8,7 @@ use Nowo\YopassBundle\DependencyInjection\YopassExtension;
 use Nowo\YopassBundle\EventListener\ShareKeyQueryRedirectListener;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Routing\YopassRouteLoader;
-use Nowo\YopassBundle\Security\YopassAccessCheckerInterface;
+use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
 use Nowo\YopassBundle\Service\ShareConsumedNotifier;
 use Nowo\YopassBundle\Service\ShareRetriever;
 use Nowo\YopassBundle\YopassBundle;
@@ -28,7 +28,7 @@ final class YopassBundleIntegrationTest extends TestCase
         $container = new ContainerBuilder();
         (new YopassExtension())->load([['user_class' => 'App\\Entity\\User']], $container);
 
-        self::assertTrue($container->hasAlias(YopassAccessCheckerInterface::class));
+        self::assertTrue($container->hasAlias(YopassAccessPolicyInterface::class));
         self::assertTrue($container->hasDefinition(YopassRouteLoader::class));
         self::assertTrue($container->hasAlias(ShareRepositoryInterface::class));
         self::assertTrue($container->hasDefinition(ShareRetriever::class));

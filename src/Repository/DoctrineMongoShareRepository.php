@@ -36,16 +36,21 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
     private ClockInterface $clock;
 
     /**
-     * Creates the repository on the given Doctrine manager (optional registry/manager name for resets) and clock; the
-     * creator resolver turns a non-entity user into a reference before the creator queries. With `$ownManager`
-     * (`database.private_document_manager: true`, 1.22.0) every call goes through the bundle's private document
-     * manager and the application's manager is never flushed.
+     * Creates the repository and its clock; the creator resolver turns a non-entity user into a reference before the
+     * creator queries. The bundle passes its own document manager (`$ownManager`, 1.22.0 opt-in, the only mode since
+     * 2.0): every call goes through it and the application's manager is never flushed. Constructed by hand without it,
+     * the repository works on `$documentManager`.
+     *
+     * @param ManagerRegistry|null $registry ignored since 2.0 (it replaced a closed application manager in the removed
+     *                                       host mode); removed in 3.0
+     * @param string|null $managerName ignored since 2.0, see `$registry`; removed in 3.0
      */
+    // @phpstan-ignore constructor.unusedParameter, constructor.unusedParameter (the 1.x host-mode arguments are ignored since 2.0, removed in 3.0)
     public function __construct(
         private DocumentManager $documentManager,
         ?ClockInterface $clock = null,
-        private ?ManagerRegistry $registry = null,
-        private ?string $managerName = null,
+        ?ManagerRegistry $registry = null,
+        ?string $managerName = null,
         private ?CreatorReferenceResolverInterface $creators = null,
         private ?YopassDocumentManager $ownManager = null,
     ) {

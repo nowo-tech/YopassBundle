@@ -58,7 +58,7 @@ nowo_yopass:
         # Defaults to ROLE_ADMIN since 1.3.0 — set explicitly if you need ROLE_USER
         access_roles: [ROLE_ADMIN]
         roles: { create: [ROLE_ADMIN], list: [ROLE_ADMIN], revoke: [ROLE_ADMIN] }
-        access_checker: App\Security\CustomYopassAccessChecker  # optional
+        access_checker: App\Security\CustomYopassAccessPolicy  # optional, implements YopassAccessPolicyInterface
 
 # Pages render inside your layouts and theme, configured once in UiKit for every Nowo bundle
 nowo_ui_kit:
