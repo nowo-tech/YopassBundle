@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 2.1.0](#to-210)
   - [Id-based ports (DDD hosts)](#id-based-ports-ddd-hosts)
   - [Events after your commit](#events-after-your-commit)
   - [Deprecated event accessors](#deprecated-event-accessors)
@@ -126,6 +127,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 2.1.0
+
+From **2.0.1**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 Additive minor (2.1.0): nothing to change to upgrade. The notes below are for hosts that want the new ports.
 

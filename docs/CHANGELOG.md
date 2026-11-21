@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[2.1.0] - 2026-11-21](#210---2026-11-21)
 - [[2.0.1] - 2026-11-21](#201---2026-11-21)
 - [[2.0.0] - 2026-11-21](#200---2026-11-21)
 - [[1.22.0] - 2026-11-20](#1220---2026-11-20)
@@ -71,6 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-21
+
 Additive minor for hosts that use the bundle from a DDD / hexagonal application (DDD-host checklist B1, B4, B7, B8).
 Nothing is removed or renamed; the manage UI, the public reveal and the stored data do not change. No change to how
 secrets are encrypted, stored, read or burned: one-time reads stay one atomic conditional update.
@@ -119,6 +122,8 @@ secrets are encrypted, stored, read or burned: one-time reads stay one atomic co
 ### Changed
 
 - Demo: runs in UiKit's demo platform shell (`nowo-tech/ui-kit-bundle` ^2.60); the demo's own masthead and layout bridges are gone and the manage and public reveal pages render inside the shell. Demo only, no bundle change.
+
+[2.1.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v2.1.0
 
 ## [2.0.1] - 2026-11-21
 
@@ -1374,7 +1379,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v2.1.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
