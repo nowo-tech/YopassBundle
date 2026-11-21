@@ -307,7 +307,7 @@ container build since 2.0; `true` is a deprecated no-op.
 2.0 removed only the deprecations 1.x announced: the host-manager modes (ORM and MongoDB), the custom driver's access
 log on your entity manager, `YopassAccessCheckerInterface`, and the 1.10 configuration keys, templates and Twig
 globals. 1.x gets 6 months of security support after 2.0.0 (Moderate and higher backported). See
-[UPGRADING](UPGRADING.md#unreleased).
+[UPGRADING](UPGRADING.md#to-200).
 
 ### DDD host: XML mapping
 

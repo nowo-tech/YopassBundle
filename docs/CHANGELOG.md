@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[2.0.0] - 2026-11-21](#200---2026-11-21)
 - [[1.22.0] - 2026-11-20](#1220---2026-11-20)
 - [[1.21.1] - 2026-11-20](#1211---2026-11-20)
 - [[1.21.0] - 2026-11-19](#1210---2026-11-19)
@@ -69,9 +70,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-21
+
 2.0.0: the major removes only what 1.x announced as deprecated (REQ-ARCH-001 rules 1, 3 and 6). An application that
 runs 1.22 without deprecation notices from this bundle upgrades without code changes. See
-[UPGRADING](UPGRADING.md#unreleased).
+[UPGRADING](UPGRADING.md#to-200).
 
 ### Removed
 
@@ -131,6 +134,8 @@ runs 1.22 without deprecation notices from this bundle upgrades without code cha
 
 - 1.x support after 2.0.0: security fixes rated Moderate and above are backported to the last 1.x minor for 6 months;
   Low ones are fixed in 2.x only. See `.github/SECURITY.md`.
+
+[2.0.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v2.0.0
 
 ## [1.22.0] - 2026-11-20
 
@@ -1296,7 +1301,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v1.22.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v2.0.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7

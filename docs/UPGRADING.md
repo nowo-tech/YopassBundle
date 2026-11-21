@@ -3,6 +3,7 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+- [To 2.0.0](#to-200)
   - [Before you upgrade](#before-you-upgrade)
   - [What the 2.0 defaults change](#what-the-20-defaults-change)
   - [Removed](#removed)
@@ -121,6 +122,14 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+## To 2.0.0
+
+From **1.22.0**:
+
+```bash
+composer update nowo-tech/yopass-bundle
+```
 
 ```bash
 composer require nowo-tech/yopass-bundle:^2.0 -W
