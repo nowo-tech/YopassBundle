@@ -11,6 +11,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectManager;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
+use Nowo\YopassBundle\Creator\UnusableCreatorIdException;
 use Nowo\YopassBundle\Tests\Support\Orm\GuardUser;
 use PHPUnit\Framework\TestCase;
 use stdClass;
@@ -61,16 +62,20 @@ final class CreatorIdReferenceTest extends TestCase
             try {
                 $resolver->reference(new CreatorId($id));
                 self::fail('Refused: ' . $id);
-            } catch (AccessDeniedException) {
-                self::addToAssertionCount(1);
+            } catch (UnusableCreatorIdException $exception) {
+                self::assertInstanceOf(AccessDeniedException::class, $exception, 'Still an AccessDeniedException (BC)');
             }
         }
     }
 
-    public function testACompositeKeyIsRefused(): void
+    public function testACompositeKeyIsAMisconfigurationNotAnUnusableId(): void
     {
-        $this->expectException(AccessDeniedException::class);
-        $this->ormResolver(['tenant', 'id'], 'integer', static fn (): object => self::fail('No reference'))->reference(new CreatorId('7'));
+        try {
+            $this->ormResolver(['tenant', 'id'], 'integer', static fn (): object => self::fail('No reference'))->reference(new CreatorId('7'));
+            self::fail('Refused');
+        } catch (AccessDeniedException $exception) {
+            self::assertNotInstanceOf(UnusableCreatorIdException::class, $exception);
+        }
     }
 
     public function testADocumentManagerGivesItsOwnReference(): void

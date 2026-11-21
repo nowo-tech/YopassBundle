@@ -126,7 +126,8 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
      * driver (no registry) receives the CreatorId as given. `ShareCommandsInterface` maps the refusal to
      * `ShareCommandException` (`invalid_creator`) on create and to 0 on `deleteAllOf()` (2.1.1).
      *
-     * @throws AccessDeniedException for an id that cannot name a `user_class` user
+     * @throws UnusableCreatorIdException for an id that cannot name a `user_class` user (2.1.1)
+     * @throws AccessDeniedException for a misconfiguration (composite identifier, a manager without references)
      */
     private function idReference(CreatorId $creator, string $class): object
     {
@@ -154,7 +155,7 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         $id = $creator->getId();
         if (in_array($metadata->getTypeOfField($identifiers[0]), ['integer', 'smallint', 'bigint'], true)) {
             if (preg_match('/^(?:0|[1-9][0-9]{0,17})$/D', $id) !== 1) {
-                throw new AccessDeniedException(sprintf('nowo_yopass: a creator id for %s must be a decimal integer.', $class));
+                throw new UnusableCreatorIdException(sprintf('nowo_yopass: a creator id for %s must be a decimal integer.', $class));
             }
             $id = (int) $id;
         }

@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Tests\Unit\Service;
 
 use DateTimeImmutable;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\Persistence\ManagerRegistry;
 use InvalidArgumentException;
 use Nowo\YopassBundle\Creator\CreatorClassPolicy;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorMapping;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
+use Nowo\YopassBundle\Creator\UnusableCreatorIdException;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
@@ -197,7 +201,7 @@ final class ShareIdPortsTest extends TestCase
     public function testACreatorIdTheResolverRefusesIsAnInvalidCreatorOrNoShares(): void
     {
         $resolver = $this->createMock(CreatorReferenceResolverInterface::class);
-        $resolver->method('reference')->willThrowException(new AccessDeniedException('refused'));
+        $resolver->method('reference')->willThrowException(new UnusableCreatorIdException('refused'));
         $commands = $this->commands(null, $resolver);
 
         try {
@@ -209,6 +213,53 @@ final class ShareIdPortsTest extends TestCase
         self::assertSame(0, $commands->deleteAllOf(new CreatorId('abc')));
         self::assertSame([], $this->repository->shares);
         self::assertSame([], $this->events);
+    }
+
+    public function testAResolverMisconfigurationPropagatesFromCreateAndDeleteAll(): void
+    {
+        // YD3-L1: e.g. a composite user_class identifier; never answered as invalid_creator or as "no shares".
+        $resolver = $this->createMock(CreatorReferenceResolverInterface::class);
+        $resolver->method('reference')->willThrowException(new AccessDeniedException('composite identifier'));
+        $commands = $this->commands(null, $resolver);
+
+        foreach ([
+            'create'      => fn (): mixed => $commands->create(new CreatorId('7'), $this->data()),
+            'deleteAllOf' => static fn (): mixed => $commands->deleteAllOf(new CreatorId('7')),
+        ] as $call => $operation) {
+            try {
+                $operation();
+                self::fail($call . ' should propagate the misconfiguration');
+            } catch (ShareCommandException) {
+                self::fail($call . ' must not answer invalid_creator');
+            } catch (AccessDeniedException $exception) {
+                self::assertNotInstanceOf(UnusableCreatorIdException::class, $exception);
+            }
+        }
+        self::assertSame([], $this->repository->shares);
+        self::assertSame([], $this->events);
+    }
+
+    public function testACompositeUserClassIdentifierSurfacesThroughTheCommands(): void
+    {
+        // YD3-L1 with the real resolver: user_class with a composite identifier under the relation mapping.
+        $metadata = $this->createMock(ClassMetadata::class);
+        $metadata->method('getIdentifierFieldNames')->willReturn(['tenant', 'id']);
+        $manager = $this->createMock(EntityManagerInterface::class);
+        $manager->method('getClassMetadata')->willReturn($metadata);
+        $registry = $this->createMock(ManagerRegistry::class);
+        $registry->method('getManager')->willReturn($manager);
+        $commands = $this->commands(null, new DoctrineCreatorReferenceResolver(TestUser::class, $registry, 'default'));
+
+        try {
+            $commands->deleteAllOf(new CreatorId('7'));
+            self::fail('The misconfiguration surfaces');
+        } catch (AccessDeniedException $exception) {
+            self::assertNotInstanceOf(UnusableCreatorIdException::class, $exception);
+            self::assertStringContainsString('composite identifier', $exception->getMessage());
+        }
+        $this->expectException(AccessDeniedException::class);
+        $this->expectExceptionMessage('composite identifier');
+        $commands->create(new CreatorId('7'), $this->data());
     }
 
     public function testExtendingAnUnknownShareIsRefused(): void

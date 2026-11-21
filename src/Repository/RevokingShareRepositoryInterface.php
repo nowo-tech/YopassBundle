@@ -12,7 +12,8 @@ use Nowo\YopassBundle\Service\ShareRevoker;
  * with one conditional write (`revoked_at = now, reads_left = 0` where the id matches and the share is not revoked yet),
  * so of two concurrent revokes only one writes and reports it, and a share deleted meanwhile is never reported revoked.
  * {@see ShareRevoker} uses it when the repository implements it; otherwise it revokes the entity and flushes.
- * Implemented by the Doctrine ORM and MongoDB ODM repositories.
+ * Implemented by the Doctrine ORM repository only (the MongoDB ODM repository uses the fallback, see
+ * docs/CONCURRENCY.md residual risks).
  */
 interface RevokingShareRepositoryInterface
 {

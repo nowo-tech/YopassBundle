@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Service;
 use DateTimeImmutable;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
+use Nowo\YopassBundle\Creator\UnusableCreatorIdException;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareBulkDeletedEvent;
@@ -22,7 +23,6 @@ use Nowo\YopassBundle\Share\ShareQueryInterface;
 use Nowo\YopassBundle\Share\ShareView;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 use function in_array;
@@ -201,7 +201,7 @@ final readonly class ShareCommands implements ShareCommandsInterface
 
     /**
      * Refuses a creator id that cannot name a `user_class` user (2.1.1, YD1-L3) with {@see ShareCommandException}
-     * instead of the resolver's AccessDeniedException.
+     * instead of the resolver's {@see UnusableCreatorIdException}.
      *
      * @throws ShareCommandException with code `invalid_creator`
      */
@@ -214,13 +214,15 @@ final readonly class ShareCommands implements ShareCommandsInterface
 
     /**
      * Whether the creator resolver accepts this id: under the relation mapping an integer key only takes a plain
-     * decimal id (no query is made). Always true without a resolver and with the id mapping.
+     * decimal id (no query is made). Always true without a resolver and with the id mapping. Only that refusal
+     * ({@see UnusableCreatorIdException}) answers false; any other resolver failure (a misconfiguration such as a
+     * composite identifier) propagates (audit YD3-L1).
      */
     private function namesCreator(CreatorId $creator): bool
     {
         try {
             $this->creators?->reference($creator);
-        } catch (AccessDeniedException) {
+        } catch (UnusableCreatorIdException) {
             return false;
         }
 

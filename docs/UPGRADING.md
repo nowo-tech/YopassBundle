@@ -133,7 +133,8 @@ Patch (2.1.1), nothing to change in most applications:
 - `ShareCommandsInterface::create()` refuses a creator id that cannot name your `user_class` user (relation mapping,
   integer key, an id such as `abc` or `07`) with `ShareCommandException` code `invalid_creator` instead of
   `AccessDeniedException`; `deleteAllOf()` answers `0` for it. Catch `ShareCommandException` if you caught
-  `AccessDeniedException` around these calls.
+  `AccessDeniedException` around these calls. Other resolver refusals (a misconfiguration, e.g. a composite
+  `user_class` identifier) still throw `AccessDeniedException` from both calls.
 - `ShareRevoker::revoke()` returns a `bool` (whether this call revoked the share). With the Doctrine ORM driver a
   revoke that loses to another revoke or to a delete writes nothing and dispatches no `share_revoked`;
   `ShareCommandsInterface::revoke()` of a share deleted meanwhile answers `null`, and `extend()` throws
