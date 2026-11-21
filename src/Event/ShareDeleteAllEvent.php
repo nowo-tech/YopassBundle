@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Event;
 
+use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareDeleter;
+use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
 
@@ -14,7 +16,8 @@ use Symfony\Contracts\EventDispatcher\Event;
  *
  * By default every share whose creator is {@see getSubject()} (the viewer) is removed through
  * {@see ShareRepositoryInterface::removeAllByCreator()}. Listeners may:
- * - narrow the removal with {@see setSubject()}: only the viewer or another instance of the configured creator class
+ * - narrow the removal with {@see setSubjectId()} (2.1.0) or {@see setSubject()}: only the viewer, a {@see CreatorId}
+ *   or another instance of the configured creator class
  *   (`nowo_yopass.user_class`) is accepted, any other object makes {@see ShareDeleter}
  *   throw a LogicException before anything is removed (a tenant / team entity would be matched by its id against
  *   creator ids and delete another user's shares),
@@ -40,6 +43,8 @@ final class ShareDeleteAllEvent extends Event
 
     /**
      * Returns the user who requested the removal.
+     *
+     * @deprecated since 2.1.0, use {@see self::getViewerId()}; removed in 3.0
      */
     public function getViewer(): UserInterface
     {
@@ -48,6 +53,8 @@ final class ShareDeleteAllEvent extends Event
 
     /**
      * Returns the object passed to removeAllByCreator() (defaults to the viewer).
+     *
+     * @deprecated since 2.1.0, use {@see self::getSubjectId()}; removed in 3.0
      */
     public function getSubject(): object
     {
@@ -56,11 +63,41 @@ final class ShareDeleteAllEvent extends Event
 
     /**
      * Replaces the object passed to removeAllByCreator().
+     *
+     * @deprecated since 2.1.0, use {@see self::setSubjectId()}; removed in 3.0
      */
     public function setSubject(object $subject): void
     {
         // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
         $this->subject = $subject;
+    }
+
+    /**
+     * The id of the user who requested the removal (null when the user exposes none). Since 2.1.0.
+     */
+    public function getViewerId(): ?string
+    {
+        return UserIdResolver::getId($this->viewer);
+    }
+
+    /**
+     * The id of the creator whose shares are removed (the viewer's by default; null when it exposes none). Since 2.1.0.
+     */
+    public function getSubjectId(): ?string
+    {
+        return UserIdResolver::getId($this->subject);
+    }
+
+    /**
+     * Removes the shares of the creator with this id instead (a {@see CreatorId}; the same exact id rules apply).
+     * Since 2.1.0.
+     *
+     * @throws \InvalidArgumentException when the id is not a usable creator id
+     */
+    public function setSubjectId(string $creatorId): void
+    {
+        // @igor-ignore - Request-scoped Event DTO; not a shared worker service.
+        $this->subject = new CreatorId($creatorId);
     }
 
     /**

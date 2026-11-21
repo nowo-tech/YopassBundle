@@ -28,6 +28,7 @@ All options live under the `nowo_yopass` root key in `config/packages/nowo_yopas
   - [Create mode](#create-mode)
   - [Host layout integration](#host-layout-integration)
 - [Conflict response (concurrency)](#conflict-response-concurrency)
+- [Events after the application's commit](#events-after-the-applications-commit)
 - [Other options](#other-options)
 - [Assets](#assets)
 - [DevKit integration (future)](#devkit-integration-future)
@@ -463,7 +464,12 @@ Services involved: `ShareLister` (manage list), `ShareAccessGuard` (created/prev
 | `ShareDeletedEvent` | `YopassEvents::SHARE_DELETED` | After a manage "delete" | share id, creator, deleting user, dates, max reads, reads left, payload kind, revoked at |
 | `ShareRevokedEvent` | `YopassEvents::SHARE_REVOKED` | After a manage "revoke" | share id, creator, revoking user, revoked at, payload kind |
 | `ShareExtendedEvent` | `YopassEvents::SHARE_EXTENDED` | After a manage "extend" | share id, creator, extending user, old / new expiry, old / new max reads, payload kind |
-| `ShareBulkDeletedEvent` | `YopassEvents::SHARES_BULK_DELETED` | After "delete all" or a retention purge removed ≥ 1 share | reason (`delete_all` / `retention`), subject (creator / tenant, `null` for the console purge), count, acting user |
+| `ShareBulkDeletedEvent` | `YopassEvents::SHARES_BULK_DELETED` | After "delete all", a retention purge or (2.1) `ShareCommandsInterface::deleteByIds()` removed ≥ 1 share | reason (`delete_all` / `retention` / `delete_by_ids`), subject (creator / tenant, `null` for the console purge), count, acting user (or its id), the share ids (`delete_by_ids` only) |
+
+Since 2.1 every lifecycle event has `getOccurredAt()`, the actor is also available as an id when no security user is
+known (`getDeletedById()` …), and the entity / user accessors are deprecated in favour of the id getters (removed in
+3.0). With the ORM driver they are dispatched after the application's commit when it wrapped the call in a transaction
+([Events after the application's commit](#events-after-the-applications-commit)).
 
 **Zero-knowledge:** these payloads are metadata only. They never contain the ciphertext, the decryption key, a
 password or decrypted content, and they do not expose the `SecureShare` entity, so they are safe to log or forward
@@ -635,6 +641,18 @@ nowo_yopass:
         status: ~                 # 409 (default) or 503; null follows nowo_transaction_doctrine.conflict_response, else 409
         retry_after: ~            # Retry-After seconds of CONFLICT_001; null follows transaction-doctrine, else 1
         commit_tracking: bundle   # bundle (connection of database.entity_manager) | all | off
+```
+
+## Events after the application's commit
+
+Since 2.1.0, with the Doctrine ORM driver and doctrine/dbal 4, a bundle write made inside the application's own
+transaction dispatches its lifecycle events after that transaction's outermost commit (dropped on rollback). Outside a
+transaction nothing changes. Details: [USAGE.md](USAGE.md#events-after-the-applications-commit).
+
+```yaml
+nowo_yopass:
+    events:
+        after_host_commit: true   # false: always dispatch at once (2.0 timing)
 ```
 
 ## Other options

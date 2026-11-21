@@ -115,7 +115,7 @@ final readonly class ShareRetentionPurger
     private function dispatchPurged(?object $subject, int $removed, ?UserInterface $viewer): void
     {
         $this->eventDispatcher?->dispatch(
-            new ShareBulkDeletedEvent(ShareBulkDeletedEvent::REASON_RETENTION, $subject, $removed, $viewer),
+            new ShareBulkDeletedEvent(ShareBulkDeletedEvent::REASON_RETENTION, $subject, $removed, $viewer, null, $this->now()),
             YopassEvents::SHARES_BULK_DELETED,
         );
     }

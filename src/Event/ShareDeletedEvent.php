@@ -21,6 +21,8 @@ use Symfony\Contracts\EventDispatcher\Event;
  */
 final class ShareDeletedEvent extends Event
 {
+    private readonly DateTimeImmutable $occurredAt;
+
     /**
      * Creates the event from share metadata (never the ciphertext).
      */
@@ -34,13 +36,16 @@ final class ShareDeletedEvent extends Event
         private readonly int $readsLeft,
         private readonly string $payloadKind,
         private readonly ?DateTimeImmutable $revokedAt,
+        private readonly ?string $deletedById = null,
+        ?DateTimeImmutable $occurredAt = null,
     ) {
+        $this->occurredAt = $occurredAt ?? new DateTimeImmutable();
     }
 
     /**
      * Copies the metadata of a share; the ciphertext is deliberately left out.
      */
-    public static function fromShare(SecureShare $share, ?UserInterface $deletedBy = null, ?object $creator = null): self
+    public static function fromShare(SecureShare $share, ?UserInterface $deletedBy = null, ?object $creator = null, ?string $deletedById = null, ?DateTimeImmutable $occurredAt = null): self
     {
         return new self(
             $share->getId(),
@@ -52,6 +57,8 @@ final class ShareDeletedEvent extends Event
             $share->getReadsLeft(),
             $share->getPayloadKind(),
             $share->getRevokedAt(),
+            $deletedById,
+            $occurredAt,
         );
     }
 
@@ -67,6 +74,8 @@ final class ShareDeletedEvent extends Event
      * Returns the creator: with the relation mapping, the application user entity **in the application's entity
      * manager** (since 1.19.0 a lazy reference built from the creator id when the bundle uses its own entity manager);
      * with `user_mapping: id`, a {@see CreatorId}. Prefer {@see self::getCreatorId()}.
+     *
+     * @deprecated since 2.1.0, use {@see self::getCreatorId()}; removed in 3.0
      */
     public function getCreator(): object
     {
@@ -75,6 +84,9 @@ final class ShareDeletedEvent extends Event
 
     /**
      * Returns the user who deleted the share (may differ from the creator when a listener granted access), if known.
+     * Null when the share was deleted through the id-based {@see \Nowo\YopassBundle\Share\ShareCommandsInterface}.
+     *
+     * @deprecated since 2.1.0, use {@see self::getDeletedById()}; removed in 3.0
      */
     public function getDeletedBy(): ?UserInterface
     {
@@ -138,10 +150,19 @@ final class ShareDeletedEvent extends Event
     }
 
     /**
-     * Returns the id of the user who deleted the share (null when unknown). Since 1.16.
+     * Returns the id of the user who deleted the share (null when unknown). Since 1.16; since 2.1.0 also the actor id
+     * given to the id-based commands.
      */
     public function getDeletedById(): ?string
     {
-        return $this->deletedBy instanceof UserInterface ? UserIdResolver::getId($this->deletedBy) : null;
+        return $this->deletedById ?? ($this->deletedBy instanceof UserInterface ? UserIdResolver::getId($this->deletedBy) : null);
+    }
+
+    /**
+     * When the share was deleted. Since 2.1.0.
+     */
+    public function getOccurredAt(): DateTimeImmutable
+    {
+        return $this->occurredAt;
     }
 }

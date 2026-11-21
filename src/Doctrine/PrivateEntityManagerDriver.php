@@ -18,12 +18,13 @@ final class PrivateEntityManagerDriver extends AbstractDriverMiddleware
     public function __construct(
         Driver $driver,
         private readonly YopassEntityManager $entityManager,
+        private readonly ?HostCommitEventRelay $events = null,
     ) {
         parent::__construct($driver);
     }
 
     public function connect(array $params): Connection
     {
-        return new PrivateEntityManagerConnection(parent::connect($params), $this->entityManager);
+        return new PrivateEntityManagerConnection(parent::connect($params), $this->entityManager, $this->events);
     }
 }

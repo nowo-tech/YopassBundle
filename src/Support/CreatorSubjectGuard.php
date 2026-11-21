@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Support;
 
 use LogicException;
+use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -31,6 +32,11 @@ final class CreatorSubjectGuard
     public static function isSupported(object $subject, UserInterface $viewer, ?string $creatorClass): bool
     {
         if ($subject === $viewer) {
+            return true;
+        }
+
+        // 2.1.0: an explicit creator id (ShareDeleteAllEvent::setSubjectId()) names a user_class user by its id.
+        if ($subject instanceof CreatorId) {
             return true;
         }
 

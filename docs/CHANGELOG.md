@@ -71,6 +71,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Additive minor for hosts that use the bundle from a DDD / hexagonal application (DDD-host checklist B1, B4, B7, B8).
+Nothing is removed or renamed; the manage UI, the public reveal and the stored data do not change. No change to how
+secrets are encrypted, stored, read or burned: one-time reads stay one atomic conditional update.
+
+### Added
+
+- **Id-based write port `ShareCommandsInterface`** (`Nowo\YopassBundle\Share`, service id = the interface):
+  `create(CreatorId, ShareCreateData)`, `revoke(shareId)`, `extend(shareId, ...)`, `delete(shareId)`,
+  `deleteByIds(list<shareId>, ?CreatorId)` (a scoped "delete all") and `deleteAllOf(CreatorId)` (account deletion,
+  erasure). Every call takes an optional actor id for the events and returns a `ShareView` (or a count). `create()`
+  applies the create form's rules (ciphertext size, configured expiration and max-reads options, payload kind, file
+  shares only with a file handler) and refuses anything else with `ShareCommandException` (a code, never the input).
+  Of two concurrent `delete()` calls for one share only one returns `true` and dispatches the event.
+- **Read port `ShareQueryInterface`**: `find()`, `count()`, `page()` (1–1000 per page, with the total) and `ids()` over a
+  `ShareCriteria` (creator ids and / or share ids, intersection or union, `any` / `active` / `inactive`, newest or
+  oldest first). With the Doctrine ORM driver it selects scalar columns only (the ciphertext is never loaded); creator
+  and share ids are compared exactly in PHP after the query, before paging, so a look-alike row a folding collation
+  returns never takes a place. MongoDB and custom repositories are served through `find()` and the creator queries.
+- **Read model `ShareView`**: id, creator id, dates, max reads, reads left, payload kind, revocation date and a computed
+  state (`active`, `expired`, `revoked`, `consumed`). Never the ciphertext.
+- **Access check by ids `ShareAccessGuardInterface::canManageId(UserRef, shareId, action)`**: owner by exact
+  (constant-time) creator id comparison; a `UserRef` whose id is only its identifier is never the owner.
+  `ShareAccessCheckEvent` gains `getUserId()`, `getUserRef()`, `getShareId()` and `getCreatorId()`.
+- **Lifecycle events after the application's commit** (Doctrine ORM driver with doctrine/dbal 4,
+  `events.after_host_commit`, default `true`): when the application wrapped a bundle write in its own transaction, the
+  `share_created` / `deleted` / `revoked` / `extended` / `consumed` / `shares_bulk_deleted` events wait for the outermost
+  commit of that connection and are dropped when it (or the savepoint they were raised in) rolls back. Without an open
+  transaction they are dispatched at once, exactly as in 2.0. See [USAGE.md](USAGE.md#events-after-the-applications-commit).
+- Events: `getOccurredAt()` on every lifecycle event; actor ids without a security user (`getDeletedById()`,
+  `getRevokedById()`, `getExtendedById()`, `ShareBulkDeletedEvent::getViewerId()`) for the id-based commands;
+  `ShareBulkDeletedEvent::REASON_DELETE_BY_IDS` with `getShareIds()`; `ShareDeleteAllEvent::getViewerId()`,
+  `getSubjectId()` and `setSubjectId(string)`.
+- A `CreatorId` is accepted as the creator under the relation mapping too (`getReference(user_class, id)` on the
+  bundle's manager, no query); an integer key only takes a plain decimal id, anything else is refused, never cast.
+
+### Deprecated
+
+- The entity / security-user accessors of the events, in favour of their id getters: `getCreator()` (created, deleted,
+  revoked, extended), `getDeletedBy()`, `getRevokedBy()`, `getExtendedBy()`, `ShareBulkDeletedEvent::getSubject()` /
+  `getViewer()`, `ShareDeleteAllEvent::getViewer()` / `getSubject()` / `setSubject()`, `ShareAccessCheckEvent::getUser()`
+  / `getShare()`. Documented only (`@deprecated`, no runtime notice in 2.1); removed in 3.0.
+- Application code should call the new ports instead of `ShareCreator`, `ShareRevoker`, `ShareExtender` and
+  `ShareDeleter` directly; their object-typed signatures leave the public API in 3.0.
+
 ## [2.0.1] - 2026-11-21
 
 ### Fixed

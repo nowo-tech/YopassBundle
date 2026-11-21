@@ -22,7 +22,14 @@ use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
+use Nowo\YopassBundle\Service\ShareCommands;
 use Nowo\YopassBundle\Service\ShareCreator;
+use Nowo\YopassBundle\Service\ShareDeleter;
+use Nowo\YopassBundle\Service\ShareExtender;
+use Nowo\YopassBundle\Service\ShareQuery;
+use Nowo\YopassBundle\Service\ShareRevoker;
+use Nowo\YopassBundle\Share\ShareCriteria;
+use Nowo\YopassBundle\Share\ShareView;
 use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\TestCase;
@@ -106,6 +113,41 @@ final class MongoIdMappingIntegrationTest extends TestCase
         self::assertSame(1, $this->repository->removeAllByCreatorId(self::ALICE));
         self::assertSame(0, $this->repository->countByCreatorId(self::ALICE));
         self::assertSame(1, $this->repository->countByCreatorId('someone-else'));
+    }
+
+    /**
+     * 2.1.0: the id-based read port and commands on the MongoDB driver (fallback path through the repository).
+     */
+    public function testTheIdPortsReadAndDeleteByIds(): void
+    {
+        $options  = DefaultShareOptions::get();
+        $creator  = new ShareCreator($this->repository, $options['expiration_options'], null, null, $this->creators);
+        $query    = new ShareQuery($this->repository, null, $this->creators);
+        $commands = new ShareCommands(
+            $this->repository,
+            $creator,
+            new ShareRevoker($this->repository),
+            new ShareExtender($this->repository, $options),
+            new ShareDeleter($this->repository, null, SecurityUserDto::class, null, $this->creators),
+            $query,
+            $options,
+            700_000,
+        );
+
+        $data           = $this->data();
+        $data->maxReads = 1;
+        $own            = $commands->create(new CreatorId(self::ALICE), $data);
+        $other          = $commands->create(new CreatorId('someone-else'), $data);
+        $this->dm->clear();
+
+        self::assertSame([$own->id], $query->ids(ShareCriteria::ofCreator(self::ALICE)));
+        self::assertSame(self::ALICE, $query->find($own->id)?->creatorId);
+        self::assertSame(0, $commands->deleteByIds([$other->id], new CreatorId(self::ALICE)));
+        self::assertSame(ShareView::STATE_REVOKED, $commands->revoke($own->id)?->state);
+        self::assertTrue($commands->delete($own->id));
+        self::assertFalse($commands->delete($own->id));
+        self::assertSame(1, $commands->deleteAllOf(new CreatorId('someone-else')));
+        self::assertSame(0, $query->count(new ShareCriteria([self::ALICE, 'someone-else'])));
     }
 
     public function testDeletionsByCreatorIncludeSharesStoredBeforeTheSwitch(): void

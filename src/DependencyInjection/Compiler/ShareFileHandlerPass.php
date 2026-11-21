@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\DependencyInjection\Compiler;
 
 use Nowo\YopassBundle\Controller\ShareManageController;
+use Nowo\YopassBundle\Service\ShareCommands;
 use Nowo\YopassBundle\Service\ShareFileHandlerInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
@@ -43,6 +44,11 @@ final class ShareFileHandlerPass implements CompilerPassInterface
         if ($container->hasDefinition(ShareManageController::class)) {
             $container->getDefinition(ShareManageController::class)
                 ->setArgument('$fileHandler', new Reference(ShareFileHandlerInterface::class));
+        }
+
+        // 2.1.0: the id-based create accepts file payloads only with a file handler, like the manage UI.
+        if ($container->hasDefinition(ShareCommands::class)) {
+            $container->getDefinition(ShareCommands::class)->setArgument('$fileSharesEnabled', true);
         }
     }
 }

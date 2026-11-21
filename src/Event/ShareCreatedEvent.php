@@ -19,6 +19,8 @@ use Symfony\Contracts\EventDispatcher\Event;
  */
 final class ShareCreatedEvent extends Event
 {
+    private readonly DateTimeImmutable $occurredAt;
+
     /**
      * Creates the event from share metadata (never the ciphertext).
      */
@@ -29,13 +31,15 @@ final class ShareCreatedEvent extends Event
         private readonly DateTimeImmutable $expiresAt,
         private readonly int $maxReads,
         private readonly string $payloadKind,
+        ?DateTimeImmutable $occurredAt = null,
     ) {
+        $this->occurredAt = $occurredAt ?? $createdAt;
     }
 
     /**
      * Copies the metadata of a share; the ciphertext is deliberately left out.
      */
-    public static function fromShare(SecureShare $share, ?object $creator = null): self
+    public static function fromShare(SecureShare $share, ?object $creator = null, ?DateTimeImmutable $occurredAt = null): self
     {
         return new self(
             $share->getId(),
@@ -44,6 +48,7 @@ final class ShareCreatedEvent extends Event
             $share->getExpiresAt(),
             $share->getMaxReads(),
             $share->getPayloadKind(),
+            $occurredAt,
         );
     }
 
@@ -59,6 +64,8 @@ final class ShareCreatedEvent extends Event
      * Returns the creator: with the relation mapping, the application user entity **in the application's entity
      * manager** (since 1.19.0 a lazy reference built from the creator id when the bundle uses its own entity manager);
      * with `user_mapping: id`, a {@see CreatorId}. Prefer {@see self::getCreatorId()}.
+     *
+     * @deprecated since 2.1.0, use {@see self::getCreatorId()}; removed in 3.0
      */
     public function getCreator(): object
     {
@@ -103,5 +110,13 @@ final class ShareCreatedEvent extends Event
     public function getCreatorId(): ?string
     {
         return UserIdResolver::getId($this->creator);
+    }
+
+    /**
+     * When the share was stored (the creation date unless the dispatcher gave another instant). Since 2.1.0.
+     */
+    public function getOccurredAt(): DateTimeImmutable
+    {
+        return $this->occurredAt;
     }
 }

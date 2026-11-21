@@ -14,6 +14,8 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Revokes shares from the manage UI and dispatches {@see YopassEvents::SHARE_REVOKED} (metadata only).
+ *
+ * Application code: since 2.1.0 call {@see \Nowo\YopassBundle\Share\ShareCommandsInterface::revoke()} (by share id).
  */
 final readonly class ShareRevoker
 {
@@ -29,14 +31,16 @@ final readonly class ShareRevoker
 
     /**
      * Revokes the share, flushes, then dispatches {@see YopassEvents::SHARE_REVOKED}.
+     *
+     * @param string|null $revokedById 2.1.0: the acting user's id when no security user is known (id-based commands)
      */
-    public function revoke(SecureShare $share, ?UserInterface $revokedBy = null): void
+    public function revoke(SecureShare $share, ?UserInterface $revokedBy = null, ?string $revokedById = null): void
     {
         $share->revoke();
         // @igor-ignore - Service coordinates I/O or request-scoped work; not unsafe worker singleton state.
         $this->shareRepository->persist($share);
         $this->shareRepository->flush();
 
-        $this->eventDispatcher?->dispatch(ShareRevokedEvent::fromShare($share, $revokedBy, $this->hostCreators?->forHost($share->getCreator())), YopassEvents::SHARE_REVOKED);
+        $this->eventDispatcher?->dispatch(ShareRevokedEvent::fromShare($share, $revokedBy, $this->hostCreators?->forHost($share->getCreator()), $revokedById), YopassEvents::SHARE_REVOKED);
     }
 }

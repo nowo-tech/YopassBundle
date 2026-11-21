@@ -3,6 +3,9 @@
 ## Table of contents
 
 - [Unreleased](#unreleased)
+  - [Id-based ports (DDD hosts)](#id-based-ports-ddd-hosts)
+  - [Events after your commit](#events-after-your-commit)
+  - [Deprecated event accessors](#deprecated-event-accessors)
 - [To 2.0.1](#to-201)
 - [To 2.0.0](#to-200)
   - [Before you upgrade](#before-you-upgrade)
@@ -123,6 +126,51 @@
   - [Public links](#public-links)
 
 ## Unreleased
+
+Additive minor (2.1.0): nothing to change to upgrade. The notes below are for hosts that want the new ports.
+
+### Id-based ports (DDD hosts)
+
+Three services, autowired by their interfaces (`Nowo\YopassBundle\Share\…`), replace the entity- and user-typed
+services and any DQL or SQL you wrote over the bundle's tables:
+
+| Instead of | Use |
+|---|---|
+| `ShareCreator::create($user, $data)` | `ShareCommandsInterface::create(new CreatorId($userId), $data)` |
+| `ShareRevoker::revoke($share, $user)` | `ShareCommandsInterface::revoke($shareId, $actorId)` |
+| `ShareExtender::extend($share, …, $user)` | `ShareCommandsInterface::extend($shareId, $expiresIn, $maxReads, $actorId)` |
+| `ShareDeleter::delete($share, $user)` | `ShareCommandsInterface::delete($shareId, $actorId)` |
+| DQL `DELETE … WHERE s.id IN (…)` for a scoped "delete all" | `ShareCommandsInterface::deleteByIds($ids, new CreatorId($ownerId), $actorId)` |
+| DQL over `SecureShare` (lists, counts, export) | `ShareQueryInterface::page()` / `count()` / `ids()` with a `ShareCriteria` |
+| `ShareAccessGuard::canManage($user, $share, $action)` | `ShareAccessGuardInterface::canManageId(UserRef, $shareId, $action)` |
+
+Host tables that relate to `SecureShare` (a one-to-one or many-to-one to the bundle's entity) should keep a plain
+`share_id` column instead and read the shares through `ShareQueryInterface`: the bundle writes through its own entity
+manager (since 2.0), and a relation across managers is the class of the 2.0.0 regression. A typical migration:
+
+1. add `share_id VARCHAR(36)` (and, if you list "my shares", `creator_id`) to your table and backfill it from the
+   relation's join column;
+2. compute the visible share ids from your own table, then call `ShareQueryInterface::page(new ShareCriteria($creatorIds, $shareIds, true), $limit, $offset)`;
+3. delete with `deleteByIds()` (limited to the owner with its `CreatorId`) and remove your rows for the returned ids
+   (or for `ShareBulkDeletedEvent::getShareIds()`);
+4. drop the association.
+
+The commands do no access check: check with `canManageId()` (or your own policy) first.
+
+### Events after your commit
+
+With the Doctrine ORM driver (doctrine/dbal 4), when you call the bundle inside your own transaction, the lifecycle
+events now wait for your outermost commit and are dropped on rollback. Before, they were dispatched inside your
+transaction, before it committed. Calls outside a transaction (the manage UI, the public reveal) dispatch at once as
+before. A listener that must run inside your transaction (to write in the same commit) should be called by your
+handler instead; set `nowo_yopass.events.after_host_commit: false` to keep the 2.0 timing.
+
+### Deprecated event accessors
+
+The entity and security-user accessors of the events are deprecated (documented, no runtime notice in 2.1) and
+removed in 3.0. Use the id getters: `getCreatorId()`, `getDeletedById()`, `getRevokedById()`, `getExtendedById()`,
+`ShareBulkDeletedEvent::getSubjectId()` / `getViewerId()`, `ShareDeleteAllEvent::getViewerId()` / `getSubjectId()` /
+`setSubjectId()`, `ShareAccessCheckEvent::getUserId()` / `getShareId()` / `getCreatorId()`.
 
 ## To 2.0.1
 

@@ -18,6 +18,10 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Persists client-encrypted shares (E2E — server stores ciphertext only).
+ *
+ * Application code: since 2.1.0 call {@see \Nowo\YopassBundle\Share\ShareCommandsInterface::create()} (creator by
+ * id, returns a view); this class is the bundle's own implementation and its object-typed signature is removed from
+ * the public API in 3.0.
  */
 final readonly class ShareCreator
 {
@@ -65,7 +69,7 @@ final readonly class ShareCreator
         $this->shareRepository->flush();
 
         // Zero-knowledge: the event carries metadata only (never the ciphertext).
-        $this->eventDispatcher?->dispatch(ShareCreatedEvent::fromShare($share, $this->hostCreators?->forHost($share->getCreator())), YopassEvents::SHARE_CREATED);
+        $this->eventDispatcher?->dispatch(ShareCreatedEvent::fromShare($share, $this->hostCreators?->forHost($share->getCreator()), $this->clock->now()), YopassEvents::SHARE_CREATED);
 
         return $share;
     }

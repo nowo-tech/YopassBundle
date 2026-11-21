@@ -14,6 +14,7 @@ use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Database\DatabaseDriver;
 use Nowo\YopassBundle\DependencyInjection\Compiler\AccessLogMappingPass;
 use Nowo\YopassBundle\DependencyInjection\Compiler\PrivateEntityManagerPass;
+use Nowo\YopassBundle\Doctrine\HostCommitEventRelay;
 use Nowo\YopassBundle\Doctrine\HostCreatorReference;
 use Nowo\YopassBundle\Doctrine\PrivateEntityManagerMiddleware;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
@@ -34,6 +35,13 @@ use Nowo\YopassBundle\Security\ConfigurableYopassAccessChecker;
 use Nowo\YopassBundle\Security\PublicEndpointRateLimiter;
 use Nowo\YopassBundle\Security\YopassAccessDecider;
 use Nowo\YopassBundle\Security\YopassAccessPolicyInterface;
+use Nowo\YopassBundle\Service\ShareCommands;
+use Nowo\YopassBundle\Service\ShareConsumedNotifier;
+use Nowo\YopassBundle\Service\ShareCreator;
+use Nowo\YopassBundle\Service\ShareDeleter;
+use Nowo\YopassBundle\Service\ShareExtender;
+use Nowo\YopassBundle\Service\ShareRetentionPurger;
+use Nowo\YopassBundle\Service\ShareRevoker;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
@@ -93,6 +101,9 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
      * @deprecated since 2.0, no service is registered under this id; removed in 3.0
      */
     public const HOST_FLUSH_PROBE_BOUNDARIES = 'nowo_yopass.host_flush_probe.boundaries';
+
+    /** 2.1.0: the boundary subscriber that releases or drops the held share events (Doctrine ORM driver). */
+    public const HOST_COMMIT_EVENTS_BOUNDARIES = 'nowo_yopass.host_commit_events.boundaries';
 
     /** 1.22.0: the boundary subscriber that drops the private document manager (MongoDB ODM driver). */
     public const PRIVATE_DOCUMENT_MANAGER_BOUNDARIES = 'nowo_yopass.private_document_manager.boundaries';
@@ -202,6 +213,41 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         }
 
         $this->registerFileHandler($container, $config['file_handler'] ?? null);
+        $this->registerHostCommitEvents($container, $driver, (bool) $config['events']['after_host_commit']);
+    }
+
+    /**
+     * 2.1.0 (REQ-ARCH-001 rule 7): with the Doctrine ORM driver and doctrine/dbal 4, the write services dispatch their
+     * "after" events through {@see HostCommitEventRelay}, which holds them while the application's transaction is open
+     * and releases them after its commit (dropped on rollback). Otherwise nothing is registered and every event is
+     * dispatched at once, as in 2.0.
+     */
+    private function registerHostCommitEvents(ContainerBuilder $container, string $driver, bool $afterHostCommit): void
+    {
+        if (!$afterHostCommit || $driver !== DatabaseDriver::DOCTRINE_ORM || !$container->hasDefinition(PrivateEntityManagerMiddleware::class)) {
+            return;
+        }
+
+        $relay = new Reference(HostCommitEventRelay::class);
+        $container->setDefinition(HostCommitEventRelay::class, (new Definition(HostCommitEventRelay::class))
+            ->setArgument('$dispatcher', new Reference('event_dispatcher'))
+            ->setArgument('$ownManager', new Reference(YopassEntityManager::class))
+            ->setArgument('$enabled', true)
+            ->setArgument('$logger', new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE))
+            ->addTag('kernel.event_subscriber')
+            ->addTag('kernel.reset', ['method' => 'reset']));
+        // Same outermost request / message / command boundaries as the private entity manager.
+        $container->setDefinition(self::HOST_COMMIT_EVENTS_BOUNDARIES, (new Definition(YopassEntityManagerBoundarySubscriber::class))
+            ->setArgument('$entityManager', $relay)
+            ->setArgument('$requestStack', new Reference('request_stack', ContainerInterface::IGNORE_ON_INVALID_REFERENCE))
+            ->addTag('kernel.event_subscriber'));
+        $container->getDefinition(PrivateEntityManagerMiddleware::class)->setArgument('$events', $relay);
+
+        foreach ([ShareCreator::class, ShareDeleter::class, ShareRevoker::class, ShareExtender::class, ShareRetentionPurger::class, ShareConsumedNotifier::class, ShareCommands::class] as $service) {
+            if ($container->hasDefinition($service)) {
+                $container->getDefinition($service)->setArgument('$eventDispatcher', $relay);
+            }
+        }
     }
 
     /**
