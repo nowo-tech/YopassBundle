@@ -53,8 +53,14 @@ final class YopassDocumentManager implements ResetInterface
 
     /**
      * The open private document manager, created (again) when needed.
+     *
+     * Declared as the ODM `DocumentManager` (the instance is always the internal {@see YopassPrivateDocumentManager}):
+     * Symfony's opcache preloader follows public signatures, and naming the subclass made it compile that class in
+     * applications without doctrine/mongodb-odm ("Can't preload unlinked class ... Unknown parent DocumentManager").
+     *
+     * @return YopassPrivateDocumentManager
      */
-    public function get(): YopassPrivateDocumentManager
+    public function get(): DocumentManager
     {
         $source  = $this->source();
         $current = $this->documentManager;
