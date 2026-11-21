@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Event;
 use DateTimeImmutable;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
@@ -28,13 +29,14 @@ final class ShareRevokedEvent extends Event
         private readonly ?UserInterface $revokedBy,
         private readonly DateTimeImmutable $revokedAt,
         private readonly string $payloadKind,
+        private readonly ?string $revokedById = null,
     ) {
     }
 
     /**
      * Copies the metadata of a revoked share; the ciphertext is deliberately left out.
      */
-    public static function fromShare(SecureShare $share, ?UserInterface $revokedBy = null, ?object $creator = null): self
+    public static function fromShare(SecureShare $share, ?UserInterface $revokedBy = null, ?object $creator = null, ?string $revokedById = null): self
     {
         return new self(
             $share->getId(),
@@ -42,6 +44,7 @@ final class ShareRevokedEvent extends Event
             $revokedBy,
             $share->getRevokedAt() ?? new DateTimeImmutable(),
             $share->getPayloadKind(),
+            $revokedById,
         );
     }
 
@@ -57,6 +60,8 @@ final class ShareRevokedEvent extends Event
      * Returns the creator: with the relation mapping, the application user entity **in the application's entity
      * manager** (since 1.19.0 a lazy reference built from the creator id when the bundle uses its own entity manager);
      * with `user_mapping: id`, a {@see CreatorId}. Prefer {@see self::getCreatorId()}.
+     *
+     * @deprecated since 2.1.0, use {@see self::getCreatorId()}; removed in 3.0
      */
     public function getCreator(): object
     {
@@ -65,6 +70,9 @@ final class ShareRevokedEvent extends Event
 
     /**
      * Returns the user who revoked the share (may differ from the creator when a listener granted access), if known.
+     * Null when the share was revoked through the id-based {@see ShareCommandsInterface}.
+     *
+     * @deprecated since 2.1.0, use {@see self::getRevokedById()}; removed in 3.0
      */
     public function getRevokedBy(): ?UserInterface
     {
@@ -96,10 +104,19 @@ final class ShareRevokedEvent extends Event
     }
 
     /**
-     * Returns the id of the user who revoked the share (null when unknown). Since 1.16.
+     * Returns the id of the user who revoked the share (null when unknown). Since 1.16; since 2.1.0 also the actor id
+     * given to the id-based commands.
      */
     public function getRevokedById(): ?string
     {
-        return $this->revokedBy instanceof UserInterface ? UserIdResolver::getId($this->revokedBy) : null;
+        return $this->revokedById ?? ($this->revokedBy instanceof UserInterface ? UserIdResolver::getId($this->revokedBy) : null);
+    }
+
+    /**
+     * When the share was revoked (its revocation date). Since 2.1.0.
+     */
+    public function getOccurredAt(): DateTimeImmutable
+    {
+        return $this->revokedAt;
     }
 }

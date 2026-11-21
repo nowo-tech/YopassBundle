@@ -25,6 +25,7 @@ use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareRepository;
 use Nowo\YopassBundle\Service\ShareCreator;
+use Nowo\YopassBundle\Share\ShareView;
 use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\Attributes\Group;
@@ -37,6 +38,7 @@ use function getenv;
 use function is_string;
 use function json_encode;
 use function method_exists;
+use function strtoupper;
 use function sys_get_temp_dir;
 
 use const PHP_VERSION_ID;
@@ -153,6 +155,32 @@ final class OrmIdMappingDatabaseTest extends TestCase
 
         self::assertSame([$own->getId()], array_map(static fn (SecureShare $s): string => $s->getId(), $this->repository->findByCreatorPaginated(new SecurityUserDto('abc'), 1, 0)));
         self::assertSame([], $this->repository->findByCreatorPaginated(new SecurityUserDto('abc'), 1, 1));
+    }
+
+    /**
+     * 2.1.0 (ShareQueryInterface, id commands): the scalar views keep the creator and share ids exact under a folding
+     * collation, and of two deletes of one share from two connections only the first one counts it.
+     */
+    public function testViewsAndDeletesByIdsStayExactUnderACaseInsensitiveCollation(): void
+    {
+        $this->foldCase($this->em->getConnection());
+        $own   = $this->creator->create(new SecurityUserDto('abc'), $this->data());
+        $other = $this->creator->create(new SecurityUserDto('AbC'), $this->data());
+        $this->em->clear();
+        $now = new DateTimeImmutable();
+
+        self::assertSame([$own->getId()], array_map(static fn (ShareView $view): string => $view->id, $this->repository->viewsByCreatorIds(['abc'], $now)));
+        self::assertSame([$other->getId()], array_map(static fn (ShareView $view): string => $view->id, $this->repository->viewsByIds([$other->getId(), strtoupper($other->getId())], $now)));
+        $view = $this->repository->viewsByIds([$own->getId()], $now)[0] ?? null;
+        self::assertNotNull($view);
+        self::assertSame('abc', $view->creatorId);
+        self::assertSame(ShareView::STATE_ACTIVE, $view->state);
+        self::assertSame($own->getCreatedAt()->getTimestamp(), $view->createdAt->getTimestamp());
+
+        $second = new DoctrineOrmShareRepository(new EntityManager(DriverManager::getConnection($this->em->getConnection()->getParams(), $this->em->getConfiguration()), $this->em->getConfiguration(), $this->em->getEventManager()));
+        self::assertSame(1, $this->repository->removeByIds([$own->getId()]));
+        self::assertSame(0, $second->removeByIds([$own->getId()]));
+        self::assertSame(1, $this->repository->countByCreatorId('AbC'));
     }
 
     /**

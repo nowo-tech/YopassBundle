@@ -59,6 +59,8 @@ final class SecretMaterialSourceScanTest extends TestCase
         'Doctrine/YopassDocumentManager.php',
         // Warns that MySQL only offers the PAD SPACE utf8mb4_bin (1.20.4): server version only, no share data.
         'Doctrine/ExactCollation.php',
+        // 2.1.0: the event name and the exception class of a failing listener, or a count of dropped events: no share data.
+        'Doctrine/HostCommitEventRelay.php',
         // TreeBuilder ->info() node descriptions, not a logger.
         'DependencyInjection/Configuration.php',
     ];

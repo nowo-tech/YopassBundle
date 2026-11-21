@@ -97,6 +97,14 @@ final class ShareConsumedEvent extends Event
     }
 
     /**
+     * Same as {@see self::getConsumedAt()}, the name every lifecycle event shares. Since 2.1.0.
+     */
+    public function getOccurredAt(): DateTimeImmutable
+    {
+        return $this->consumedAt;
+    }
+
+    /**
      * Returns the payload kind ("text" or "file").
      */
     public function getPayloadKind(): string

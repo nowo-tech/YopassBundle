@@ -19,13 +19,17 @@ use Nowo\YopassBundle\DependencyInjection\Compiler\PrivateEntityManagerPass;
  */
 final readonly class PrivateEntityManagerMiddleware implements Middleware
 {
+    /**
+     * @param HostCommitEventRelay|null $events 2.1.0: told about the outermost commit and rollbacks (events after commit)
+     */
     public function __construct(
         private YopassEntityManager $entityManager,
+        private ?HostCommitEventRelay $events = null,
     ) {
     }
 
     public function wrap(Driver $driver): Driver
     {
-        return new PrivateEntityManagerDriver($driver, $this->entityManager);
+        return new PrivateEntityManagerDriver($driver, $this->entityManager, $this->events);
     }
 }

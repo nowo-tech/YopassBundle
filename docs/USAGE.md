@@ -11,6 +11,8 @@
   - [Share events (teams, grants, roles)](#share-events-teams-grants-roles)
 - [Standard Symfony host](#standard-symfony-host)
 - [Using it from a DDD / hexagonal application](#using-it-from-a-ddd--hexagonal-application)
+  - [Id-based ports (2.1)](#id-based-ports-21)
+  - [Events after the application's commit](#events-after-the-applications-commit)
   - [DDD host: the bundle's own entity manager](#ddd-host-the-bundles-own-entity-manager)
   - [DDD host: the bundle's own document manager (MongoDB)](#ddd-host-the-bundles-own-document-manager-mongodb)
   - [Done in 2.0](#done-in-20)
@@ -252,6 +254,83 @@ final readonly class DeleteUserSharesOnUserDeleted
 With the id mapping nothing ties the share table to your user class any more. Since 1.19 the bundle writes through its
 own entity manager in both mappings (next section).
 
+### Id-based ports (2.1)
+
+A DDD handler talks to the bundle through three interfaces of `Nowo\YopassBundle\Share` (autowired by type), keyed
+by ids and returning `ShareView` read models (scalars and dates, never the ciphertext):
+
+```php
+use Nowo\YopassBundle\Creator\CreatorId;
+use Nowo\YopassBundle\Event\ShareAccessAction;
+use Nowo\YopassBundle\Security\UserRef;
+use Nowo\YopassBundle\Share\ShareAccessGuardInterface;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
+use Nowo\YopassBundle\Share\ShareCriteria;
+use Nowo\YopassBundle\Share\ShareQueryInterface;
+
+final readonly class SecretShares // Infrastructure/Kit adapter of your own Application port
+{
+    public function __construct(
+        private ShareCommandsInterface $commands,
+        private ShareQueryInterface $query,
+        private ShareAccessGuardInterface $access,
+    ) {}
+
+    public function revoke(string $userId, string $shareId): bool
+    {
+        if (!$this->access->canManageId(new UserRef($userId), $shareId, ShareAccessAction::Revoke)) {
+            return false;
+        }
+
+        return $this->commands->revoke($shareId, $userId) !== null;
+    }
+
+    /** @param list<string> $visibleIds share ids your own context table grants */
+    public function page(string $userId, array $visibleIds, int $page): array
+    {
+        $result = $this->query->page(new ShareCriteria([$userId], $visibleIds, matchAny: true), 20, ($page - 1) * 20);
+
+        return [$result->items, $result->total];
+    }
+}
+```
+
+- `ShareCommandsInterface`: `create(CreatorId, ShareCreateData)` (the browser already encrypted the ciphertext; the
+  create form's limits apply and `ShareCommandException` refuses the rest), `revoke()`, `extend()`, `delete()`,
+  `deleteByIds(list, ?CreatorId)` and `deleteAllOf(CreatorId)`. The optional actor id ends up in the events. No access
+  check is made: check first.
+- `ShareQueryInterface`: `find()`, `count()`, `page()` and `ids()` over a `ShareCriteria`: creator ids and / or share
+  ids (intersection, or the union with `matchAny`), a state filter (`any`, `active`, `inactive`) and the order
+  (newest first by default). Ids compare exactly; unusable ids are refused with an `InvalidArgumentException`.
+- `ShareAccessGuardInterface::canManageId(UserRef, shareId, action)`: the owner rule by exact creator id, then the
+  `SHARE_ACCESS_CHECK` event (listeners decide on `getUserId()` / `getShareId()` / `getCreatorId()`). Pass the id of
+  `nowo_yopass.user_class`.
+
+Under the relation mapping a `CreatorId` becomes `getReference(user_class, id)` on the bundle's manager; an integer
+key only takes a plain decimal id (`07` and `abc` are refused, never cast).
+
+Keep your own tables keyed by a plain `share_id` column instead of a relation to `SecureShare`: see
+[UPGRADING](UPGRADING.md#id-based-ports-ddd-hosts).
+
+### Events after the application's commit
+
+Opt-in (2.1; recommended for DDD hosts, planned as the 3.0 default). With the `doctrine_orm` driver, doctrine/dbal 4 and
+`events.after_host_commit: true` (default `false`: events are dispatched at once, as in 2.0), a bundle write made
+inside **your** transaction holds its lifecycle event (`share_created`, `share_deleted`, `share_revoked`,
+`share_extended`, `share_consumed`, `shares_bulk_deleted`) until the outermost commit of that connection:
+
+- a rollback drops it; a rollback to a savepoint drops the events raised inside that savepoint;
+- after the commit it is dispatched as soon as the connection is idle again: at the next bundle event, at the main
+  request's `kernel.response`, or at the end of the request, Messenger message or console command. (Not inside the
+  commit itself: DBAL updates its transaction level only after the driver commit returns.) A listener that throws then
+  is logged (event name and exception class) and does not undo anything: the data is committed;
+- without an open transaction (the manage UI, the public reveal, a handler that does not wrap the call) the event is
+  dispatched at once, as before, and a listener's exception reaches the caller;
+- the pre-action events (`share_delete_all`, `share_access_check`, the list events) are never held;
+- in FrankenPHP worker mode, nothing held survives the unit of work (uncommitted events are dropped with a warning).
+
+With DBAL 3, MongoDB or a custom repository, events are always dispatched at once.
+
 ### DDD host: the bundle's own entity manager
 
 With the `doctrine_orm` driver (since 1.19; the only mode since 2.0) the shares and the access log are read and written
@@ -264,7 +343,8 @@ entity manager:
 - the bundle's rows are in the database when its call returns (no write waits for your flush, none is lost if you
   `clear()`);
 - the connection is shared: when you call the bundle inside your own transaction (`wrapInTransaction()`), its rows
-  commit or roll back with yours;
+  commit or roll back with yours, and since 2.1 its events can wait for your commit (opt-in)
+  ([Events after the application's commit](#events-after-the-applications-commit));
 - a failed bundle write closes only the private manager, which is replaced on the next call; its identity map is
   emptied at every request, command and Messenger message boundary (FrankenPHP worker mode without kernel reset);
 - the tables do not move, and `doctrine:schema:*` / migrations keep seeing the entities through

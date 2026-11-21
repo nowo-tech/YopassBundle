@@ -17,6 +17,8 @@ services:
             - '../../Doctrine/'     # Metadata listeners wired in YopassExtension
             - '../../Security/PublicEndpointRateLimiter.php'
             - '../../Security/UserRef.php'              # Value object (1.19.0)
+            - '../../Security/UserRefSecurityUser.php'  # 2.1.0: per-check stand-in, not a service
+            - '../../Share/'        # 2.1.0: id-based ports, value objects and the command exception
             - '../../Security/YopassAccessDecider.php'  # Wired with the configured access checker in YopassExtension
             - '../../Controller/'
             - '../../EventListener/YopassConflictListener.php'  # 1.21.0: registered by YopassExtension (conflict_response)
@@ -93,6 +95,24 @@ services:
     Nowo\YopassBundle\Service\ShareRetentionPurger:
         arguments:
             $shareOptions: '%nowo_yopass.shares%'
+
+    # 2.1.0 (DDD-host checklist B1/B7/B8): id-based ports. $fileSharesEnabled is set by ShareFileHandlerPass.
+    Nowo\YopassBundle\Service\ShareCommands:
+        arguments:
+            $shareOptions: '%nowo_yopass.shares%'
+            $maxCiphertextBytes: '%nowo_yopass.max_ciphertext_bytes%'
+            $fileSharesEnabled: false
+
+    # Public aliases: also reachable from a host's own container lookups and functional tests.
+    Nowo\YopassBundle\Share\ShareCommandsInterface:
+        alias: Nowo\YopassBundle\Service\ShareCommands
+        public: true
+    Nowo\YopassBundle\Share\ShareQueryInterface:
+        alias: Nowo\YopassBundle\Service\ShareQuery
+        public: true
+    Nowo\YopassBundle\Share\ShareAccessGuardInterface:
+        alias: Nowo\YopassBundle\Service\ShareAccessGuard
+        public: true
 
     # Authenticated manage UI and create API. File handler alias is wired by ShareFileHandlerPass.
     Nowo\YopassBundle\Controller\ShareManageController:

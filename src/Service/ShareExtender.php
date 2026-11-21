@@ -14,6 +14,7 @@ use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\ExpirationExtendingShareRepositoryInterface;
 use Nowo\YopassBundle\Repository\MaxReadsRaisingShareRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -24,6 +25,8 @@ use function ltrim;
 
 /**
  * Extends expiration and max-read limits for existing shares (creator-only).
+ *
+ * Application code: since 2.1.0 call {@see ShareCommandsInterface::extend()} (by share id).
  */
 final readonly class ShareExtender
 {
@@ -57,8 +60,10 @@ final readonly class ShareExtender
      * expiration commit together, or not at all: a refused or failed expiration rolls the raise back. With a repository
      * that implements {@see ExpirationExtendingShareRepositoryInterface} the expiration only moves forward (two
      * concurrent extensions keep the later one; a share revoked meanwhile is refused with "revoked").
+     *
+     * @param string|null $extendedById 2.1.0: the acting user's id when no security user is known (id-based commands)
      */
-    public function extend(SecureShare $share, ?string $expiresIn, ?int $maxReads, ?UserInterface $extendedBy = null): void
+    public function extend(SecureShare $share, ?string $expiresIn, ?int $maxReads, ?UserInterface $extendedBy = null, ?string $extendedById = null): void
     {
         $oldExpiresAt = $share->getExpiresAt();
         $oldMaxReads  = $share->getMaxReads();
@@ -113,7 +118,7 @@ final readonly class ShareExtender
 
         // Zero-knowledge: old / new limits only, never the ciphertext.
         $this->eventDispatcher?->dispatch(
-            ShareExtendedEvent::fromShare($share, $oldExpiresAt, $oldMaxReads, $extendedBy, $this->hostCreators?->forHost($share->getCreator())),
+            ShareExtendedEvent::fromShare($share, $oldExpiresAt, $oldMaxReads, $extendedBy, $this->hostCreators?->forHost($share->getCreator()), $extendedById, $this->now()),
             YopassEvents::SHARE_EXTENDED,
         );
     }

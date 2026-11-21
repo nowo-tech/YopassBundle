@@ -45,6 +45,9 @@ ciphertext to at most N readers, whatever the timing.
 | Delete all / retention per creator (`removeAllByCreator`, `removeByCreatorOlderThan`) | One DQL DELETE per chunk of 500 ids (id mapping) or one DQL DELETE (relation mapping); inside a savepoint when the application opened a transaction | Exact creator match (`ExactKeyColumnsInterface` rule, LQ-Y-L1); idempotent | `CONFLICT_002` once a chunk committed, else `CONFLICT_001` |
 | Retention purge (`removeOlderThan`, `nowo:yopass:purge-old-shares`) | Chunks of 500 primary keys, each its own statement; the cutoff is checked again in the DELETE | Idempotent; no range DELETE over `created_at` (rule 9: no long range locks on the hot table) | Console: the exception (exit code 1); rerun safely |
 | Access log (`ShareAccessLogger`) | Inside the consume unit | Random UUID primary key | As the consume |
+| Delete by id (2.1, `ShareCommandsInterface::delete()`, `deleteByIds()`) | One DQL DELETE per chunk of 500 ids, inside a savepoint when the application opened a transaction | The affected-row count decides: of two concurrent deletes of one share only one counts it and dispatches the event; `deleteByIds()` with a creator only removes that creator's shares (exact id, re-checked in PHP) | Through the host (no bundle route) |
+| Id commands (2.1, `create`, `revoke`, `extend`) | The same services and units as the rows above | As above | Through the host |
+| Lifecycle events (2.1) | Inside an application transaction they wait for its outermost commit (`HostCommitEventRelay`) and are dropped on rollback | — | — |
 
 Every write unit runs on the bundle's private entity manager (see below). No HTTP call, mail or file I/O happens while a
 row lock is held: the event listeners run after the commit.

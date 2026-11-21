@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Event;
 use DateTimeImmutable;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
@@ -20,6 +21,8 @@ use Symfony\Contracts\EventDispatcher\Event;
  */
 final class ShareExtendedEvent extends Event
 {
+    private readonly DateTimeImmutable $occurredAt;
+
     /**
      * Creates the event from the old and new limits of a share (never the ciphertext).
      */
@@ -32,13 +35,16 @@ final class ShareExtendedEvent extends Event
         private readonly int $oldMaxReads,
         private readonly int $newMaxReads,
         private readonly string $payloadKind,
+        private readonly ?string $extendedById = null,
+        ?DateTimeImmutable $occurredAt = null,
     ) {
+        $this->occurredAt = $occurredAt ?? new DateTimeImmutable();
     }
 
     /**
      * Builds the event from the share after the change and the limits before it.
      */
-    public static function fromShare(SecureShare $share, DateTimeImmutable $oldExpiresAt, int $oldMaxReads, ?UserInterface $extendedBy = null, ?object $creator = null): self
+    public static function fromShare(SecureShare $share, DateTimeImmutable $oldExpiresAt, int $oldMaxReads, ?UserInterface $extendedBy = null, ?object $creator = null, ?string $extendedById = null, ?DateTimeImmutable $occurredAt = null): self
     {
         return new self(
             $share->getId(),
@@ -49,6 +55,8 @@ final class ShareExtendedEvent extends Event
             $oldMaxReads,
             $share->getMaxReads(),
             $share->getPayloadKind(),
+            $extendedById,
+            $occurredAt,
         );
     }
 
@@ -64,6 +72,8 @@ final class ShareExtendedEvent extends Event
      * Returns the creator: with the relation mapping, the application user entity **in the application's entity
      * manager** (since 1.19.0 a lazy reference built from the creator id when the bundle uses its own entity manager);
      * with `user_mapping: id`, a {@see CreatorId}. Prefer {@see self::getCreatorId()}.
+     *
+     * @deprecated since 2.1.0, use {@see self::getCreatorId()}; removed in 3.0
      */
     public function getCreator(): object
     {
@@ -71,7 +81,10 @@ final class ShareExtendedEvent extends Event
     }
 
     /**
-     * Returns the user who extended the share, if known.
+     * Returns the user who extended the share, if known. Null when the share was extended through the id-based
+     * {@see ShareCommandsInterface}.
+     *
+     * @deprecated since 2.1.0, use {@see self::getExtendedById()}; removed in 3.0
      */
     public function getExtendedBy(): ?UserInterface
     {
@@ -127,10 +140,19 @@ final class ShareExtendedEvent extends Event
     }
 
     /**
-     * Returns the id of the user who extended the share (null when unknown). Since 1.16.
+     * Returns the id of the user who extended the share (null when unknown). Since 1.16; since 2.1.0 also the actor id
+     * given to the id-based commands.
      */
     public function getExtendedById(): ?string
     {
-        return $this->extendedBy instanceof UserInterface ? UserIdResolver::getId($this->extendedBy) : null;
+        return $this->extendedById ?? ($this->extendedBy instanceof UserInterface ? UserIdResolver::getId($this->extendedBy) : null);
+    }
+
+    /**
+     * When the share was extended. Since 2.1.0.
+     */
+    public function getOccurredAt(): DateTimeImmutable
+    {
+        return $this->occurredAt;
     }
 }

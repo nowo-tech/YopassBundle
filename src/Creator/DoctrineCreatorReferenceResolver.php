@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Creator;
 
+use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Nowo\YopassBundle\Doctrine\YopassDocumentManager;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
+use function count;
 use function get_debug_type;
+use function in_array;
 use function is_object;
 use function ltrim;
 use function method_exists;
+use function preg_match;
 use function sprintf;
 
 /**
@@ -60,6 +64,10 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
 
         if ($user instanceof $class) {
             return $this->ownReference($user, $class);
+        }
+
+        if ($user instanceof CreatorId) {
+            return $this->idReference($user, $class);
         }
 
         // JX-Y1: only listed wrapper classes are mapped by id. Any other user fails closed: passing it on would let
@@ -116,6 +124,52 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
      *
      * @throws AccessDeniedException for any other user, or one without a usable id
      */
+    /**
+     * 2.1.0: a {@see CreatorId} handed to the id-based ports names the `user_class` user with that id. With the
+     * relation mapping it becomes `getReference(user_class, id)` on the bundle's manager (no query). An integer key
+     * only accepts a plain decimal id: anything else is refused, never cast (`abc` would bind as user 0). The custom
+     * driver (no registry) receives the CreatorId as given.
+     */
+    private function idReference(CreatorId $creator, string $class): object
+    {
+        if (!$this->registry instanceof ManagerRegistry) {
+            return $creator;
+        }
+
+        $manager = $this->ownManager?->get() ?? $this->registry->getManager($this->managerName);
+        if (!$manager instanceof EntityManagerInterface) {
+            // MongoDB ODM: the identifier type converts the id when the reference is stored or queried.
+            $reference = method_exists($manager, 'getReference') ? $manager->getReference($class, $creator->getId()) : null;
+            if (!is_object($reference)) {
+                throw new AccessDeniedException('nowo_yopass: a creator id cannot be related through this object manager.');
+            }
+
+            return $reference;
+        }
+
+        $metadata    = $manager->getClassMetadata($class);
+        $identifiers = $metadata->getIdentifierFieldNames();
+        if (count($identifiers) !== 1) {
+            throw new AccessDeniedException(sprintf('nowo_yopass: %s has a composite identifier; a creator id cannot name it.', $class));
+        }
+
+        $id = $creator->getId();
+        if (in_array($metadata->getTypeOfField($identifiers[0]), ['integer', 'smallint', 'bigint'], true)) {
+            if (preg_match('/^(?:0|[1-9][0-9]{0,17})$/D', $id) !== 1) {
+                throw new AccessDeniedException(sprintf('nowo_yopass: a creator id for %s must be a decimal integer.', $class));
+            }
+            $id = (int) $id;
+        }
+
+        /** @var class-string $class */
+        $reference = $manager->getReference($class, $id);
+        if (!is_object($reference)) {
+            throw new AccessDeniedException(sprintf('nowo_yopass: no reference for a %s creator id.', $class)); // @codeCoverageIgnore
+        }
+
+        return $reference;
+    }
+
     private function creatorId(object $user, string $class): CreatorId
     {
         if ($user instanceof CreatorId) {

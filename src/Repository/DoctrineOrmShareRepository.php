@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Repository;
 
 use DateTimeImmutable;
+use DateTimeInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
@@ -14,6 +15,7 @@ use Nowo\YopassBundle\Creator\CreatorReferenceResolverInterface;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Doctrine\YopassSavepoint;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Share\ShareView;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
 
@@ -23,13 +25,15 @@ use function array_filter;
 use function array_slice;
 use function array_values;
 use function count;
+use function in_array;
 use function is_string;
 use function max;
+use function preg_match;
 
 /**
  * Doctrine ORM implementation for PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle, etc.
  */
-final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface, ExpirationExtendingShareRepositoryInterface, CreatorIdShareRepositoryInterface
+final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface, ExpirationExtendingShareRepositoryInterface, CreatorIdShareRepositoryInterface, ShareSummaryRepositoryInterface
 {
     use ResolvesEntityManagerTrait;
 
@@ -343,6 +347,155 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     public function removeAllByCreatorId(string $creatorId): int
     {
         return $this->removeAllByCreator(new CreatorId($creatorId));
+    }
+
+    /**
+     * The shares of these creators as views (2.1.0): scalar columns only (no ciphertext), chunked `IN` lists, then
+     * the exact creator id re-checked in PHP.
+     */
+    public function viewsByCreatorIds(array $creatorIds, DateTimeImmutable $now): array
+    {
+        $byId   = $this->mapsCreatorById();
+        $values = $byId ? $creatorIds : $this->relationCreatorValues($creatorIds);
+        $wanted = [];
+        foreach ($creatorIds as $creatorId) {
+            $wanted['k' . $creatorId] = true;
+        }
+
+        $views = [];
+        foreach (array_chunk($values, self::PURGE_CHUNK) as $chunk) {
+            foreach ($this->summaryRows($byId ? 's.creator IN (:values)' : 'IDENTITY(s.creator) IN (:values)', $chunk) as $row) {
+                if ($row['creator'] !== null && isset($wanted['k' . $row['creator']])) {
+                    $views[] = $this->view($row, $now);
+                }
+            }
+        }
+
+        return $views;
+    }
+
+    /**
+     * The shares with these ids as views (2.1.0): scalar columns only (no ciphertext), the exact id re-checked in PHP.
+     */
+    public function viewsByIds(array $shareIds, DateTimeImmutable $now): array
+    {
+        $wanted = [];
+        foreach ($shareIds as $shareId) {
+            $wanted['k' . $shareId] = true;
+        }
+
+        $views = [];
+        foreach (array_chunk($shareIds, self::PURGE_CHUNK) as $chunk) {
+            foreach ($this->summaryRows('s.id IN (:values)', $chunk) as $row) {
+                if (isset($wanted['k' . $row['id']])) {
+                    $views[] = $this->view($row, $now);
+                }
+            }
+        }
+
+        return $views;
+    }
+
+    /**
+     * Deletes the shares with these ids (2.1.0): DQL DELETE per chunk inside a savepoint when the application opened a
+     * transaction; the affected-row count is what this call removed.
+     */
+    public function removeByIds(array $shareIds): int
+    {
+        return $shareIds === [] ? 0 : $this->removeIds($shareIds);
+    }
+
+    /**
+     * Scalar rows of the shares matching one condition.
+     *
+     * @param non-empty-list<int|string> $values
+     *
+     * @return list<array{id: string, creator: string|null, createdAt: DateTimeImmutable, expiresAt: DateTimeImmutable, maxReads: int, readsLeft: int, payloadKind: string, revokedAt: DateTimeImmutable|null}>
+     */
+    private function summaryRows(string $condition, array $values): array
+    {
+        /** @var list<array<string, mixed>> $rows */
+        $rows = $this->em()->createQueryBuilder()
+            ->select(
+                's.id AS id',
+                ($this->mapsCreatorById() ? 's.creator' : 'IDENTITY(s.creator)') . ' AS creator',
+                's.createdAt AS createdAt',
+                's.expiresAt AS expiresAt',
+                's.maxReads AS maxReads',
+                's.readsLeft AS readsLeft',
+                's.payloadKind AS payloadKind',
+                's.revokedAt AS revokedAt',
+            )
+            ->from(SecureShare::class, 's')
+            ->where($condition)
+            ->setParameter('values', $values)
+            ->getQuery()
+            ->getArrayResult();
+
+        $typed = [];
+        foreach ($rows as $row) {
+            $typed[] = [
+                'id'          => (string) $row['id'],
+                'creator'     => $row['creator'] === null ? null : (string) $row['creator'],
+                'createdAt'   => $this->date($row['createdAt']) ?? new DateTimeImmutable('@0'),
+                'expiresAt'   => $this->date($row['expiresAt']) ?? new DateTimeImmutable('@0'),
+                'maxReads'    => (int) $row['maxReads'],
+                'readsLeft'   => (int) $row['readsLeft'],
+                'payloadKind' => (string) $row['payloadKind'],
+                'revokedAt'   => $this->date($row['revokedAt']),
+            ];
+        }
+
+        return $typed;
+    }
+
+    /**
+     * @param array{id: string, creator: string|null, createdAt: DateTimeImmutable, expiresAt: DateTimeImmutable, maxReads: int, readsLeft: int, payloadKind: string, revokedAt: DateTimeImmutable|null} $row
+     */
+    private function view(array $row, DateTimeImmutable $now): ShareView
+    {
+        return new ShareView($row['id'], $row['creator'], $row['createdAt'], $row['expiresAt'], $row['maxReads'], $row['readsLeft'], $row['payloadKind'], $row['revokedAt'], $now);
+    }
+
+    /**
+     * A selected date column as a DateTimeImmutable (the ORM converts mapped fields; a raw string is parsed).
+     */
+    private function date(mixed $value): ?DateTimeImmutable
+    {
+        if ($value instanceof DateTimeInterface) {
+            return DateTimeImmutable::createFromInterface($value);
+        }
+
+        return is_string($value) && $value !== '' ? new DateTimeImmutable($value) : null;
+    }
+
+    /**
+     * With the relation mapping, the creator ids as the user identifier type: integers for an integer key (an id that
+     * is not a plain decimal number cannot match one and is dropped), strings otherwise. The exact string comparison
+     * afterwards drops `05` for user 5.
+     *
+     * @param list<string> $creatorIds
+     *
+     * @return list<int|string>
+     */
+    private function relationCreatorValues(array $creatorIds): array
+    {
+        $entityManager = $this->em();
+        $target        = $entityManager->getClassMetadata($entityManager->getClassMetadata(SecureShare::class)->getAssociationTargetClass('creator'));
+        $identifiers   = $target->getIdentifierFieldNames();
+        $type          = count($identifiers) === 1 ? $target->getTypeOfField($identifiers[0]) : null;
+        if (!in_array($type, ['integer', 'smallint', 'bigint'], true)) {
+            return $creatorIds;
+        }
+
+        $values = [];
+        foreach ($creatorIds as $creatorId) {
+            if (preg_match('/^(?:0|[1-9][0-9]{0,17})$/D', $creatorId) === 1) {
+                $values[] = (int) $creatorId;
+            }
+        }
+
+        return $values;
     }
 
     /**

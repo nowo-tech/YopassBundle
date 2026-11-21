@@ -636,6 +636,16 @@ final class Configuration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->end()
+                ->arrayNode('events')
+                    ->info('2.1.0 (REQ-ARCH-001 rule 7): when the lifecycle events are dispatched.')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->booleanNode('after_host_commit')
+                            ->info('Opt-in (recommended for DDD hosts; planned as the 3.0 default). Doctrine ORM driver with doctrine/dbal 4: when the application wrapped a bundle write in its own transaction, the share_created / deleted / revoked / extended / consumed / bulk_deleted events wait for that transaction\'s commit (and are dropped on rollback). Without an open transaction they are dispatched at once. false (default): always at once, inside the application\'s transaction when there is one (2.0 behaviour).')
+                            ->defaultFalse()
+                        ->end()
+                    ->end()
+                ->end()
             ->end();
     }
 
