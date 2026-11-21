@@ -140,6 +140,23 @@ final class YopassExtensionArchTest extends TestCase
     }
 
     /**
+     * 2.0: a definition Symfony could not load because its class still uses the removed interface (autodiscovery keeps it
+     * with an error and would drop it silently) fails the build; other definition errors are left to Symfony.
+     */
+    public function testADefinitionThatCannotLoadBecauseOfTheRemovedInterfaceFailsTheBuild(): void
+    {
+        $container = new ContainerBuilder();
+        $container->register('app.other', stdClass::class)->addError('Something unrelated.');
+        (new AccessCheckerAliasPass())->process($container);
+        self::assertTrue($container->hasDefinition('app.other'));
+
+        $container->register('App\\Security\\LegacyChecker')->addError('Class "Nowo\\YopassBundle\\Security\\YopassAccessCheckerInterface" not found while loading "App\\Security\\LegacyChecker".');
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('The service "App\\Security\\LegacyChecker" cannot be loaded because it still uses "Nowo\\YopassBundle\\Security\\YopassAccessCheckerInterface", removed in 2.0');
+        (new AccessCheckerAliasPass())->process($container);
+    }
+
+    /**
      * @param array<string, list<string>|string> $parameters
      */
     private function checked(?string $class, array $parameters = [], string $id = 'app.checker'): ContainerBuilder

@@ -38,8 +38,10 @@ final class DddHostTestKernel extends Kernel
 
     /**
      * @param array<string, mixed> $yopass extra `nowo_yopass` configuration
+     * @param array{0: string, 1: string}|null $discover a host namespace prefix and directory registered by autodiscovery
+     *                                                   (autowired, autoconfigured), as a Flex `App\` resource
      */
-    public function __construct(private readonly bool $ddd, private readonly array $yopass = [])
+    public function __construct(private readonly bool $ddd, private readonly array $yopass = [], private readonly ?array $discover = null)
     {
         parent::__construct('test', false);
     }
@@ -69,7 +71,7 @@ final class DddHostTestKernel extends Kernel
 
     public function getCacheDir(): string
     {
-        return self::baseDir() . '/' . md5(serialize([$this->ddd, $this->yopass])) . '/cache';
+        return self::baseDir() . '/' . md5(serialize([$this->ddd, $this->yopass, $this->discover])) . '/cache';
     }
 
     public function getLogDir(): string
@@ -113,6 +115,10 @@ final class DddHostTestKernel extends Kernel
         $services = $container->services();
         $services->set('logger', NullLogger::class);
         $services->set(MemberSharePolicy::class)->public();
+        if ($this->discover !== null) {
+            $services->defaults()->autowire()->autoconfigure();
+            $services->load($this->discover[0], $this->discover[1]);
+        }
         $container->extension('nowo_yopass', array_replace($this->ddd ? [
             'user_class'   => TestUser::class,
             'user_mapping' => 'id',
