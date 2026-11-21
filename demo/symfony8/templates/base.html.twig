@@ -1,9 +1,17 @@
-{#- REQ-DEMO-014: the demo shell is UiKit's admin layout with UiKit's default theme (nowo-ui.css from the bundle's own
-    asset package, no CSS framework, no CDN). The Yopass manage pages reach it through layouts/admin.html.twig. -#}
-{% extends '@NowoUiKit/layout/admin.html.twig' %}
+{#- REQ-DEMO-014: the demo runs inside UiKit's shared demo platform shell (@NowoUiKit/demo_platform/layout.html.twig):
+    the same top bar, aside, content width, theme and footer as every other nowo-tech bundle demo. This file only
+    declares the demo (nowo_ui_demo_platform); the Yopass manage and public reveal pages render through it too
+    (nowo_ui_kit.layouts). -#}
+{% extends '@NowoUiKit/demo_platform/layout.html.twig' %}
+{% set nowo_ui_demo_platform = {
+    bundle: 'Yopass',
+    home_route: 'nowo_yopass_index',
+    repository: 'https://github.com/nowo-tech/YopassBundle',
+    translation_domain: false,
+    locales: [],
+    nav: [
+        {label: 'My shares', route: 'nowo_yopass_index', active: ['nowo_yopass_index', 'nowo_yopass_create*'], testid: 'demo-nav-nowo_yopass_index'},
+    ],
+} %}
 
 {% block nowo_ui_document_title %}{% block title %}Yopass Bundle demo{% endblock %} — Symfony 8{% endblock %}
-
-{% block nowo_ui_navigation %}{{ include('_masthead.html.twig') }}{% endblock %}
-
-{% block nowo_ui_content %}{% block body %}{% endblock %}{% endblock %}

@@ -1,10 +1,11 @@
 # UiKit page contract (REQ-UI-003): one host layout pair and one theme for every bundle page. REQ-DEMO-014: UiKit's
-# default theme, unchanged, with UiKit's own semantic stylesheet only (no CSS framework, no CDN); the demo layouts
-# extend UiKit's admin and guest layouts.
+# default theme, unchanged (no CSS framework, no CDN, no token override); the demo platform shell (templates/base.html.twig)
+# is the admin and guest layout, so the Yopass manage and public reveal pages render inside it.
 nowo_ui_kit:
     css_framework: custom
+    base_stylesheet: true
     icon_set: svg_inline
     row_actions_display: icon
     layouts:
-        admin: 'layouts/admin.html.twig'
-        guest: 'layouts/guest.html.twig'
+        admin: 'base.html.twig'
+        guest: 'base.html.twig'

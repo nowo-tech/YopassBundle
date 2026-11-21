@@ -1,9 +1,0 @@
-{#
-  Demo host guest layout (REQ-UI-003, nowo_ui_kit.layouts.guest): UiKit's guest layout with the demo masthead in its
-  header slot. Every Yopass public reveal page renders here.
-#}
-{% extends '@NowoUiKit/layout/guest.html.twig' %}
-
-{% block nowo_ui_document_title %}{% block title %}Yopass Demo{% endblock %}{% endblock %}
-
-{% block nowo_ui_guest_header %}{{ include('_masthead.html.twig') }}{% endblock %}
