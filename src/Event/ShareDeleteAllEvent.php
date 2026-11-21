@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Nowo\YopassBundle\Event;
 
+use InvalidArgumentException;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Service\ShareDeleter;
@@ -92,7 +93,7 @@ final class ShareDeleteAllEvent extends Event
      * Removes the shares of the creator with this id instead (a {@see CreatorId}; the same exact id rules apply).
      * Since 2.1.0.
      *
-     * @throws \InvalidArgumentException when the id is not a usable creator id
+     * @throws InvalidArgumentException when the id is not a usable creator id
      */
     public function setSubjectId(string $creatorId): void
     {

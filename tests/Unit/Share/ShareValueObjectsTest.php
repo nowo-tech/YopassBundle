@@ -40,14 +40,14 @@ final class ShareValueObjectsTest extends TestCase
      */
     public static function unusableIds(): iterable
     {
-        yield 'empty creator'          => [[''], null];
-        yield 'padded creator'         => [['bob '], null];
-        yield 'zero-width creator'     => [["bob\u{200B}"], null];
-        yield 'non-string creator'     => [[5], null];
-        yield 'empty share id'         => [null, ['']];
-        yield 'share id with a space'  => [null, ['a b']];
-        yield 'share id too long'      => [null, [str_repeat('a', 65)]];
-        yield 'share id with a quote'  => [null, ["a'"]];
+        yield 'empty creator' => [[''], null];
+        yield 'padded creator' => [['bob '], null];
+        yield 'zero-width creator' => [["bob\u{200B}"], null];
+        yield 'non-string creator' => [[5], null];
+        yield 'empty share id' => [null, ['']];
+        yield 'share id with a space' => [null, ['a b']];
+        yield 'share id too long' => [null, [str_repeat('a', 65)]];
+        yield 'share id with a quote' => [null, ["a'"]];
     }
 
     /**

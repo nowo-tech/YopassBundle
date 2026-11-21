@@ -29,6 +29,7 @@ use Nowo\YopassBundle\Service\ShareRevoker;
 use Nowo\YopassBundle\Share\ShareCommandException;
 use Nowo\YopassBundle\Share\ShareCriteria;
 use Nowo\YopassBundle\Share\ShareView;
+use Nowo\YopassBundle\Tests\Integration\DddHost\IdPortsKernelTest;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use Nowo\YopassBundle\Tests\Support\InMemoryIdShareRepository;
@@ -38,7 +39,7 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * 2.1.0: ShareQuery and ShareCommands over a repository without the native summary reads (the MongoDB / custom
- * fallback path). The Doctrine ORM path runs in {@see \Nowo\YopassBundle\Tests\Integration\DddHost\IdPortsKernelTest}.
+ * fallback path). The Doctrine ORM path runs in {@see IdPortsKernelTest}.
  */
 final class ShareIdPortsTest extends TestCase
 {
@@ -203,8 +204,8 @@ final class ShareIdPortsTest extends TestCase
     private function commands(?ShareRepositoryInterface $repository = null, ?CreatorReferenceResolverInterface $resolver = null, bool $files = false): ShareCommands
     {
         $repository ??= $this->repository;
-        $resolver   ??= new DoctrineCreatorReferenceResolver(TestUser::class, null, null, new CreatorClassPolicy(TestUser::class), CreatorMapping::ID);
-        $options      = DefaultShareOptions::get();
+        $resolver ??= new DoctrineCreatorReferenceResolver(TestUser::class, null, null, new CreatorClassPolicy(TestUser::class), CreatorMapping::ID);
+        $options = DefaultShareOptions::get();
 
         return new ShareCommands(
             $repository,

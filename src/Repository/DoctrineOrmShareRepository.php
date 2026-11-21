@@ -355,9 +355,9 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
      */
     public function viewsByCreatorIds(array $creatorIds, DateTimeImmutable $now): array
     {
-        $byId     = $this->mapsCreatorById();
-        $values   = $byId ? $creatorIds : $this->relationCreatorValues($creatorIds);
-        $wanted   = [];
+        $byId   = $this->mapsCreatorById();
+        $values = $byId ? $creatorIds : $this->relationCreatorValues($creatorIds);
+        $wanted = [];
         foreach ($creatorIds as $creatorId) {
             $wanted['k' . $creatorId] = true;
         }
@@ -408,16 +408,12 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
     /**
      * Scalar rows of the shares matching one condition.
      *
-     * @param list<int|string> $values
+     * @param non-empty-list<int|string> $values
      *
      * @return list<array{id: string, creator: string|null, createdAt: DateTimeImmutable, expiresAt: DateTimeImmutable, maxReads: int, readsLeft: int, payloadKind: string, revokedAt: DateTimeImmutable|null}>
      */
     private function summaryRows(string $condition, array $values): array
     {
-        if ($values === []) {
-            return [];
-        }
-
         /** @var list<array<string, mixed>> $rows */
         $rows = $this->em()->createQueryBuilder()
             ->select(

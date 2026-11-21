@@ -6,6 +6,7 @@ namespace Nowo\YopassBundle\Event;
 
 use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Security\UserRef;
+use Nowo\YopassBundle\Share\ShareAccessGuardInterface;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
@@ -16,7 +17,7 @@ use Symfony\Contracts\EventDispatcher\Event;
  * Default grant is creator ownership. Listeners may grant team, role, or
  * individual access without the bundle storing groups or permissions itself.
  *
- * Since 2.1.0 the check also runs by ids ({@see \Nowo\YopassBundle\Share\ShareAccessGuardInterface::canManageId()}):
+ * Since 2.1.0 the check also runs by ids ({@see ShareAccessGuardInterface::canManageId()}):
  * listeners should decide on {@see getUserId()}, {@see getShareId()} and {@see getCreatorId()}. For an id-based check
  * {@see getUser()} is a stand-in built from the {@see UserRef} (not the application's user class).
  */

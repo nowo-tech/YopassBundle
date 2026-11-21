@@ -22,7 +22,7 @@ final class ShareCommandException extends InvalidArgumentException
     public const INVALID_SHARE_ID     = 'invalid_share_id';
 
     /**
-     * @param self::INVALID_*|self::CIPHERTEXT_TOO_LARGE|self::FILE_NOT_ENABLED $errorCode
+     * @param self::CIPHERTEXT_TOO_LARGE|self::FILE_NOT_ENABLED|self::INVALID_* $errorCode
      */
     public function __construct(public readonly string $errorCode)
     {

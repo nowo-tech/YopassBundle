@@ -17,6 +17,7 @@ use Nowo\YopassBundle\Service\ShareDeleter;
 use Nowo\YopassBundle\Support\CreatorSubjectGuard;
 use Nowo\YopassBundle\Tests\Stub\TestUser;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
@@ -36,7 +37,7 @@ final class ShareIdAccessAndDeleteTest extends TestCase
 
     public function testOnlyTheDeleteThatRemovedTheRowReportsIt(): void
     {
-        $share = (new SecureShare('00000000-0000-4000-8000-000000000001', new CreatorId('alice')))->setExpiresAt(new DateTimeImmutable('+1 hour'));
+        $share      = (new SecureShare('00000000-0000-4000-8000-000000000001', new CreatorId('alice')))->setExpiresAt(new DateTimeImmutable('+1 hour'));
         $repository = $this->createMockForIntersectionOfInterfaces([ShareRepositoryInterface::class, ShareSummaryRepositoryInterface::class]);
         $repository->method('find')->willReturn($share);
         $repository->method('removeByIds')->willReturnOnConsecutiveCalls(1, 0);
@@ -58,6 +59,6 @@ final class ShareIdAccessAndDeleteTest extends TestCase
         $viewer = new TestUser('7');
 
         self::assertTrue(CreatorSubjectGuard::isSupported(new CreatorId('8'), $viewer, TestUser::class));
-        self::assertFalse(CreatorSubjectGuard::isSupported(new \stdClass(), $viewer, TestUser::class));
+        self::assertFalse(CreatorSubjectGuard::isSupported(new stdClass(), $viewer, TestUser::class));
     }
 }

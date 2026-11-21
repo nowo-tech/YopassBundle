@@ -7,6 +7,7 @@ namespace Nowo\YopassBundle\Event;
 use DateTimeImmutable;
 use Nowo\YopassBundle\Creator\CreatorId;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
@@ -69,7 +70,7 @@ final class ShareRevokedEvent extends Event
 
     /**
      * Returns the user who revoked the share (may differ from the creator when a listener granted access), if known.
-     * Null when the share was revoked through the id-based {@see \Nowo\YopassBundle\Share\ShareCommandsInterface}.
+     * Null when the share was revoked through the id-based {@see ShareCommandsInterface}.
      *
      * @deprecated since 2.1.0, use {@see self::getRevokedById()}; removed in 3.0
      */

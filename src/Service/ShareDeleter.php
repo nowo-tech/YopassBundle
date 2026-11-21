@@ -14,6 +14,7 @@ use Nowo\YopassBundle\Event\ShareDeletedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareSummaryRepositoryInterface;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
 use Nowo\YopassBundle\Support\CreatorSubjectGuard;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -23,7 +24,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 /**
  * Deletes shares from the manage UI and dispatches the lifecycle events (metadata only, never secret material).
  *
- * Application code: since 2.1.0 call {@see \Nowo\YopassBundle\Share\ShareCommandsInterface} (`delete()`,
+ * Application code: since 2.1.0 call {@see ShareCommandsInterface} (`delete()`,
  * `deleteByIds()`, `deleteAllOf()`, by ids).
  */
 final readonly class ShareDeleter

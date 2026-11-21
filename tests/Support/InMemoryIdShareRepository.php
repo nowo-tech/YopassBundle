@@ -13,8 +13,8 @@ use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
 use function array_filter;
 use function array_slice;
 use function array_values;
-use function method_exists;
 use function count;
+use function method_exists;
 
 /**
  * In-memory share repository with the creator-id queries (2.1.0 tests of the id ports' fallback path): creators are

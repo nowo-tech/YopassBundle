@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Nowo\YopassBundle\Event;
 
 use DateTimeImmutable;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
 use Nowo\YopassBundle\Support\UserIdResolver;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\Event;
@@ -24,7 +25,7 @@ final class ShareBulkDeletedEvent extends Event
     /** Retention purge (manage list visit or the nowo:yopass:purge-old-shares command). */
     public const REASON_RETENTION = 'retention';
 
-    /** 2.1.0: {@see \Nowo\YopassBundle\Share\ShareCommandsInterface::deleteByIds()}; {@see self::getShareIds()} lists the ids. */
+    /** 2.1.0: {@see ShareCommandsInterface::deleteByIds()}; {@see self::getShareIds()} lists the ids. */
     public const REASON_DELETE_BY_IDS = 'delete_by_ids';
 
     private readonly DateTimeImmutable $occurredAt;

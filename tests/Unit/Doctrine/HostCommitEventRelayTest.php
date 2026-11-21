@@ -183,8 +183,8 @@ final class HostCommitEventRelayTest extends TestCase
 
     public function testTheDriverConnectionReportsCommitsAndRollbacksWithTheirLevel(): void
     {
-        $relay  = $this->relay();
-        $inner  = $this->createMock(DriverConnection::class);
+        $relay = $this->relay();
+        $inner = $this->createMock(DriverConnection::class);
         $inner->method('exec')->willReturn(0);
         $own    = new YopassEntityManager($this->registry());
         $driver = new PrivateEntityManagerConnection($inner, $own, $relay);

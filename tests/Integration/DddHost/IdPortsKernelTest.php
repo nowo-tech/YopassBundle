@@ -213,7 +213,7 @@ final class IdPortsKernelTest extends TestCase
         $share    = $commands->create(new CreatorId('7'), $this->data());
 
         self::assertSame('7', $share->creatorId);
-        self::assertSame('7', $em->getConnection()->fetchOne('SELECT creator_id FROM yopass_secure_shares WHERE id = ?', [$share->id]));
+        self::assertSame('7', (string) $em->getConnection()->fetchOne('SELECT creator_id FROM yopass_secure_shares WHERE id = ?', [$share->id]));
         self::assertSame([$share->id], $query->ids(ShareCriteria::ofCreator('7')));
         self::assertSame([], $query->ids(ShareCriteria::ofCreator('07')));
         self::assertSame([], $query->ids(ShareCriteria::ofCreator('abc')));

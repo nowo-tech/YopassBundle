@@ -14,6 +14,7 @@ use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\ExpirationExtendingShareRepositoryInterface;
 use Nowo\YopassBundle\Repository\MaxReadsRaisingShareRepositoryInterface;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -25,7 +26,7 @@ use function ltrim;
 /**
  * Extends expiration and max-read limits for existing shares (creator-only).
  *
- * Application code: since 2.1.0 call {@see \Nowo\YopassBundle\Share\ShareCommandsInterface::extend()} (by share id).
+ * Application code: since 2.1.0 call {@see ShareCommandsInterface::extend()} (by share id).
  */
 final readonly class ShareExtender
 {

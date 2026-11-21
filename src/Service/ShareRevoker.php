@@ -9,13 +9,14 @@ use Nowo\YopassBundle\Entity\SecureShare;
 use Nowo\YopassBundle\Event\ShareRevokedEvent;
 use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\ShareRepositoryInterface;
+use Nowo\YopassBundle\Share\ShareCommandsInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Revokes shares from the manage UI and dispatches {@see YopassEvents::SHARE_REVOKED} (metadata only).
  *
- * Application code: since 2.1.0 call {@see \Nowo\YopassBundle\Share\ShareCommandsInterface::revoke()} (by share id).
+ * Application code: since 2.1.0 call {@see ShareCommandsInterface::revoke()} (by share id).
  */
 final readonly class ShareRevoker
 {
