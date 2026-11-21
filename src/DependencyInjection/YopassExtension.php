@@ -437,8 +437,6 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$creators', new Reference(CreatorReferenceResolverInterface::class));
         $this->registerCreatorReferenceResolver($container, $userClass, 'doctrine', (string) $database['entity_manager'], $config['user_mapping']);
         $container->getDefinition(DoctrineCreatorReferenceResolver::class)->setArgument('$ownManager', $ownManager);
-        // Events hand the application the creator in its own manager (1.19.0, audit MO-Y-L1).
-        $container->setDefinition(HostCreatorReference::class, new Definition(HostCreatorReference::class, [$ownManager]));
         $container->setAlias(ShareRepositoryInterface::class, DoctrineOrmShareRepository::class);
 
         // 1.21.0 (REQ-RUNTIME-003 rule 1): one transaction per write unit (consume + access log, extend) on the bundle's
@@ -564,6 +562,9 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
         }
         $ownManager = new Reference(YopassEntityManager::class);
         $container->getDefinition(DoctrineOrmShareRepository::class)->setArgument('$ownManager', $ownManager);
+        // Events hand the application the creator in its own manager (1.19.0, audit MO-Y-L1). 2.0.1: also with the custom
+        // driver on a relational platform, whose repository may decorate the bundle's one on the private manager.
+        $container->setDefinition(HostCreatorReference::class, new Definition(HostCreatorReference::class, [$ownManager]));
 
         $container->setDefinition(SecureShareMetadataListener::class, (new Definition(SecureShareMetadataListener::class))
             ->setArgument('$tableName', $storageName)

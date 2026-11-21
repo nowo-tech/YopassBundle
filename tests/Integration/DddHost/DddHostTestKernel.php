@@ -40,8 +40,9 @@ final class DddHostTestKernel extends Kernel
      * @param array<string, mixed> $yopass extra `nowo_yopass` configuration
      * @param array{0: string, 1: string}|null $discover a host namespace prefix and directory registered by autodiscovery
      *                                                   (autowired, autoconfigured), as a Flex `App\` resource
+     * @param string|null $databaseUrl a database server instead of the SQLite file (the "database" group, 2.0.1)
      */
-    public function __construct(private readonly bool $ddd, private readonly array $yopass = [], private readonly ?array $discover = null)
+    public function __construct(private readonly bool $ddd, private readonly array $yopass = [], private readonly ?array $discover = null, private readonly ?string $databaseUrl = null)
     {
         parent::__construct('test', false);
     }
@@ -71,7 +72,7 @@ final class DddHostTestKernel extends Kernel
 
     public function getCacheDir(): string
     {
-        return self::baseDir() . '/' . md5(serialize([$this->ddd, $this->yopass, $this->discover])) . '/cache';
+        return self::baseDir() . '/' . md5(serialize([$this->ddd, $this->yopass, $this->discover, $this->databaseUrl])) . '/cache';
     }
 
     public function getLogDir(): string
@@ -109,7 +110,7 @@ final class DddHostTestKernel extends Kernel
             $orm['enable_native_lazy_objects'] = true;
         }
         $container->extension('doctrine', [
-            'dbal' => ['url' => 'sqlite:///%kernel.cache_dir%/ddd-host.sqlite'],
+            'dbal' => ['url' => $this->databaseUrl ?? 'sqlite:///%kernel.cache_dir%/ddd-host.sqlite'],
             'orm'  => $orm,
         ]);
         $services = $container->services();

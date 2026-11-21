@@ -70,6 +70,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **2.0.0 regression: creating a share failed with a relation-mapped creator that your entity manager loaded.** With
+  `database.driver: custom` on a relational platform and a repository that decorates the bundle's
+  `DoctrineOrmShareRepository` (the demo's file-offloading pattern), "create a share" answered a 500: "A new entity
+  was found through the relationship 'SecureShare#creator'". 2.0.0 runs that repository on the bundle's private entity
+  manager (in 1.x the custom driver ran it on your manager), but the custom driver's creator resolver still hands it
+  the user as your manager holds it. `DoctrineOrmShareRepository` now relates a new share, and binds the creator
+  queries (list, count, retention purge, delete all), to `getReference(user_class, id)` on the private manager when that
+  manager does not hold the user. The id comes from your unit of work, so an uninitialised proxy is not loaded. Your
+  manager and your user are never merged, detached, flushed or cleared. The same fix covers an alias of
+  `CreatorReferenceResolverInterface` of yours that returns your own entities (this failed the same way since the
+  private manager became the default in 1.19.0). With the custom driver, the lifecycle events' `getCreator()` now
+  returns the user in your manager too (`HostCreatorReference` is registered whenever the private manager is). Nothing
+  was stored or leaked: the request failed before any write. `user_mapping: id` (no relation) and the MongoDB driver
+  (its private document manager stores the creator reference by id) are not affected. New kernel tests run every
+  bundle service with a creator your manager loaded, with the ORM driver and with a decorating custom repository, on
+  SQLite and in the MySQL, MariaDB and PostgreSQL CI jobs.
+
 ## [2.0.0] - 2026-11-21
 
 2.0.0: the major removes only what 1.x announced as deprecated (REQ-ARCH-001 rules 1, 3 and 6). An application that
