@@ -3,13 +3,9 @@ import { expect, type Page } from '@playwright/test';
 /** Obviously fake demo text — never put real credentials in e2e tests or screenshots. */
 export const DEMO_SECRET = 'Demo only: Wi-Fi guest code is not-a-real-secret-42';
 
-/** Wait for the Symfony WebProfiler toolbar (dev) so it is part of the capture. */
+/** Hide the Symfony WebProfiler toolbar (dev chrome) so it never appears in a capture. */
 export async function waitForToolbar(page: Page): Promise<void> {
-  const toolbar = page.locator('.sf-toolbar');
-  if (await toolbar.count()) {
-    await expect(toolbar.locator('.sf-toolbar-block').first()).toBeVisible({ timeout: 15_000 });
-    await page.waitForTimeout(400);
-  }
+  await page.addStyleTag({ content: '.sf-toolbar,.sf-minitoolbar,[id^="sfwdt"]{display:none!important}' });
 }
 
 /** Open the create dialog (web_ui.create_mode: dialog) from the header or the empty state. */
