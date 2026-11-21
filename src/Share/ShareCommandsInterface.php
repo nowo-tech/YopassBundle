@@ -32,12 +32,19 @@ interface ShareCommandsInterface
     /**
      * Revokes the share (no read is served any more). Revoking a revoked share changes nothing and dispatches no event.
      *
-     * @return ShareView|null the share after the call, null when there is no share with this id
+     * With the Doctrine ORM driver the revoke is one conditional write (2.1.1): of two concurrent revokes of the same
+     * share only one writes and dispatches the event, and a share deleted meanwhile answers null with no event. With
+     * the MongoDB ODM driver or a custom repository two revokes that both loaded the share before either wrote may both
+     * dispatch the event (docs/CONCURRENCY.md, residual risks).
+     *
+     * @return ShareView|null the share after the call, null when there is no share with this id (or it was deleted
+     *                        meanwhile)
      */
     public function revoke(string $shareId, ?string $actorId = null): ?ShareView;
 
     /**
      * Extends the expiration (an expiration option id) and / or raises the max reads (a configured value).
+     * With the Doctrine ORM driver a share deleted meanwhile is refused with `not_found` and dispatches no event (2.1.1).
      *
      * @throws ShareExtendException with code `not_found`, `revoked`, `invalid_expiration`, `invalid_max_reads`,
      *                              `max_reads_not_increased`, `expiration_not_extended` or `nothing_to_extend`
@@ -45,7 +52,10 @@ interface ShareCommandsInterface
     public function extend(string $shareId, ?string $expiresIn, ?int $maxReads, ?string $actorId = null): ShareView;
 
     /**
-     * Deletes one share. Of two concurrent deletes of the same share, only one returns true and dispatches the event.
+     * Deletes one share. With the Doctrine ORM driver the delete is one conditional statement: of two concurrent deletes
+     * of the same share only one returns true and dispatches the event. With the MongoDB ODM driver or a custom
+     * repository both may return true and dispatch the event when they loaded the share before either removed it
+     * (docs/CONCURRENCY.md, residual risks).
      *
      * @return bool whether this call deleted it (false: no share with this id)
      */

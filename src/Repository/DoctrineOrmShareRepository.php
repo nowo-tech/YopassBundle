@@ -33,7 +33,7 @@ use function preg_match;
 /**
  * Doctrine ORM implementation for PostgreSQL, MySQL, MariaDB, SQLite, SQL Server, Oracle, etc.
  */
-final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface, ExpirationExtendingShareRepositoryInterface, CreatorIdShareRepositoryInterface, ShareSummaryRepositoryInterface
+final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterface, MaxReadsRaisingShareRepositoryInterface, ExpirationExtendingShareRepositoryInterface, CreatorIdShareRepositoryInterface, ShareSummaryRepositoryInterface, RevokingShareRepositoryInterface
 {
     use ResolvesEntityManagerTrait;
 
@@ -156,6 +156,30 @@ final readonly class DoctrineOrmShareRepository implements ShareRepositoryInterf
             ->getQuery());
 
         if ($this->em()->contains($share)) {
+            $this->em()->refresh($share);
+        }
+
+        return $updated > 0;
+    }
+
+    /**
+     * One conditional UPDATE (`revoked_at = now, reads_left = 0` where the id matches and `revoked_at IS NULL`, 2.1.1):
+     * the affected-row count decides, so of two concurrent revokes only one returns true, and a share deleted meanwhile
+     * returns false. A managed instance is refreshed after a successful write (a deleted row is never refreshed).
+     */
+    public function revokeIfActive(SecureShare $share): bool
+    {
+        $updated = $this->execute($this->em()->createQueryBuilder()
+            ->update(SecureShare::class, 's')
+            ->set('s.revokedAt', ':now')
+            ->set('s.readsLeft', '0')
+            ->where('s.id = :id')
+            ->andWhere('s.revokedAt IS NULL')
+            ->setParameter('now', $this->now())
+            ->setParameter('id', $share->getId())
+            ->getQuery());
+
+        if ($updated > 0 && $this->em()->contains($share)) {
             $this->em()->refresh($share);
         }
 

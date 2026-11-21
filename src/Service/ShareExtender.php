@@ -59,7 +59,8 @@ final readonly class ShareExtender
      * 1.21.0 (REQ-RUNTIME-003): with the bundle's write unit (Doctrine ORM driver) the max reads raise and the new
      * expiration commit together, or not at all: a refused or failed expiration rolls the raise back. With a repository
      * that implements {@see ExpirationExtendingShareRepositoryInterface} the expiration only moves forward (two
-     * concurrent extensions keep the later one; a share revoked meanwhile is refused with "revoked").
+     * concurrent extensions keep the later one; a share revoked meanwhile is refused with "revoked", one deleted
+     * meanwhile with "not_found" and no event, 2.1.1).
      *
      * @param string|null $extendedById 2.1.0: the acting user's id when no security user is known (id-based commands)
      */
@@ -100,7 +101,7 @@ final readonly class ShareExtender
             // JS-L1: the raise is one conditional UPDATE (reads_left + delta), so concurrent consumes are never given
             // back; it runs first, so a share revoked meanwhile is not extended at all.
             if ($raiser !== null && $atomicRaise !== null && !$raiser->raiseMaxReads($share, $atomicRaise)) {
-                throw new ShareExtendException($share->getRevokedAt() instanceof DateTimeImmutable ? 'revoked' : 'max_reads_not_increased');
+                throw $this->refused($share, 'max_reads_not_increased');
             }
 
             if ($newExpiresAt instanceof DateTimeImmutable) {
@@ -135,8 +136,23 @@ final readonly class ShareExtender
         }
 
         if (!$this->shareRepository->extendExpiration($share, $expiresAt)) {
-            throw new ShareExtendException($share->getRevokedAt() instanceof DateTimeImmutable ? 'revoked' : 'expiration_not_extended');
+            throw $this->refused($share, 'expiration_not_extended');
         }
+    }
+
+    /**
+     * Why a conditional write matched nothing (2.1.1, audit YD1-L1): `not_found` when the share was deleted meanwhile
+     * (so no view and no event for a gone share), `revoked` when it was revoked, else `$otherwise`. The share is read
+     * again first, which also refreshes a managed instance.
+     */
+    private function refused(SecureShare $share, string $otherwise): ShareExtendException
+    {
+        $stored = $this->shareRepository->find($share->getId());
+        if (!$stored instanceof SecureShare) {
+            return new ShareExtendException('not_found');
+        }
+
+        return new ShareExtendException($stored->getRevokedAt() instanceof DateTimeImmutable ? 'revoked' : $otherwise);
     }
 
     private function newExpiration(SecureShare $share, string $expiresIn): DateTimeImmutable

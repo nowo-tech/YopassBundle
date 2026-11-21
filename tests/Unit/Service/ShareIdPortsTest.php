@@ -36,6 +36,9 @@ use Nowo\YopassBundle\Tests\Support\InMemoryIdShareRepository;
 use Nowo\YopassBundle\Tests\Support\InMemoryShareRepository;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+
+use function array_column;
 
 /**
  * 2.1.0: ShareQuery and ShareCommands over a repository without the native summary reads (the MongoDB / custom
@@ -176,6 +179,36 @@ final class ShareIdPortsTest extends TestCase
         $resolver = $this->createMock(CreatorReferenceResolverInterface::class);
         $resolver->method('reference')->willReturn($creator);
         self::assertSame(1, $this->commands($repository, $resolver)->deleteAllOf(new CreatorId('alice')));
+    }
+
+    public function testTheFallbackRevokerLeavesARevokedShareUnchanged(): void
+    {
+        $share     = $this->share('00000000-0000-4000-8000-000000000001', 'abc', '-1 hour');
+        $revoker   = new ShareRevoker($this->repository, $this->dispatcher);
+        self::assertTrue($revoker->revoke($share, null, 'admin'));
+        $revokedAt = $share->getRevokedAt();
+        self::assertNotNull($revokedAt);
+
+        self::assertFalse($revoker->revoke($share, null, 'admin'), '2.1.1: a revoked share is not revoked again');
+        self::assertSame($revokedAt, $share->getRevokedAt());
+        self::assertSame([YopassEvents::SHARE_REVOKED], array_column($this->events, 'name'));
+    }
+
+    public function testACreatorIdTheResolverRefusesIsAnInvalidCreatorOrNoShares(): void
+    {
+        $resolver = $this->createMock(CreatorReferenceResolverInterface::class);
+        $resolver->method('reference')->willThrowException(new AccessDeniedException('refused'));
+        $commands = $this->commands(null, $resolver);
+
+        try {
+            $commands->create(new CreatorId('abc'), $this->data());
+            self::fail('Refused');
+        } catch (ShareCommandException $exception) {
+            self::assertSame(ShareCommandException::INVALID_CREATOR, $exception->errorCode);
+        }
+        self::assertSame(0, $commands->deleteAllOf(new CreatorId('abc')));
+        self::assertSame([], $this->repository->shares);
+        self::assertSame([], $this->events);
     }
 
     public function testExtendingAnUnknownShareIsRefused(): void

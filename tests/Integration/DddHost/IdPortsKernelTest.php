@@ -35,7 +35,6 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 use function extension_loaded;
 use function str_repeat;
@@ -219,7 +218,10 @@ final class IdPortsKernelTest extends TestCase
         self::assertSame([], $query->ids(ShareCriteria::ofCreator('abc')));
         self::assertTrue($this->service($container, ShareAccessGuardInterface::class, ShareAccessGuardInterface::class)->canManageId(new UserRef('7'), $share->id, ShareAccessAction::View));
 
-        $this->expectException(AccessDeniedException::class);
+        // 2.1.1 (YD1-L3): refused as input (`invalid_creator`), and an unusable id has no shares to delete.
+        self::assertSame(0, $commands->deleteAllOf(new CreatorId('abc')));
+        $this->expectException(ShareCommandException::class);
+        $this->expectExceptionMessage(ShareCommandException::INVALID_CREATOR);
         $commands->create(new CreatorId('abc'), $this->data());
     }
 

@@ -29,6 +29,7 @@ use Nowo\YopassBundle\Doctrine\ShareWriteUnit;
 use Nowo\YopassBundle\Doctrine\YopassEntityManager;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\EventListener\YopassConflictListener;
 use Nowo\YopassBundle\Exception\ShareExtendException;
 use Nowo\YopassBundle\Repository\DoctrineOrmShareAccessLogRepository;
@@ -37,11 +38,13 @@ use Nowo\YopassBundle\Service\ShareAccessLogger;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
 use Nowo\YopassBundle\Service\ShareRetriever;
+use Nowo\YopassBundle\Service\ShareRevoker;
 use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
@@ -66,6 +69,7 @@ use const PHP_VERSION_ID;
  * The one-time reveal is the security-critical path: two reveals of a one-read share never both get the ciphertext, a
  * reveal blocked by another one's row lock answers 409 CONFLICT_001 (nothing spent) and finds the share consumed on
  * retry, and a failure after the read rolls the read back. Every session has a 1 s lock timeout, so a hang fails fast.
+ * 2.1.1: two revokes of one share write and dispatch once; a revoke or extension racing a delete dispatches nothing.
  * Set YOPASS_TEST_DATABASE_URL to run (CI job "Databases on …").
  */
 #[Group('database')]
@@ -73,13 +77,16 @@ final class ConcurrencyDatabaseTest extends TestCase
 {
     private string $url;
 
-    /** @var array{host: EntityManager, own: YopassEntityManager, shares: DoctrineOrmShareRepository, retriever: ShareRetriever, logger: ShareAccessLogger, extender: ShareExtender, creator: ShareCreator} */
+    /** @var array{host: EntityManager, own: YopassEntityManager, shares: DoctrineOrmShareRepository, retriever: ShareRetriever, logger: ShareAccessLogger, extender: ShareExtender, creator: ShareCreator, revoker: ShareRevoker} */
     private array $a;
 
-    /** @var array{host: EntityManager, own: YopassEntityManager, shares: DoctrineOrmShareRepository, retriever: ShareRetriever, logger: ShareAccessLogger, extender: ShareExtender, creator: ShareCreator} */
+    /** @var array{host: EntityManager, own: YopassEntityManager, shares: DoctrineOrmShareRepository, retriever: ShareRetriever, logger: ShareAccessLogger, extender: ShareExtender, creator: ShareCreator, revoker: ShareRevoker} */
     private array $b;
 
     private CommitLedger $ledgerB;
+
+    /** @var array<string, list<string>> lifecycle events dispatched on each side (2.1.1) */
+    private array $dispatched = ['a' => [], 'b' => []];
 
     protected function setUp(): void
     {
@@ -89,9 +96,9 @@ final class ConcurrencyDatabaseTest extends TestCase
         }
         $this->url = $url;
 
-        $this->a       = $this->side(null);
+        $this->a       = $this->side(null, 'a');
         $this->ledgerB = new CommitLedger();
-        $this->b       = $this->side($this->ledgerB);
+        $this->b       = $this->side($this->ledgerB, 'b');
 
         $tool     = new SchemaTool($this->a['host']);
         $metadata = $this->a['host']->getMetadataFactory()->getAllMetadata();
@@ -264,6 +271,89 @@ final class ConcurrencyDatabaseTest extends TestCase
         self::assertSame([3, 2], $this->reads($id));
     }
 
+    /**
+     * 2.1.1 (audit YD1-L1): two workers revoke the same share, both loaded it before either wrote. The first holds the
+     * row lock until its commit; the second waits, times out (nothing written) and on retry matches nothing: only one
+     * revoke writes and dispatches `share_revoked`, and the first revocation date stays.
+     */
+    public function testTwoConcurrentRevokesWriteAndDispatchOnce(): void
+    {
+        $id     = $this->share(3)->getId();
+        $staleA = $this->a['shares']->find($id);
+        $staleB = $this->b['shares']->find($id);
+        self::assertInstanceOf(SecureShare::class, $staleA);
+        self::assertInstanceOf(SecureShare::class, $staleB);
+
+        $connectionA = $this->a['host']->getConnection();
+        $connectionA->beginTransaction();
+        self::assertTrue($this->a['revoker']->revoke($staleA));
+        $blocked = $this->failure(function () use ($staleB): array {
+            $this->b['revoker']->revoke($staleB);
+
+            return [];
+        });
+        self::assertNotNull($blocked, 'B waited for A\'s row lock and timed out');
+        $connectionA->commit();
+        $revokedAt = $this->revokedAt($id);
+        self::assertNotNull($revokedAt);
+
+        self::assertFalse($this->b['revoker']->revoke($staleB), 'B\'s stale copy matches nothing');
+
+        self::assertSame([YopassEvents::SHARE_REVOKED], $this->dispatched['a']);
+        self::assertSame([], $this->dispatched['b']);
+        self::assertSame($revokedAt, $this->revokedAt($id), 'The first revocation date stays');
+        self::assertSame([3, 0], $this->reads($id));
+    }
+
+    /**
+     * 2.1.1: the second of two revokes that did not overlap in time, from a copy loaded before the first one, writes
+     * and dispatches nothing (before 2.1.1 the in-memory check let both write and dispatch).
+     */
+    public function testARevokeFromAStaleCopyAfterAnotherRevokeWritesNothing(): void
+    {
+        $id    = $this->share(3)->getId();
+        $stale = $this->b['shares']->find($id);
+        self::assertInstanceOf(SecureShare::class, $stale);
+
+        $fresh = $this->a['shares']->find($id);
+        self::assertInstanceOf(SecureShare::class, $fresh);
+        self::assertTrue($this->a['revoker']->revoke($fresh));
+        $revokedAt = $this->revokedAt($id);
+
+        self::assertNull($stale->getRevokedAt(), 'B still sees the share active');
+        self::assertFalse($this->b['revoker']->revoke($stale));
+        self::assertSame([YopassEvents::SHARE_REVOKED], $this->dispatched['a']);
+        self::assertSame([], $this->dispatched['b']);
+        self::assertSame($revokedAt, $this->revokedAt($id));
+    }
+
+    /**
+     * 2.1.1: a revoke or an extension of a share another worker deleted after it was loaded writes nothing, dispatches
+     * nothing and never brings the row back; the extension is refused with `not_found`.
+     */
+    public function testARevokeOrAnExtensionRacingADeleteDispatchesNothing(): void
+    {
+        $id    = $this->share(1)->getId();
+        $stale = $this->b['shares']->find($id);
+        self::assertInstanceOf(SecureShare::class, $stale);
+
+        self::assertSame(1, $this->a['shares']->removeByIds([$id]));
+
+        self::assertFalse($this->b['revoker']->revoke($stale));
+        foreach ([['7d', 3], ['7d', null], [null, 3]] as [$expiresIn, $maxReads]) {
+            $failure = $this->failure(function () use ($stale, $expiresIn, $maxReads): array {
+                $this->b['extender']->extend($stale, $expiresIn, $maxReads);
+
+                return [];
+            });
+            self::assertInstanceOf(ShareExtendException::class, $failure);
+            self::assertSame('not_found', $failure->errorCode);
+        }
+
+        self::assertSame([], $this->dispatched['b']);
+        self::assertSame(0, (int) $this->a['host']->getConnection()->fetchOne('SELECT COUNT(*) FROM yopass_secure_shares WHERE id = ?', [$id]));
+    }
+
     public function testTheRetentionPurgeDeletesOnlyExpiredRowsInChunks(): void
     {
         $old = [];
@@ -282,9 +372,9 @@ final class ConcurrencyDatabaseTest extends TestCase
     }
 
     /**
-     * @return array{host: EntityManager, own: YopassEntityManager, shares: DoctrineOrmShareRepository, retriever: ShareRetriever, logger: ShareAccessLogger, extender: ShareExtender, creator: ShareCreator}
+     * @return array{host: EntityManager, own: YopassEntityManager, shares: DoctrineOrmShareRepository, retriever: ShareRetriever, logger: ShareAccessLogger, extender: ShareExtender, creator: ShareCreator, revoker: ShareRevoker}
      */
-    private function side(?CommitLedger $ledger): array
+    private function side(?CommitLedger $ledger, string $name): array
     {
         $paths  = [dirname(__DIR__, 3) . '/src/Entity'];
         $config = PHP_VERSION_ID >= 80400 && method_exists(ORMSetup::class, 'createAttributeMetadataConfig')
@@ -311,6 +401,12 @@ final class ConcurrencyDatabaseTest extends TestCase
         $resolver = new DoctrineCreatorReferenceResolver(SecurityUserDto::class, null, null, new CreatorClassPolicy(SecurityUserDto::class), CreatorMapping::ID);
         $shares   = new DoctrineOrmShareRepository($host, null, $registry, 'default', $resolver, $own);
         $unit     = new ShareWriteUnit($own);
+        $events   = new EventDispatcher();
+        foreach ([YopassEvents::SHARE_REVOKED, YopassEvents::SHARE_EXTENDED] as $event) {
+            $events->addListener($event, function () use ($event, $name): void {
+                $this->dispatched[$name][] = $event;
+            });
+        }
 
         return [
             'host'      => $host,
@@ -318,8 +414,9 @@ final class ConcurrencyDatabaseTest extends TestCase
             'shares'    => $shares,
             'retriever' => new ShareRetriever($shares, null, null, $unit),
             'logger'    => new ShareAccessLogger(new DoctrineOrmShareAccessLogRepository($host, $registry, 'default', $own), true),
-            'extender'  => new ShareExtender($shares, DefaultShareOptions::get(), null, null, null, $unit),
+            'extender'  => new ShareExtender($shares, DefaultShareOptions::get(), null, $events, null, $unit),
             'creator'   => new ShareCreator($shares, DefaultShareOptions::get()['expiration_options'], null, null, $resolver),
+            'revoker'   => new ShareRevoker($shares, $events),
         ];
     }
 
@@ -417,6 +514,13 @@ final class ConcurrencyDatabaseTest extends TestCase
         $row = $this->a['host']->getConnection()->fetchAssociative('SELECT max_reads, reads_left FROM yopass_secure_shares WHERE id = ?', [$id]);
 
         return [(int) $row['max_reads'], (int) $row['reads_left']];
+    }
+
+    private function revokedAt(string $id): ?string
+    {
+        $value = $this->a['host']->getConnection()->fetchOne('SELECT revoked_at FROM yopass_secure_shares WHERE id = ?', [$id]);
+
+        return $value === false || $value === null ? null : (string) $value;
     }
 
     private function expiresAt(string $id): string

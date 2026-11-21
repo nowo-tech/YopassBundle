@@ -120,15 +120,13 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
     }
 
     /**
-     * Id mapping (1.18.0): the {@see CreatorId} of a `user_class` instance, a CreatorId or an accepted user.
-     *
-     * @throws AccessDeniedException for any other user, or one without a usable id
-     */
-    /**
      * 2.1.0: a {@see CreatorId} handed to the id-based ports names the `user_class` user with that id. With the
      * relation mapping it becomes `getReference(user_class, id)` on the bundle's manager (no query). An integer key
      * only accepts a plain decimal id: anything else is refused, never cast (`abc` would bind as user 0). The custom
-     * driver (no registry) receives the CreatorId as given.
+     * driver (no registry) receives the CreatorId as given. `ShareCommandsInterface` maps the refusal to
+     * `ShareCommandException` (`invalid_creator`) on create and to 0 on `deleteAllOf()` (2.1.1).
+     *
+     * @throws AccessDeniedException for an id that cannot name a `user_class` user
      */
     private function idReference(CreatorId $creator, string $class): object
     {
@@ -170,6 +168,11 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         return $reference;
     }
 
+    /**
+     * Id mapping (1.18.0): the {@see CreatorId} of a `user_class` instance, a CreatorId or an accepted user.
+     *
+     * @throws AccessDeniedException for any other user, or one without a usable id
+     */
     private function creatorId(object $user, string $class): CreatorId
     {
         if ($user instanceof CreatorId) {

@@ -22,6 +22,7 @@ use Nowo\YopassBundle\Share\ShareQueryInterface;
 use Nowo\YopassBundle\Share\ShareView;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\Clock;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 use function in_array;
@@ -89,6 +90,8 @@ final readonly class ShareCommands implements ShareCommandsInterface
             throw new ShareCommandException(ShareCommandException::FILE_NOT_ENABLED);
         }
 
+        $this->assertCreator($creator);
+
         // As in the manage UI: the retention purge runs before the insert, so a failing purge never answers an error for
         // a share that was already stored.
         $this->retentionPurger?->purgeForCreator($creator);
@@ -103,8 +106,13 @@ final readonly class ShareCommands implements ShareCommandsInterface
             return null;
         }
 
-        if (!$share->getRevokedAt() instanceof DateTimeImmutable) {
-            $this->revoker->revoke($share, null, $actorId);
+        if (!$share->getRevokedAt() instanceof DateTimeImmutable && !$this->revoker->revoke($share, null, $actorId)) {
+            // 2.1.1 (YD1-L1): this call did not write. Another call revoked the share or deleted it in between: read it
+            // again, so a share deleted meanwhile answers null (no view, no event) and a revoked one its stored state.
+            $share = $this->load($shareId);
+            if (!$share instanceof SecureShare) {
+                return null;
+            }
         }
 
         return $this->view($share);
@@ -168,6 +176,11 @@ final readonly class ShareCommands implements ShareCommandsInterface
 
     public function deleteAllOf(CreatorId $creator, ?string $actorId = null): int
     {
+        if (!$this->namesCreator($creator)) {
+            // 2.1.1 (YD1-L3): an id that cannot name a creator has no shares, as an unknown id.
+            return 0;
+        }
+
         if ($this->shareRepository instanceof CreatorIdShareRepositoryInterface) {
             // @igor-ignore - Service coordinates I/O or request-scoped work; not unsafe worker singleton state.
             $removed = $this->shareRepository->removeAllByCreatorId($creator->getId());
@@ -184,6 +197,34 @@ final readonly class ShareCommands implements ShareCommandsInterface
         }
 
         return $removed;
+    }
+
+    /**
+     * Refuses a creator id that cannot name a `user_class` user (2.1.1, YD1-L3) with {@see ShareCommandException}
+     * instead of the resolver's AccessDeniedException.
+     *
+     * @throws ShareCommandException with code `invalid_creator`
+     */
+    private function assertCreator(CreatorId $creator): void
+    {
+        if (!$this->namesCreator($creator)) {
+            throw new ShareCommandException(ShareCommandException::INVALID_CREATOR);
+        }
+    }
+
+    /**
+     * Whether the creator resolver accepts this id: under the relation mapping an integer key only takes a plain
+     * decimal id (no query is made). Always true without a resolver and with the id mapping.
+     */
+    private function namesCreator(CreatorId $creator): bool
+    {
+        try {
+            $this->creators?->reference($creator);
+        } catch (AccessDeniedException) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
