@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[2.0.1] - 2026-11-21](#201---2026-11-21)
 - [[2.0.0] - 2026-11-21](#200---2026-11-21)
 - [[1.22.0] - 2026-11-20](#1220---2026-11-20)
 - [[1.21.1] - 2026-11-20](#1211---2026-11-20)
@@ -70,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-21
+
 ### Fixed
 
 - **2.0.0 regression: creating a share failed with a relation-mapped creator that your entity manager loaded.** With
@@ -88,6 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (its private document manager stores the creator reference by id) are not affected. New kernel tests run every
   bundle service with a creator your manager loaded, with the ORM driver and with a decorating custom repository, on
   SQLite and in the MySQL, MariaDB and PostgreSQL CI jobs.
+
+[2.0.1]: https://github.com/nowo-tech/YopassBundle/releases/tag/v2.0.1
 
 ## [2.0.0] - 2026-11-21
 
@@ -1320,7 +1325,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v2.0.1...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
