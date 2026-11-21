@@ -128,6 +128,18 @@
 
 ## Unreleased
 
+Patch (2.1.1), nothing to change in most applications:
+
+- `ShareCommandsInterface::create()` refuses a creator id that cannot name your `user_class` user (relation mapping,
+  integer key, an id such as `abc` or `07`) with `ShareCommandException` code `invalid_creator` instead of
+  `AccessDeniedException`; `deleteAllOf()` answers `0` for it. Catch `ShareCommandException` if you caught
+  `AccessDeniedException` around these calls. Other resolver refusals (a misconfiguration, e.g. a composite
+  `user_class` identifier) still throw `AccessDeniedException` from both calls.
+- `ShareRevoker::revoke()` returns a `bool` (whether this call revoked the share). With the Doctrine ORM driver a
+  revoke that loses to another revoke or to a delete writes nothing and dispatches no `share_revoked`;
+  `ShareCommandsInterface::revoke()` of a share deleted meanwhile answers `null`, and `extend()` throws
+  `ShareExtendException` `not_found`.
+
 ## To 2.1.0
 
 From **2.0.1**:
@@ -165,6 +177,11 @@ manager (since 2.0), and a relation across managers is the class of the 2.0.0 re
 4. drop the association.
 
 The commands do no access check: check with `canManageId()` (or your own policy) first.
+
+`SHARE_ACCESS_CHECK` listeners: for an id-based check (`canManageId()`) the deprecated `getUser()` returns a stand-in
+user whose `getUserIdentifier()` falls back to the user id when the `UserRef` has no identifier. A listener keyed on
+`getUser()->getUserIdentifier()` must move to `getUserId()` (or `getUserRef()`), which carry the id for both the
+manage UI and the id-based checks.
 
 ### Events after your commit
 

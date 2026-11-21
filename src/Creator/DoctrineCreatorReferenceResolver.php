@@ -120,15 +120,14 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
     }
 
     /**
-     * Id mapping (1.18.0): the {@see CreatorId} of a `user_class` instance, a CreatorId or an accepted user.
-     *
-     * @throws AccessDeniedException for any other user, or one without a usable id
-     */
-    /**
      * 2.1.0: a {@see CreatorId} handed to the id-based ports names the `user_class` user with that id. With the
      * relation mapping it becomes `getReference(user_class, id)` on the bundle's manager (no query). An integer key
      * only accepts a plain decimal id: anything else is refused, never cast (`abc` would bind as user 0). The custom
-     * driver (no registry) receives the CreatorId as given.
+     * driver (no registry) receives the CreatorId as given. `ShareCommandsInterface` maps the refusal to
+     * `ShareCommandException` (`invalid_creator`) on create and to 0 on `deleteAllOf()` (2.1.1).
+     *
+     * @throws UnusableCreatorIdException for an id that cannot name a `user_class` user (2.1.1)
+     * @throws AccessDeniedException for a misconfiguration (composite identifier, a manager without references)
      */
     private function idReference(CreatorId $creator, string $class): object
     {
@@ -156,7 +155,7 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         $id = $creator->getId();
         if (in_array($metadata->getTypeOfField($identifiers[0]), ['integer', 'smallint', 'bigint'], true)) {
             if (preg_match('/^(?:0|[1-9][0-9]{0,17})$/D', $id) !== 1) {
-                throw new AccessDeniedException(sprintf('nowo_yopass: a creator id for %s must be a decimal integer.', $class));
+                throw new UnusableCreatorIdException(sprintf('nowo_yopass: a creator id for %s must be a decimal integer.', $class));
             }
             $id = (int) $id;
         }
@@ -170,6 +169,11 @@ final readonly class DoctrineCreatorReferenceResolver implements CreatorReferenc
         return $reference;
     }
 
+    /**
+     * Id mapping (1.18.0): the {@see CreatorId} of a `user_class` instance, a CreatorId or an accepted user.
+     *
+     * @throws AccessDeniedException for any other user, or one without a usable id
+     */
     private function creatorId(object $user, string $class): CreatorId
     {
         if ($user instanceof CreatorId) {

@@ -17,6 +17,7 @@ use Nowo\YopassBundle\Creator\DoctrineCreatorReferenceResolver;
 use Nowo\YopassBundle\Doctrine\SecureShareDocumentMetadataListener;
 use Nowo\YopassBundle\Dto\ShareCreateData;
 use Nowo\YopassBundle\Entity\SecureShare;
+use Nowo\YopassBundle\Event\YopassEvents;
 use Nowo\YopassBundle\Repository\DoctrineMongoShareRepository;
 use Nowo\YopassBundle\Service\ShareCreator;
 use Nowo\YopassBundle\Service\ShareExtender;
@@ -25,6 +26,7 @@ use Nowo\YopassBundle\Tests\Support\Ddd\SecurityUserDto;
 use Nowo\YopassBundle\Tests\Support\DefaultShareOptions;
 use Nowo\YopassBundle\Tests\Support\Odm\MongoUser;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 use function bin2hex;
 use function dirname;
@@ -149,6 +151,47 @@ final class DoctrineMongoShareRepositoryIntegrationTest extends TestCase
         $this->dm->clear();
 
         self::assertSame($revokedAt, $this->repository->find(self::ID)?->getRevokedAt()?->format('U.v'));
+    }
+
+    /**
+     * 2.1.1 (YD1-L1, MongoDB fallback): a share revoked in memory is not revoked again (no second write, no event).
+     */
+    public function testTheFallbackRevokeNeverRevokesTwice(): void
+    {
+        $this->save($this->newShare(new DateTimeImmutable('+1 day'), 3));
+        $events     = [];
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addListener(YopassEvents::SHARE_REVOKED, static function () use (&$events): void {
+            $events[] = YopassEvents::SHARE_REVOKED;
+        });
+        $revoker = new ShareRevoker($this->repository, $dispatcher);
+
+        $share = $this->repository->find(self::ID);
+        self::assertInstanceOf(SecureShare::class, $share);
+        self::assertTrue($revoker->revoke($share));
+        $revokedAt = $share->getRevokedAt()?->format('U.v');
+        self::assertFalse($revoker->revoke($share));
+        self::assertSame([YopassEvents::SHARE_REVOKED], $events);
+        $this->dm->clear();
+        self::assertSame($revokedAt, $this->repository->find(self::ID)?->getRevokedAt()?->format('U.v'));
+    }
+
+    /**
+     * 2.1.1 (YD1-L1, MongoDB fallback): a revoke of a share deleted after it was loaded matches nothing by id, so the
+     * document is never re-inserted (the event is still dispatched: documented residual risk).
+     */
+    public function testAFallbackRevokeOfAShareDeletedMeanwhileNeverBringsItBack(): void
+    {
+        $this->save($this->newShare(new DateTimeImmutable('+1 day'), 3));
+        $revoker    = new ShareRevoker($this->repository);
+        $collection = $this->client->selectCollection($this->database, 'yopass_secure_shares');
+
+        // Another worker deletes the share after this one loaded it (still in this manager's identity map).
+        $loaded = $this->repository->find(self::ID);
+        self::assertInstanceOf(SecureShare::class, $loaded);
+        self::assertSame(1, $collection->deleteOne(['_id' => self::ID])->getDeletedCount());
+        $revoker->revoke($loaded);
+        self::assertSame(0, $collection->countDocuments(['_id' => self::ID]), 'never re-inserted');
     }
 
     public function testStaleShareCannotUndoARevocation(): void

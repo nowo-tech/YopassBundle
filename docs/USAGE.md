@@ -307,7 +307,8 @@ final readonly class SecretShares // Infrastructure/Kit adapter of your own Appl
   `nowo_yopass.user_class`.
 
 Under the relation mapping a `CreatorId` becomes `getReference(user_class, id)` on the bundle's manager; an integer
-key only takes a plain decimal id (`07` and `abc` are refused, never cast).
+key only takes a plain decimal id (`07` and `abc` are refused, never cast: `create()` throws `ShareCommandException`
+`invalid_creator`, `deleteAllOf()` answers `0`, since 2.1.1).
 
 Keep your own tables keyed by a plain `share_id` column instead of a relation to `SecureShare`: see
 [UPGRADING](UPGRADING.md#id-based-ports-ddd-hosts).

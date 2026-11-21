@@ -39,8 +39,8 @@ ciphertext to at most N readers, whatever the timing.
 | --- | --- | --- | --- |
 | Public consume (`PublicShareController::consume`) | One unit: the read + the access log row (`ShareWriteUnit`); event after the commit | Conditional `UPDATE … reads_left > 0` (atomic decrement) | `409` JSON `{status, code}`: `CONFLICT_001` + `Retry-After`, or `CONFLICT_002` |
 | Create (`ShareManageController::create`, `ShareCreator`) | The retention purge first (its own statements), then one flush for the new row; event after the flush | Random UUID primary key; no "only one" rule | Page: host error page with `409`; dialog (JSON): `{error, code}`. A purge conflict happens before the share exists |
-| Extend (`ShareExtender`) | One unit: the max reads raise + the new expiration (`ShareWriteUnit`); event after the commit | Raise: conditional `UPDATE … reads_left + delta` where not revoked and `max_reads` unchanged (concurrent reads are never given back). Expiration: conditional `UPDATE … expires_at = :new` where not revoked and `expires_at < :new`, so it only moves forward | `409` JSON `{error, code}` |
-| Revoke (`ShareRevoker`) | One flush (one transaction) | The ORM writes the changed column only (`revoked_at`), so a concurrent read or raise is not overwritten; every read and raise checks `revoked_at IS NULL` | Host error page with `409` |
+| Extend (`ShareExtender`) | One unit: the max reads raise + the new expiration (`ShareWriteUnit`); event after the commit | Raise: conditional `UPDATE … reads_left + delta` where not revoked and `max_reads` unchanged (concurrent reads are never given back). Expiration: conditional `UPDATE … expires_at = :new` where not revoked and `expires_at < :new`, so it only moves forward. A conditional write that matches nothing because the share was deleted meanwhile is refused with `not_found` (2.1.1), no event | `409` JSON `{error, code}` |
+| Revoke (`ShareRevoker`, `ShareCommandsInterface::revoke()`) | One conditional statement (2.1.1), inside a savepoint when the application opened a transaction; event after it | `UPDATE … SET revoked_at, reads_left = 0 WHERE id = ? AND revoked_at IS NULL`: the affected-row count decides, so of two concurrent revokes only one writes and dispatches `share_revoked`, and a share deleted meanwhile is neither revoked nor reported (`revoke()` answers `null`). Every read and raise checks `revoked_at IS NULL` | Host error page with `409` |
 | Delete one (`ShareDeleter::delete`) | One flush (one transaction) | Access log rows keep `share_ref` (`ON DELETE SET NULL`) | Host error page with `409` |
 | Delete all / retention per creator (`removeAllByCreator`, `removeByCreatorOlderThan`) | One DQL DELETE per chunk of 500 ids (id mapping) or one DQL DELETE (relation mapping); inside a savepoint when the application opened a transaction | Exact creator match (`ExactKeyColumnsInterface` rule, LQ-Y-L1); idempotent | `CONFLICT_002` once a chunk committed, else `CONFLICT_001` |
 | Retention purge (`removeOlderThan`, `nowo:yopass:purge-old-shares`) | Chunks of 500 primary keys, each its own statement; the cutoff is checked again in the DELETE | Idempotent; no range DELETE over `created_at` (rule 9: no long range locks on the hot table) | Console: the exception (exit code 1); rerun safely |
@@ -121,7 +121,11 @@ nowo_yopass:
   - a commit earlier in the request turns a conflict into `CONFLICT_002` without `Retry-After`;
   - concurrent extensions never move the expiration back, and a refused extension rolls its raise back;
   - an extension blocked by a reveal answers `CONFLICT_001` and changes nothing;
-  - the retention purge deletes only rows older than the cutoff.
+  - the retention purge deletes only rows older than the cutoff;
+  - two concurrent revokes write and dispatch `share_revoked` once (the second waits for the first one's row lock, then
+    matches nothing), and a revoke or extension racing a delete dispatches nothing (2.1.1).
+- `tests/Integration/OrmRevokeRaceIntegrationTest.php` (SQLite): the same races through `ShareCommandsInterface`, with
+  the other worker's write injected between the load and the conditional write.
 - `tests/Unit/EventListener/YopassConflictListenerTest.php`: the mapping of every conflict kind to `CONFLICT_001` /
   `CONFLICT_002`, the shapes, the configured status, and the failures that are not mapped.
 - Run locally with `make test-with-db` (starts MySQL, MariaDB and PostgreSQL in the `databases` profile).
@@ -137,8 +141,17 @@ nowo_yopass:
     `readsLeft` +4, i.e. two reads above the configured maximum. Only the owner or a manager can trigger it.
   - Two concurrent expiration extensions: the last write wins, so one of them can move the expiration back.
 
+  - Revoke and delete (2.1.1 documents it): the MongoDB repository revokes the loaded share and saves it, and deletes
+    the loaded document. Two revokes (or two deletes) of one share that both loaded it before either wrote both return
+    true and both dispatch the event; a revoke or extension of a share deleted after it was loaded updates nothing
+    (the document is matched by id, never re-inserted) but still dispatches its event. A share already revoked in
+    memory is not revoked again.
+
   Use the Doctrine ORM driver for strict accounting.
-- **Custom repositories** (`database.driver: custom`) get no write unit: their own storage decides atomicity.
+- **Custom repositories** (`database.driver: custom`) get no write unit: their own storage decides atomicity. A custom
+  repository that implements `RevokingShareRepositoryInterface` (2.1.1), `ShareSummaryRepositoryInterface::removeByIds()`,
+  `MaxReadsRaisingShareRepositoryInterface` and `ExpirationExtendingShareRepositoryInterface` gets the ORM guarantees
+  above; otherwise the MongoDB residuals apply.
 - **Lost commit outcome:** a connection lost during the commit of a consume leaves its outcome unknown; the answer is a
   `500` (not a conflict), and the read may be spent without a reader. The reader sees `410` on retry.
 - **Two owners extending at once:** the later expiration wins whatever the commit order; the losing request answers
