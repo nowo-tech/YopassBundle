@@ -468,7 +468,7 @@ Services involved: `ShareLister` (manage list), `ShareAccessGuard` (created/prev
 
 Since 2.1 every lifecycle event has `getOccurredAt()`, the actor is also available as an id when no security user is
 known (`getDeletedById()` …), and the entity / user accessors are deprecated in favour of the id getters (removed in
-3.0). With the ORM driver they are dispatched after the application's commit when it wrapped the call in a transaction
+3.0). With the ORM driver and `events.after_host_commit: true` they are dispatched after the application's commit when it wrapped the call in a transaction
 ([Events after the application's commit](#events-after-the-applications-commit)).
 
 **Zero-knowledge:** these payloads are metadata only. They never contain the ciphertext, the decryption key, a
@@ -645,14 +645,15 @@ nowo_yopass:
 
 ## Events after the application's commit
 
-Since 2.1.0, with the Doctrine ORM driver and doctrine/dbal 4, a bundle write made inside the application's own
-transaction dispatches its lifecycle events after that transaction's outermost commit (dropped on rollback). Outside a
-transaction nothing changes. Details: [USAGE.md](USAGE.md#events-after-the-applications-commit).
+Opt-in since 2.1.0 (recommended for DDD hosts, planned as the 3.0 default). With the Doctrine ORM driver and
+doctrine/dbal 4, a bundle write made inside the application's own transaction then dispatches its lifecycle events after
+that transaction's outermost commit (dropped on rollback). Outside a transaction nothing changes. Details:
+[USAGE.md](USAGE.md#events-after-the-applications-commit).
 
 ```yaml
 nowo_yopass:
     events:
-        after_host_commit: true   # false: always dispatch at once (2.0 timing)
+        after_host_commit: false   # default; true: wait for the application's commit
 ```
 
 ## Other options

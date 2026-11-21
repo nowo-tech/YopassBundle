@@ -217,7 +217,7 @@ final class YopassExtension extends Extension implements PrependExtensionInterfa
     }
 
     /**
-     * 2.1.0 (REQ-ARCH-001 rule 7): with the Doctrine ORM driver and doctrine/dbal 4, the write services dispatch their
+     * 2.1.0 (REQ-ARCH-001 rule 7, opt-in `events.after_host_commit: true`): with the Doctrine ORM driver and doctrine/dbal 4, the write services dispatch their
      * "after" events through {@see HostCommitEventRelay}, which holds them while the application's transaction is open
      * and releases them after its commit (dropped on rollback). Otherwise nothing is registered and every event is
      * dispatched at once, as in 2.0.

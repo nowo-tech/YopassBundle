@@ -159,11 +159,12 @@ The commands do no access check: check with `canManageId()` (or your own policy)
 
 ### Events after your commit
 
-With the Doctrine ORM driver (doctrine/dbal 4), when you call the bundle inside your own transaction, the lifecycle
-events now wait for your outermost commit and are dropped on rollback. Before, they were dispatched inside your
-transaction, before it committed. Calls outside a transaction (the manage UI, the public reveal) dispatch at once as
-before. A listener that must run inside your transaction (to write in the same commit) should be called by your
-handler instead; set `nowo_yopass.events.after_host_commit: false` to keep the 2.0 timing.
+Nothing changes by default: the lifecycle events are still dispatched at once, inside your transaction when you call
+the bundle inside one. Recommended for DDD hosts (and planned as the 3.0 default): opt in with
+`nowo_yopass.events.after_host_commit: true` (Doctrine ORM driver, doctrine/dbal 4). The events then wait for your
+outermost commit and are dropped on rollback. Calls outside a transaction (the manage UI, the public reveal) still
+dispatch at once. Before you opt in, move a listener that must write inside your transaction (in the same commit) into
+your handler: with the option on it runs after the commit instead.
 
 ### Deprecated event accessors
 

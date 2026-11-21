@@ -41,8 +41,8 @@ use function in_array;
  *
  * The pre-action events (`share_delete_all`, `share_access_check`, the list events) always pass straight through. Only
  * the Doctrine ORM driver with doctrine/dbal 4 holds events (the commit is seen through the bundle's DBAL middleware);
- * with DBAL 3, MongoDB or a custom repository, and with `nowo_yopass.events.after_host_commit: false`, every event is
- * dispatched at once.
+ * with DBAL 3, MongoDB or a custom repository, and without `nowo_yopass.events.after_host_commit: true` (opt-in in 2.x,
+ * planned as the 3.0 default), every event is dispatched at once.
  *
  * FrankenPHP worker mode without kernel reset: held events are request state. Every outermost boundary dispatches what
  * was released and drops what is still held (logged as a warning: that transaction never committed through the

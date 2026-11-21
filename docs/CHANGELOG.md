@@ -94,8 +94,9 @@ secrets are encrypted, stored, read or burned: one-time reads stay one atomic co
 - **Access check by ids `ShareAccessGuardInterface::canManageId(UserRef, shareId, action)`**: owner by exact
   (constant-time) creator id comparison; a `UserRef` whose id is only its identifier is never the owner.
   `ShareAccessCheckEvent` gains `getUserId()`, `getUserRef()`, `getShareId()` and `getCreatorId()`.
-- **Lifecycle events after the application's commit** (Doctrine ORM driver with doctrine/dbal 4,
-  `events.after_host_commit`, default `true`): when the application wrapped a bundle write in its own transaction, the
+- **Lifecycle events after the application's commit, opt-in** (Doctrine ORM driver with doctrine/dbal 4,
+  `events.after_host_commit: true`; default `false`, so nothing changes unless you enable it; recommended for DDD hosts
+  and planned as the 3.0 default): when the application wrapped a bundle write in its own transaction, the
   `share_created` / `deleted` / `revoked` / `extended` / `consumed` / `shares_bulk_deleted` events wait for the outermost
   commit of that connection and are dropped when it (or the savepoint they were raised in) rolls back. Without an open
   transaction they are dispatched at once, exactly as in 2.0. See [USAGE.md](USAGE.md#events-after-the-applications-commit).

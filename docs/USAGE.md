@@ -314,7 +314,8 @@ Keep your own tables keyed by a plain `share_id` column instead of a relation to
 
 ### Events after the application's commit
 
-With the `doctrine_orm` driver and doctrine/dbal 4 (2.1, `events.after_host_commit`, default `true`), a bundle write made
+Opt-in (2.1; recommended for DDD hosts, planned as the 3.0 default). With the `doctrine_orm` driver, doctrine/dbal 4 and
+`events.after_host_commit: true` (default `false`: events are dispatched at once, as in 2.0), a bundle write made
 inside **your** transaction holds its lifecycle event (`share_created`, `share_deleted`, `share_revoked`,
 `share_extended`, `share_consumed`, `shares_bulk_deleted`) until the outermost commit of that connection:
 
@@ -342,7 +343,7 @@ entity manager:
 - the bundle's rows are in the database when its call returns (no write waits for your flush, none is lost if you
   `clear()`);
 - the connection is shared: when you call the bundle inside your own transaction (`wrapInTransaction()`), its rows
-  commit or roll back with yours, and since 2.1 its events wait for your commit
+  commit or roll back with yours, and since 2.1 its events can wait for your commit (opt-in)
   ([Events after the application's commit](#events-after-the-applications-commit));
 - a failed bundle write closes only the private manager, which is replaced on the next call; its identity map is
   emptied at every request, command and Messenger message boundary (FrankenPHP worker mode without kernel reset);

@@ -225,7 +225,7 @@ final class IdPortsKernelTest extends TestCase
 
     public function testEventsWaitForTheApplicationCommitAndAreDroppedOnRollback(): void
     {
-        $container  = $this->container(true);
+        $container  = $this->container(true, ['events' => ['after_host_commit' => true]]);
         $commands   = $this->service($container, ShareCommandsInterface::class, ShareCommandsInterface::class);
         $relay      = $this->service($container, HostCommitEventRelay::class, HostCommitEventRelay::class);
         $connection = $this->service($container, 'doctrine.orm.entity_manager', EntityManagerInterface::class)->getConnection();
@@ -278,9 +278,16 @@ final class IdPortsKernelTest extends TestCase
         self::assertCount(1, $this->eventsNamed(YopassEvents::SHARE_REVOKED));
     }
 
-    public function testEventsAreImmediateWhenTheOptionIsOff(): void
+    public function testEventsAreImmediateByDefaultAndWhenTheOptionIsOff(): void
     {
-        $container = $this->container(true, ['events' => ['after_host_commit' => false]]);
+        foreach ([[], ['events' => ['after_host_commit' => false]]] as $yopass) {
+            $this->assertImmediateInsideATransaction($this->container(true, $yopass));
+        }
+    }
+
+    private function assertImmediateInsideATransaction(ContainerInterface $container): void
+    {
+        $this->events = [];
         self::assertFalse($container->has(HostCommitEventRelay::class));
         $connection = $this->service($container, 'doctrine.orm.entity_manager', EntityManagerInterface::class)->getConnection();
 

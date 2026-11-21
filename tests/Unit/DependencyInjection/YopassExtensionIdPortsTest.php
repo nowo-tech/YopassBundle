@@ -50,7 +50,7 @@ final class YopassExtensionIdPortsTest extends TestCase
         if (!PrivateEntityManagerPass::supportsRollbackMiddleware()) {
             self::markTestSkipped('doctrine/dbal 4 only.'); // @codeCoverageIgnore
         }
-        $container = $this->load([]);
+        $container = $this->load(['events' => ['after_host_commit' => true]]);
 
         self::assertTrue($container->hasDefinition(HostCommitEventRelay::class));
         self::assertTrue($container->getDefinition(HostCommitEventRelay::class)->hasTag('kernel.reset'));
@@ -63,8 +63,9 @@ final class YopassExtensionIdPortsTest extends TestCase
 
     public function testTheRelayIsNotRegisteredWhenOffOrForAnotherDriver(): void
     {
+        self::assertFalse($this->load([])->hasDefinition(HostCommitEventRelay::class), 'Opt-in in 2.x');
         self::assertFalse($this->load(['events' => ['after_host_commit' => false]])->hasDefinition(HostCommitEventRelay::class));
-        self::assertFalse($this->load(['database' => ['driver' => 'custom', 'platform' => 'mysql', 'repository' => 'app.shares']])->hasDefinition(HostCommitEventRelay::class));
+        self::assertFalse($this->load(['events' => ['after_host_commit' => true], 'database' => ['driver' => 'custom', 'platform' => 'mysql', 'repository' => 'app.shares']])->hasDefinition(HostCommitEventRelay::class));
     }
 
     /**
