@@ -90,7 +90,8 @@ runs 1.22 without deprecation notices from this bundle upgrades without code cha
   1.22.0). `ConfigurableYopassAccessChecker` implements only `YopassAccessPolicyInterface` and its methods take
   `?UserRef`. A configured `security.access_checker` whose class does not implement `YopassAccessPolicyInterface`, or
   cannot be loaded because it still implements the removed interface, fails the container build with a message
-  naming the class.
+  naming the class. A service registered by autodiscovery (an `#[AsAlias]` / `#[AsDecorator]` checker) that still
+  implements the removed interface fails the build too, instead of being dropped silently.
 - **`YopassEntityManager::onKernelRequest()`** (deprecated since 1.20.0; `YopassEntityManagerBoundarySubscriber` handles
   the boundaries).
 - **`Ui\CssFramework::loadsBootstrapCompatibleCdn()` / `loadsBootstrap4Cdn()`** (deprecated since 1.10).
@@ -108,13 +109,23 @@ runs 1.22 without deprecation notices from this bundle upgrades without code cha
 - **The custom driver's access log** (`database.driver: custom` on a relational platform, `access_log.enabled`, no
   `access_log.repository`) is written through the bundle's own entity manager on `database.entity_manager`: same
   connection, same table. Your entity manager is no longer flushed by it. A share that your repository returns is
-  related to the log row by a reference of the same id.
+  related to the log row by a reference of the same id. **Your repository must commit the consume read itself**
+  (UPGRADING, "Private manager only"): a read that was only changed in your manager is no longer saved by the access
+  log flush.
 - `database.private_document_manager` now reports `true` as its default (no effect, see above).
 - The constructor arguments `$registry`, `$managerName` (and `$hostFlushProbe`) of `DoctrineOrmShareRepository`,
   `DoctrineOrmShareAccessLogRepository` and `DoctrineMongoShareRepository` are ignored (they served the removed host
   mode) and will be removed in 3.0. The bundle builds the repositories with its private manager; a repository
   constructed by hand without one works on the manager it is given.
 - `ShareWriteUnit` (`@internal`) takes only the bundle's private entity manager.
+
+### Fixed
+
+- **opcache preloading without doctrine/mongodb-odm:** Symfony's preloader followed the public signature of
+  `YopassDocumentManager::get()` into the internal `YopassPrivateDocumentManager` and logged "Can't preload unlinked
+  class Nowo\YopassBundle\Doctrine\YopassPrivateDocumentManager: Unknown parent Doctrine\ODM\MongoDB\DocumentManager"
+  at every start in applications that do not install the ODM (since 1.22.0). `get()` now declares the ODM
+  `DocumentManager` it extends (the instance is unchanged).
 
 ### Security
 

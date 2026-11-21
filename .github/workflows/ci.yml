@@ -505,7 +505,7 @@ jobs:
           tools: composer:v2
 
       - run: composer install --prefer-dist --no-progress --no-interaction
-      - run: vendor/bin/phpunit tests/Integration/Mongo --fail-on-skipped
+      - run: vendor/bin/phpunit tests/Integration/Mongo --fail-on-skipped --no-coverage
 
   typescript:
     name: Vitest + tsc (TypeScript)

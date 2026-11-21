@@ -212,7 +212,9 @@ How each removal fails, so nothing breaks silently:
   since 2.0: ...";
 - a `security.access_checker` service whose class does not implement `YopassAccessPolicyInterface` fails the build
   with a message naming the service and the class. A class that still implements the removed interface cannot be
-  loaded at all; the build names it too. A checker built by a factory is not checked at build time;
+  loaded at all; the build names it too. So does any other service of yours that still implements the removed
+  interface, for example one registered by autodiscovery with `#[AsAlias]` or `#[AsDecorator]` (Symfony would
+  otherwise drop it silently). A checker built by a factory is not checked at build time;
 - a `web_ui.layout_template` that does not render the UiKit canonical blocks throws a `LogicException` naming the
   layout when a manage page is rendered (1.x wrapped it in the removed bridge).
 
@@ -247,6 +249,12 @@ collection, same SQL / BSON filters. These code patterns break:
   `database.entity_manager`. If your repository stores shares on another connection, nothing changes from 1.22 (the
   log was already on that connection). The custom driver still gets no bundle write unit: your repository stores the
   read on its own, then the access log row is written (see [Concurrency](CONCURRENCY.md)).
+- **Custom driver: your repository must commit the consume read itself.** `consumeReadIfAvailable()` has to store the
+  spent read (an UPDATE it executes, or its own `flush()`) before it returns. In 1.x the access log flushed
+  `database.entity_manager`, so a repository on that manager that only changed the share in memory had its read saved
+  by that flush. In 2.0 the access log no longer flushes your manager: such a read is never stored, and a one-time
+  secret could be read again. Check your repository on 1.22 with `access_log.enabled: false`: a share with one read
+  must answer "consumed" on its second open.
 
 Unchanged (pre-existing, documented in 1.22): with MongoDB, a `refresh()` and identity-map hits of the private manager,
 and the raw `deleteMany` of `removeAllByCreatorId()` with the id mapping, do not apply BSON filters.
