@@ -183,8 +183,8 @@ final class ShareIdPortsTest extends TestCase
 
     public function testTheFallbackRevokerLeavesARevokedShareUnchanged(): void
     {
-        $share     = $this->share('00000000-0000-4000-8000-000000000001', 'abc', '-1 hour');
-        $revoker   = new ShareRevoker($this->repository, $this->dispatcher);
+        $share   = $this->share('00000000-0000-4000-8000-000000000001', 'abc', '-1 hour');
+        $revoker = new ShareRevoker($this->repository, $this->dispatcher);
         self::assertTrue($revoker->revoke($share, null, 'admin'));
         $revokedAt = $share->getRevokedAt();
         self::assertNotNull($revokedAt);

@@ -110,7 +110,7 @@ final class OrmRevokeRaceIntegrationTest extends TestCase
     public function testOnlyTheFirstOfTwoRevokesWritesAndDispatches(): void
     {
         $this->saveShare();
-        $first  = $this->repository->find(self::ID);
+        $first   = $this->repository->find(self::ID);
         $revoker = new ShareRevoker($this->repository, $this->dispatcher);
         self::assertInstanceOf(SecureShare::class, $first);
 

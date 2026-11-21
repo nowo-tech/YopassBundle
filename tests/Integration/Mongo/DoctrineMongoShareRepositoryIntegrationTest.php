@@ -154,8 +154,7 @@ final class DoctrineMongoShareRepositoryIntegrationTest extends TestCase
     }
 
     /**
-     * 2.1.1 (YD1-L1, MongoDB fallback): a share revoked in memory is not revoked again (no second write, no event); a
-     * revoke of a share deleted after it was loaded matches nothing by id, so the document is never re-inserted.
+     * 2.1.1 (YD1-L1, MongoDB fallback): a share revoked in memory is not revoked again (no second write, no event).
      */
     public function testTheFallbackRevokeNeverRevokesTwice(): void
     {
@@ -175,9 +174,12 @@ final class DoctrineMongoShareRepositoryIntegrationTest extends TestCase
         self::assertSame([YopassEvents::SHARE_REVOKED], $events);
         $this->dm->clear();
         self::assertSame($revokedAt, $this->repository->find(self::ID)?->getRevokedAt()?->format('U.v'));
-
     }
 
+    /**
+     * 2.1.1 (YD1-L1, MongoDB fallback): a revoke of a share deleted after it was loaded matches nothing by id, so the
+     * document is never re-inserted (the event is still dispatched: documented residual risk).
+     */
     public function testAFallbackRevokeOfAShareDeletedMeanwhileNeverBringsItBack(): void
     {
         $this->save($this->newShare(new DateTimeImmutable('+1 day'), 3));
