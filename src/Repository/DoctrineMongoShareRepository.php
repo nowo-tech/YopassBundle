@@ -103,7 +103,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         $value = $this->creator($creator);
         if (is_string($value)) {
             /** @var iterable<SecureShareDocument> $exact */
-            $exact = $this->creatorQuery($value)->sort('createdAt', 'desc')->getQuery(self::exactOptions($value))->execute();
+            $exact = $this->creatorQuery($value)->sort('createdAt', 'desc')->getQuery($this->exactOptions($value))->execute();
 
             return $this->exactShares($exact, $value);
         }
@@ -125,7 +125,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
         $value  = $this->creator($creator);
         $result = $this->creatorQuery($value)
             ->count()
-            ->getQuery(self::exactOptions($value))
+            ->getQuery($this->exactOptions($value))
             ->execute();
 
         if (is_int($result)) {
@@ -146,7 +146,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
             ->sort('createdAt', 'desc')
             ->limit($limit)
             ->skip($offset)
-            ->getQuery(self::exactOptions($value))
+            ->getQuery($this->exactOptions($value))
             ->execute();
 
         // execute() returns a cursor iterator, not an array (array_map() threw a TypeError before 1.16).
@@ -335,7 +335,7 @@ final readonly class DoctrineMongoShareRepository implements ShareRepositoryInte
      *
      * @return array<string, mixed>
      */
-    private static function exactOptions(object|string $value): array
+    private function exactOptions(object|string $value): array
     {
         return is_string($value) ? ['collation' => self::EXACT_COLLATION] : [];
     }

@@ -106,7 +106,7 @@ final class RacingShareRepository implements ShareRepositoryInterface, MaxReadsR
     {
         $hook              = $this->beforeWrite;
         $this->beforeWrite = null;
-        if ($hook !== null) {
+        if ($hook instanceof Closure) {
             $hook($share->getId());
         }
     }
