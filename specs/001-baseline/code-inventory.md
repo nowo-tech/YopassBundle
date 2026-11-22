@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/yopass-bundle`  
-**Last audited**: 2026-11-16 (creator mapping, private entity manager, events, hardening listeners, UiKit pages; audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 153; 2026-11-19: +4 concurrency units, REQ-RUNTIME-003)
+**Last audited**: 2026-11-22 (2.1.1 id-based ports, private document manager, host-commit relay; 2026-11-16: creator mapping, private entity manager, events, hardening listeners, UiKit pages; audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 153; 2026-11-19: +4 concurrency units, REQ-RUNTIME-003)
 
 This file proves that **every production source artifact** under `src/` is referenced by the baseline specification. Test-only files under `tests/` and `*.test.ts` under `src/` are out of Packagist scope. Built assets under `Resources/public/` are documented as Vite/build outputs.
 
@@ -284,6 +284,27 @@ This file proves that **every production source artifact** under `src/` is refer
 | `Resources/views/manage/_create_panel.html.twig` | Create card of the manage page (`create_mode: page`) | FR-VIEW-007 |
 | `Resources/views/manage/_preview_dialog.html.twig` | Preview / extend dialog filled by the manage-preview controller | FR-VIEW-007 |
 
+## Id-based ports and private document manager (2.1)
+
+| Source file | Spec section | Requirement IDs |
+| --- | --- | --- |
+| `Creator/UnusableCreatorIdException.php` | Creator id that cannot name a user (fail closed) | FR-ID-001 |
+| `Doctrine/HostCommitEventRelay.php` | Holds lifecycle events until the application's outermost commit | FR-WORKER-004 |
+| `Doctrine/YopassDocumentManager.php` | Private MongoDB document manager on the source client | FR-WORKER-005 |
+| `Doctrine/YopassPrivateDocumentManager.php` | Private document manager sharing the application's BSON filters | FR-WORKER-005 |
+| `Repository/RevokingShareRepositoryInterface.php` | Conditional single-write revoke capability | FR-DB-006 |
+| `Repository/ShareSummaryRepositoryInterface.php` | Scalar-column id reads and deletes behind the read port | FR-ID-002 |
+| `Security/UserRefSecurityUser.php` | Stand-in security user for id-based access checks | FR-ID-003 |
+| `Service/ShareCommands.php` | Id-based write port over the write services | FR-ID-001 |
+| `Service/ShareQuery.php` | Id-based read port | FR-ID-002 |
+| `Share/ShareAccessGuardInterface.php` | Per-share manage access by ids | FR-ID-001 |
+| `Share/ShareCommandException.php` | Stable refusal codes of the write port | FR-ID-001 |
+| `Share/ShareCommandsInterface.php` | Id-based write port contract | FR-ID-001 |
+| `Share/ShareCriteria.php` | Read port criteria | FR-ID-002 |
+| `Share/SharePage.php` | One page of share views with total | FR-ID-002 |
+| `Share/ShareQueryInterface.php` | Id-based read port contract | FR-ID-002 |
+| `Share/ShareView.php` | Read model of one share, no ciphertext | FR-ID-002 |
+
 ## Coverage summary
 
 | Category | Mapped |
@@ -295,7 +316,7 @@ This file proves that **every production source artifact** under `src/` is refer
 | Forms | 1 |
 | Domain models | 3 |
 | Application services | 17 |
-| Security | 7 |
+| Security | 6 |
 | Routing | 1 |
 | Persistence integration | 3 |
 | Support utilities | 2 |
@@ -306,14 +327,15 @@ This file proves that **every production source artifact** under `src/` is refer
 | Twig views | 3 |
 | Creator mapping | 8 |
 | Compiler passes (security and mapping) | 3 |
-| Private entity manager and worker safety | 10 |
+| Private entity manager and worker safety | 12 |
 | Lifecycle and list events | 10 |
-| HTTP hardening listeners | 3 |
+| HTTP hardening listeners | 4 |
 | Browser-only forms | 5 |
-| Services and support (lifecycle, retention, intervals) | 6 |
+| Services and support (lifecycle, retention, intervals) | 7 |
 | UiKit page contract | 5 |
 | Doctrine XML mappings | 3 |
-| Frontend helpers, styles and templates | 18 |
-| **Total** | **149** |
+| Frontend helpers, styles and templates | 17 |
+| Id-based ports and private document manager (2.1) | 16 |
+| **Total** | **165** |
 
-Audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 149 (co-located `*.test.ts` Vitest files excluded).
+Audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 165 (co-located `*.test.ts` Vitest files excluded).
