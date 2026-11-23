@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Table of contents
 
 - [[Unreleased]](#unreleased)
+- [[2.2.0] - 2026-11-23](#220---2026-11-23)
 - [[2.1.1] - 2026-11-21](#211---2026-11-21)
 - [[2.1.0] - 2026-11-21](#210---2026-11-21)
 - [[2.0.1] - 2026-11-21](#201---2026-11-21)
@@ -73,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-23
+
 ### Changed
 
 - Dev: Igor 0.11 (REQ-CS-008) — `ShareListRouteEvent::$request` is a per-dispatch event, never a shared service; documented `@igor-ignore` (false positive). `igor-php/igor-php` accepts `^0.11.0` (supersedes #140).
@@ -88,6 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Console**: quiet switch for the script-loaded line: `<html data-nowo-console="quiet">` or `globalThis.NOWO_CONSOLE = 'quiet'` prints nothing. The default is unchanged.
+
+[2.2.0]: https://github.com/nowo-tech/YopassBundle/releases/tag/v2.2.0
 
 ## [2.1.1] - 2026-11-21
 
@@ -1408,7 +1413,7 @@ First stable release of **Yopass Bundle**.
 - Symfony ^7.4 || ^8.0
 - Doctrine ORM ^2.15 || ^3.0 (or MongoDB ODM / custom repository)
 
-[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v2.1.1...HEAD
+[Unreleased]: https://github.com/nowo-tech/YopassBundle/compare/v2.2.0...HEAD
 [1.3.0]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.8...v1.3.0
 [1.2.8]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/nowo-tech/YopassBundle/compare/v1.2.6...v1.2.7
