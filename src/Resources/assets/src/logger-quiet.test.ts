@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 /**
  * Quiet switch of the "script loaded" console line: `<html data-nowo-console="quiet">` or
  * `globalThis.NOWO_CONSOLE = 'quiet'` silences it; anything else keeps the default.
