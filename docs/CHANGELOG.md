@@ -75,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Dev: Igor 0.11 (REQ-CS-008) — `ShareListRouteEvent::$request` is a per-dispatch event, never a shared service; documented `@igor-ignore` (false positive). `igor-php/igor-php` accepts `^0.11.0` (supersedes #140).
 - Rector (`make rector-dry` passes again): `DoctrineMongoShareRepository::exactOptions()` (private) is a regular method; test helpers were tidied. `rector.php` skips `ArrayToFirstClassCallableRector` for `src/Doctrine/ExactCollation.php` (the `is_callable([$connection, 'getServerVersion'])` probe targets a method doctrine/dbal 3 keeps private). No behaviour change.
 - CI: new `release-gates` job runs the four release gates (`make rector-dry`, `validate-phpdoc`, `validate-translations`, `check-twig-extra`) in full mode, so a gate failure shows on the PR instead of at release time (CI only, no change to shipped code).
 - Demo: `demo/symfony8/config/packages/doctrine.yaml` no longer sets the ORM mapping `alias` option, deprecated since DoctrineBundle 3.4 (`doctrine.orm.entity_managers.<em>.mappings.<name>.alias`); the demo does not use the `App:Entity` short syntax. Demo only, no bundle change.
