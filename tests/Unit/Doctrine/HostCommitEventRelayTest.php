@@ -142,7 +142,7 @@ final class HostCommitEventRelayTest extends TestCase
     public function testAFailingListenerOfAReleasedEventIsLoggedAndTheOthersStillRun(): void
     {
         $logger = new SecretCapturingLogger();
-        $this->dispatcher->addListener(YopassEvents::SHARE_CREATED, static function (): void {
+        $this->dispatcher->addListener(YopassEvents::SHARE_CREATED, static function (): never {
             throw new RuntimeException('ciphertext-must-not-be-logged');
         }, -10);
         $relay       = $this->relay(true, $logger);
