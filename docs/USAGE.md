@@ -21,6 +21,7 @@
   - [Forms in templates (REQ-TWIG-005)](#forms-in-templates-req-twig-005)
 - [Clock (REQ-DI-001)](#clock-req-di-001)
 - [Translations](#translations)
+- [Browser console](#browser-console)
 
 ## Manage shares
 
@@ -570,3 +571,7 @@ Justified exception: the `SecureShare` / `SecureShareDocument` / `ShareAccessLog
 ## Translations
 
 Domain: `NowoYopassBundle`. Bundled locales: **en**, **es**, **de**, **fr**, **it**, **nl**, **pt**. Override in `translations/bundles/NowoYopassBundle/` or `translations/NowoYopassBundle.en.yaml`.
+
+## Browser console
+
+The bundle's script logs one line when it loads (`📦 [yopass] script loaded, build: 2026-11-23 14:05 UTC`) so a developer can tell which build a page runs. To silence it, set `<html data-nowo-console="quiet">` or `globalThis.NOWO_CONSOLE = 'quiet'` before the script loads; nothing is printed then. The default is unchanged.
