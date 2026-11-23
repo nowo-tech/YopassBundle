@@ -29,6 +29,7 @@ final class ShareListRouteEvent extends Event
     /**
      * @param list<string> $allowedRoutes Route names a listener may set (the manage route included)
      */
+    // @igor-ignore - Per-dispatch event built with new by ShareListRouteResolver for one list route; never a shared service.
     public function __construct(private readonly UserInterface $viewer, private readonly Request $request, private ListRoute $route, private readonly array $allowedRoutes)
     {
     }
