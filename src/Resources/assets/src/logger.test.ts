@@ -54,7 +54,7 @@ describe('createBundleLogger', () => {
 
         expect(spies.debug.mock.calls[0][0]).toContain('[yopass]');
         expect(spies.debug.mock.calls[0][2]).toBe('{"a":1}');
-        expect(spies.info.mock.calls[0].slice(2)).toEqual(['text', null]);
+        expect(spies.info.mock.calls[0]?.slice(2)).toEqual(['text', null]);
         expect(spies.warn.mock.calls[0][2]).toBe(42);
         expect(spies.error.mock.calls[0][2]).toBe(err);
 
