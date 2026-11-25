@@ -2,7 +2,7 @@
 
 **Baseline spec**: [`spec.md`](spec.md)  
 **Package**: `nowo-tech/yopass-bundle`  
-**Last audited**: 2026-11-22 (2.1.1 id-based ports, private document manager, host-commit relay; 2026-11-16: creator mapping, private entity manager, events, hardening listeners, UiKit pages; audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 153; 2026-11-19: +4 concurrency units, REQ-RUNTIME-003)
+**Last audited**: 2026-11-25 (2.2.0: re-verified 165/165, console banner quiet switch; 2.1.1 id-based ports, private document manager, host-commit relay; 2026-11-16: creator mapping, private entity manager, events, hardening listeners, UiKit pages; audit: `git ls-files src | grep -v '\.test\.ts$' | wc -l` → 153; 2026-11-19: +4 concurrency units, REQ-RUNTIME-003)
 
 This file proves that **every production source artifact** under `src/` is referenced by the baseline specification. Test-only files under `tests/` and `*.test.ts` under `src/` are out of Packagist scope. Built assets under `Resources/public/` are documented as Vite/build outputs.
 
@@ -127,7 +127,7 @@ This file proves that **every production source artifact** under `src/` is refer
 
 | Source file | Spec section | Requirement IDs |
 | --- | --- | --- |
-| `Resources/assets/src/logger.ts` | Frontend logger | FR-UI-012 |
+| `Resources/assets/src/logger.ts` | Frontend logger: `scriptLoaded()` banner with build label, quiet switch (`data-nowo-console`, `NOWO_CONSOLE`), debug-gated levels | FR-UI-012 |
 | `Resources/assets/src/share-reveal-controller.ts` | Public reveal Stimulus | FR-PUB-002 |
 | `Resources/assets/src/yopass-create-controller.ts` | Create share Stimulus | FR-SHARE-005 |
 | `Resources/assets/src/yopass-created-controller.ts` | Post-create Stimulus | FR-SHARE-006 |
