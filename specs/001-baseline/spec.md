@@ -102,6 +102,7 @@ Per SDD US-01–US-04: create share with `#key`, public reveal, owner revoke/ext
 ### Forms, UI page contract and frontend
 
 - **FR-FORM-002**: Browser-only form types (`ShareCreatedLinksType`, `SharePreviewType`, `ShareRevealType`, helpers in `ClientOnlyFieldsTrait`) have fixed ids and no name so secrets and keys are never posted; `CsrfActionType` carries only the CSRF token of the revoke, delete and delete-all actions.
+- **FR-UI-012**: `logger.ts` (`createBundleLogger('yopass', { buildTime })`, entry `yopass.ts`) prints one `📦 [yopass] script loaded, build: <date> UTC` console line per page, with the build label injected as `__YOPASS_BUILD_TIME__` from the committed `build-info.json`; `<html data-nowo-console="quiet">` or `globalThis.NOWO_CONSOLE = 'quiet'` silences it (2.2.0, REQ-ASSETS-005). The level methods (`debug/info/warn/error`) print only after `setDebug(true)`.
 - **FR-UI-013**: `ShareListRouteResolver` carries the list page through action forms as an HMAC-SHA256 token bound to the viewer and accepts only the manage route or a route in `web_ui.list_routes` with scalar parameters.
 - **FR-UI-014**: Extra list columns come from `ShareListColumn` providers and are printed escaped.
 - **FR-UI-015**: `YopassPageFactory` and `YopassPages` build UiKit view models, resolve `web_ui.layout_template` / `public_layout_template` and per-page overrides, and refuse a 1.x layout without the UiKit canonical blocks with a clear error (the `_legacy_layout.html.twig` bridge was removed in 2.0).
@@ -115,7 +116,7 @@ Per SDD US-01–US-04: create share with `#key`, public reveal, owner revoke/ext
 
 ## Success Criteria
 
-- **SC-001**: 100% of production files in `src/` appear in [`code-inventory.md`](code-inventory.md) with requirement IDs (149/149 mapped; the 13 co-located `*.test.ts` Vitest files are excluded).
+- **SC-001**: 100% of production files in `src/` appear in [`code-inventory.md`](code-inventory.md) with requirement IDs (165/165 mapped on 2.2.0, 2026-11-25; the 14 co-located `*.test.ts` Vitest files are excluded).
 - **SC-002**: Configuration keys in `docs/CONFIGURATION.md` match `Configuration.php`.
 - **SC-003**: `composer qa` / `make release-check` pass in CI (PHPUnit, PHPStan, Vitest where applicable).
 - **SC-004**: No Packagist-visible behavior change without spec, inventory, and test updates.
