@@ -1,5 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBundleLogger } from './logger';
+
+// REQ-ASSETS-005: every test starts with an empty once-guard registry.
+beforeEach(() => {
+  delete (globalThis as { __nowoScriptBannerNames?: unknown }).__nowoScriptBannerNames;
+});
 
 describe('createBundleLogger', () => {
     afterEach(() => {
@@ -19,7 +24,7 @@ describe('createBundleLogger', () => {
         const log = vi.spyOn(console, 'log').mockImplementation(() => {});
 
         createBundleLogger('yopass').scriptLoaded();
-        createBundleLogger('yopass', { buildTime: '' }).scriptLoaded();
+        createBundleLogger('yopass-b', { buildTime: '' }).scriptLoaded();
 
         expect(log).toHaveBeenCalledTimes(2);
         expect(log.mock.calls[0][0]).toContain('[yopass] script loaded');
